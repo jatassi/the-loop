@@ -1,6 +1,6 @@
 # the-loop — Design
 
-**Status:** Living design artifact (born at Design finalize, 2026-06-29). Synthesizes the architecture resolved across [ADR-0001–0021](../adr/) from the [intent](../intent/agentic-dev-loop-design-intent.md) and [decisions](../decisions/agentic-dev-loop-design-decisions.md) docs. Narrative prose carries the judgment; the structured blocks carry the machine-parseable feature graph and contracts (per ADR-0003). The detailed *why* for any choice lives in the cited ADR. Vocabulary is pinned in [DICTIONARY.md](../dictionary/DICTIONARY.md).
+**Status:** Living design artifact (born at Design finalize, 2026-06-29). Synthesizes the architecture resolved across [ADR-0001–0021](../adr/) from the [intent](agentic-dev-loop-design-intent.md) and [decisions](agentic-dev-loop-design-decisions.md) docs. Narrative prose carries the judgment; the structured blocks carry the machine-parseable feature graph and contracts (per ADR-0003). The detailed *why* for any choice lives in the cited ADR. Vocabulary is pinned in [DICTIONARY.md](../dictionary/DICTIONARY.md).
 
 ## What the-loop is
 

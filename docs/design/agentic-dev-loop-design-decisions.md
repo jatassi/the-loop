@@ -1,6 +1,6 @@
 # Agentic Development Loop — Design Decisions
 
-**Status:** Resolved foundational decisions, produced by a `/grill-me` session (2026-06-29) against [the design-intent doc](../intent/agentic-dev-loop-design-intent.md). This is the bridge from *intent* to *design*: it records what is **decided** and what is **deliberately deferred** to solutioning. It is itself a worked example of a Frame → sharpened-brief handoff.
+**Status:** Resolved foundational decisions, produced by a `/grill-me` session (2026-06-29) against [the design-intent doc](agentic-dev-loop-design-intent.md). This is the bridge from *intent* to *design*: it records what is **decided** and what is **deliberately deferred** to solutioning. It is itself a worked example of a Frame → sharpened-brief handoff.
 
 ---
 

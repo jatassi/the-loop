@@ -12,12 +12,12 @@ date: 2026-06-29
 ```
 docs/
 ├── adr/          (ADRs)
-├── decisions/    (design decisions — the sharpened brief)
-├── design/       (design.md)
+├── design/       (design.md + the design intent & decisions it was synthesized from)
 ├── dictionary/   (DICTIONARY.md)
-├── intent/       (design intent)
 └── ledger/       (ledger.md)
 ```
+
+A directory groups an artifact with its **provenance**: `docs/design/` holds the living `design.md` together with the intent and decisions docs that are its genesis (Frame → sharpened brief → design). Distinct artifacts still each get their own directory.
 
 Future artifacts follow suit: `docs/system-map/`, `docs/research/`, `docs/escalations/`, `docs/calibration/`.
 
