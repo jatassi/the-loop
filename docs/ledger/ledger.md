@@ -1,7 +1,7 @@
 # Ledger — the-loop   ·   projected from design.md (feature graph) · established at Design finalize, 2026-06-29
 
 ## What this is
-the-loop: an owned, composable agentic dev loop built from native Claude Code primitives, shipped as a plugin. It moves an idea through the full SDLC and — by design — its first job is to build itself. Full design in [design.md](design.md); the *why* of every choice in [docs/adr/](docs/adr/).
+the-loop: an owned, composable agentic dev loop built from native Claude Code primitives, shipped as a plugin. It moves an idea through the full SDLC and — by design — its first job is to build itself. Full design in [design.md](../design/design.md); the *why* of every choice in [the ADRs](../adr/).
 
 ## Where we are
 **Design complete.** The feature graph is established: **10 walking-skeleton features + 10 deferred** (built by self-hosting), all `designed`, nothing built yet.

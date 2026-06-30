@@ -1,6 +1,6 @@
 # the-loop — Design
 
-**Status:** Living design artifact (born at Design finalize, 2026-06-29). Synthesizes the architecture resolved across [ADR-0001–0020](docs/adr/) from the [intent](docs/agentic-dev-loop-design-intent.md) and [decisions](docs/agentic-dev-loop-design-decisions.md) docs. Narrative prose carries the judgment; the structured blocks carry the machine-parseable feature graph and contracts (per ADR-0003). The detailed *why* for any choice lives in the cited ADR. Vocabulary is pinned in [DICTIONARY.md](DICTIONARY.md).
+**Status:** Living design artifact (born at Design finalize, 2026-06-29). Synthesizes the architecture resolved across [ADR-0001–0021](../adr/) from the [intent](../intent/agentic-dev-loop-design-intent.md) and [decisions](../decisions/agentic-dev-loop-design-decisions.md) docs. Narrative prose carries the judgment; the structured blocks carry the machine-parseable feature graph and contracts (per ADR-0003). The detailed *why* for any choice lives in the cited ADR. Vocabulary is pinned in [DICTIONARY.md](../dictionary/DICTIONARY.md).
 
 ## What the-loop is
 
@@ -54,6 +54,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 ### Boundaries & tech posture
 - The **non-swappable core** is the workflow + control policy (the engine, the gates, the escalation contract). Everything else is a port.
 - **Harness-native config** (no parallel system); **harness-agnostic** durable artifacts keep cross-harness portability open even though v1 targets Claude Code.
+- **Artifact layout (ADR-0021):** every loop-produced document lives in a named directory under `docs/`, even single files — `docs/design/`, `docs/ledger/`, `docs/dictionary/`, `docs/adr/`, … The named directory is also where a single-file artifact's split files land as it grows.
 
 ---
 

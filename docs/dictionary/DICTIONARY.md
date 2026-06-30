@@ -253,7 +253,7 @@ Output of [[Frame]]: the messy idea pressure-tested into an actionable statement
 
 ### Design artifact
 **category:** artifact · **aliases:** the design · **status:** active
-The living high-level design — architecture, data model, interface contracts, boundaries, feature breakdown. The *intended* contract; [[Validate]] checks fidelity to it. Lives as `design.md` in the [[target repo]] (narrative prose + embedded structured blocks, including the [[feature graph]]); scales from a single file to a split `design/` layout past ~1k lines.
+The living high-level design — architecture, data model, interface contracts, boundaries, feature breakdown. The *intended* contract; [[Validate]] checks fidelity to it. Lives at `docs/design/design.md` in the [[target repo]] (narrative prose + embedded structured blocks, including the [[feature graph]]); scales from a single file to additional split files within `docs/design/` past ~1k lines.
 *Not to be confused with:* [[Design]] (the phase) or [[System Map]] (the *as-built* reality).
 *See:* ADR-0003
 
@@ -265,13 +265,13 @@ The DAG embedded in the [[Design artifact]]: feature nodes (each with a stable `
 
 ### System Map
 **category:** artifact · **aliases:** the map · **status:** active
-The *as-built* model of the actual system (inward knowledge). Lives as `system-map.md` in the [[target repo]], addressed by `id` through the same resolver as the Design ([[injection-on-demand]]). Nodes are as-built modules/components (per-module default, configurable), each carrying its real interfaces, a `realizes` reference to the Design [[feature]](s) it implements, and a [[fingerprint]]. Seeded by comprehension (brownfield) or grown as the loop builds (greenfield); self-maintained, with scoped re-comprehension when a node goes stale.
+The *as-built* model of the actual system (inward knowledge). Lives at `docs/system-map/system-map.md` in the [[target repo]], addressed by `id` through the same resolver as the Design ([[injection-on-demand]]). Nodes are as-built modules/components (per-module default, configurable), each carrying its real interfaces, a `realizes` reference to the Design [[feature]](s) it implements, and a [[fingerprint]]. Seeded by comprehension (brownfield) or grown as the loop builds (greenfield); self-maintained, with scoped re-comprehension when a node goes stale.
 *Not to be confused with:* [[Design artifact]] — intended contract vs. as-built reality; their divergence is [[drift]].
 *See:* ADR-0005
 
 ### Project Ledger
 **category:** artifact · **aliases:** the Ledger · **status:** active
-The top-level re-orientation/status artifact: a persisted, glanceable `ledger.md` that powers [[/the-loop]]. **Read-by-human, written-by-loop** — an output surface, never hand-authored. Its status is *derived* (rendered from the [[feature graph]], the single source of truth, so it cannot drift from it) and stamped with the graph [[fingerprint]] it was projected from; it owns only what lives nowhere else (orientation prose, run history, the next-action proposal). Backbone is the four questions — what is this / where are we / what needs me / what's next. Born when [[Design]] is finalized; re-rendered at each [[run boundary]]; built to pass the [[two-weeks-cold resume test]].
+The top-level re-orientation/status artifact: a persisted, glanceable `docs/ledger/ledger.md` that powers [[/the-loop]]. **Read-by-human, written-by-loop** — an output surface, never hand-authored. Its status is *derived* (rendered from the [[feature graph]], the single source of truth, so it cannot drift from it) and stamped with the graph [[fingerprint]] it was projected from; it owns only what lives nowhere else (orientation prose, run history, the next-action proposal). Backbone is the four questions — what is this / where are we / what needs me / what's next. Born when [[Design]] is finalized; re-rendered at each [[run boundary]]; built to pass the [[two-weeks-cold resume test]].
 *See:* ADR-0006
 
 ### ADR
@@ -280,7 +280,7 @@ A recorded decision (context · decision · consequences) emitted at every gated
 
 ### Project Dictionary
 **category:** artifact · **aliases:** the Dictionary · **status:** active
-This artifact (canonically `DICTIONARY.md`): the ubiquitous-language glossary that pins proper nouns to prevent vocabulary drift and name collisions.
+This artifact (canonically `docs/dictionary/DICTIONARY.md`): the ubiquitous-language glossary that pins proper nouns to prevent vocabulary drift and name collisions.
 
 ### Research Findings
 **category:** artifact · **aliases:** — · **status:** active
@@ -293,7 +293,7 @@ Accumulated decomposition and escalation signal (Markdown + frontmatter + index,
 
 ### escalation record
 **category:** artifact · **aliases:** — · **status:** active
-The ephemeral file (`escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, recommendation menu, context. Born when a [[feature]] parks; survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved**. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
+The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, recommendation menu, context. Born when a [[feature]] parks; survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved**. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
 *Not to be confused with:* [[escalation]] (the decision-moment event) — this is the transient working file that informs it.
 *See:* ADR-0009
 
