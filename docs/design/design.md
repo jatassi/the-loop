@@ -196,25 +196,47 @@ features:
 
 ## Key interface contracts
 
-Contract-level shapes only (the *what*, not the *how* — plans carry no implementation).
+Contract-level shapes only (the *what*, not the *how* — plans carry no implementation). Each contract is addressed by its stable `id` — the handle `interfaces:` references and the [injection resolver](../adr/0004-injection-on-demand.md) resolves; the `body` is a verbatim shape sketch (prose, not parsed).
 
-```
-FeatureNode    : { id, title, status: designed|planned|building|validated|shipped|parked|drifted,
-                   depends_on: [id], interfaces: [contract-id], acceptance: [criterion], design_version: int }
+```yaml
+contracts:
+  - id: feature-node
+    body: |
+      { id, title, status: designed|planned|building|validated|shipped|parked|drifted,
+        depends_on: [id], interfaces: [contract-id],
+        acceptance: criterion | [criterion],
+        design_version: int }   # doc-level default; a node may override it as its drift stamp
 
-BoundaryResult : { completed: [feature-id],
-                   parked:    [{ feature-id, deviation, recommendation-menu }],
-                   budget:    { spent, remaining } }
+  - id: boundary-result
+    body: |
+      { completed: [feature-id],
+        parked:    [{ feature-id, deviation, recommendation-menu }],
+        budget:    { spent, remaining } }
 
-injection-resolver : resolve(id) → { node, contracts }
-                     # maps logical id → physical slice; the one layer that knows the layout
+  - id: injection-resolver
+    body: |
+      resolve(id) → { node, contracts }
+      # maps logical id → physical slice; the one layer that knows the layout
 
-validator-verdict  : { merge: clean|conflict,
-                       legs: { conformance, acceptance, runtime },
-                       result: perfect|deviation, detail }
+  - id: sizing-gate
+    body: |
+      assess(task) → fits | split | bounce
+      # soft proxies (files/read-size, contracts touched, expected diff) + agent judgment;
+      # over-decompose until comfortably small; irreducible → bounce up to re-slice the feature
 
-runtime-probe (port) : bringUp() → handle ; exercise(handle, acceptance) → observations ; teardown(handle)
+  - id: validator-verdict
+    body: |
+      { merge: clean|conflict,
+        legs: { conformance, acceptance, runtime },
+        result: perfect|deviation, detail }
 
-port/adapter   : Port = { requires: [capability], guarantees: [flag] }
-                 # configure step asserts adapter.capabilities ⊇ Port.requires; surfaces guarantee-flag trades
+  - id: runtime-probe
+    body: |
+      bringUp() → handle ; exercise(handle, acceptance) → observations ; teardown(handle)
+      # port
+
+  - id: port-adapter
+    body: |
+      Port = { requires: [capability], guarantees: [flag] }
+      # configure step asserts adapter.capabilities ⊇ Port.requires; surfaces guarantee-flag trades
 ```

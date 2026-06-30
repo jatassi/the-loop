@@ -1,0 +1,24 @@
+{
+  "name": "the-loop",
+  "version": "0.1.0",
+  "description": "An owned, composable agentic dev loop built from native Claude Code primitives — shipped as a plugin. Its first job is to build itself.",
+  "type": "module",
+  "private": true,
+  "author": "Jackson Atassi <jackson.atassi@outlook.com>",
+  "bin": {
+    "spine": "./bin/spine.js"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node bin/spine.js check"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "yaml": "^2.6.0"
+  }
+}

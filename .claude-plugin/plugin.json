@@ -1,0 +1,9 @@
+{
+  "name": "the-loop",
+  "version": "0.1.0",
+  "description": "An owned, composable agentic dev loop: refine → design → build → validate → ship → operate → evolve, built from native Claude Code primitives. Its first job is to build itself.",
+  "author": {
+    "name": "Jackson Atassi",
+    "email": "jackson.atassi@outlook.com"
+  }
+}
