@@ -63,7 +63,7 @@ The Dictionary covers the **operational ontology** across two planes — *Proces
 
 ### the-loop
 **category:** structure · **aliases:** the loop · **status:** active
-The system itself: an augmentation layer of native harness primitives (skills, subagents, hooks, commands) that moves an idea through the full SDLC. Owned and composable, not a standalone agentic framework.
+The system itself: an augmentation layer of native harness primitives (skills, subagents, hooks, commands) that moves an idea through the full SDLC. Owned and composable, not a standalone agentic framework. Packaged as a Claude Code plugin (its own code), separate from the [[target repo]] where the artifacts it produces live.
 *Not to be confused with:* [[the engine]] (the shared core) or [[the inner loop]] (the per-feature cycle).
 
 ### the engine
@@ -82,7 +82,8 @@ A typed component role the-loop defines and depends on (task tracker, artifact s
 
 ### adapter
 **category:** structure · **aliases:** — · **status:** active
-A concrete implementation that satisfies a [[port]]. Default adapters ship as opinionated defaults; users swap them without touching the workflow.
+A concrete implementation that satisfies a [[port]], realized as a native primitive — a skill, subagent, MCP server, or configured command/script. Bound per-port via the loop's project config (harness-native layering); the [[configure step]] checks it against the port's [[capability contract]] and surfaces any [[guarantee flag]] trade. Default adapters ship with the plugin; swaps never touch the workflow.
+*See:* ADR-0016
 
 ### capability contract
 **category:** structure · **aliases:** — · **status:** active
@@ -95,6 +96,21 @@ A loop guarantee (e.g. git-versioned resume) explicitly marked as dependent on a
 ### non-swappable core
 **category:** structure · **aliases:** — · **status:** active
 The one thing that is not a [[port]]: the workflow and control policy — the engine, the gates, the escalation contract. What the-loop *is*.
+
+### target repo
+**category:** structure · **aliases:** project repo · **status:** active
+The project repository the-loop is currently operating on — where every per-project [[Artifact]] lives, git-versioned in-repo. Distinct from the plugin that holds the-loop's own code: the plugin is disposable and swappable, the target repo's artifacts are durable.
+*See:* ADR-0002
+
+### runtime probe
+**category:** structure · **aliases:** runtime-exercise capability · **status:** active
+The project-configured [[port]] for bringing the system up and exercising it ("how to run it"), driving the runtime-observable acceptance criteria ("what to observe"). Powers [[Validate]]'s runtime leg and the pre-Ship full-system integration check at larger scope. Greenfield has nothing to infer it from, so [[Design]] **nudges** the user to provide it; its absence is a deliberate, surfaced opt-out, never a silent skip.
+*See:* ADR-0013
+
+### walk-away surface
+**category:** structure · **aliases:** — · **status:** active
+The ambient "what is my loop doing" visibility + escalation-notification surface — *composed*, not built: the `/workflows` progress tree + `log()` narrator lines (live, mid-run), the [[Project Ledger]] (resting, between runs), and the notification-channel [[port]] (push at a [[run boundary]], default: only when something needs you). Meta-observability of the loop's own execution rides the same pieces plus git history. Distinct from debugging introspection.
+*See:* ADR-0019
 
 ---
 
@@ -110,11 +126,28 @@ The default [[grilling]] mode: every question carries the agent's recommended an
 
 ### configure step
 **category:** primitive · **aliases:** /loop-config · **status:** active
-The out-of-band, re-invokable setup primitive that elicits preferences via [[grilling]] and persists them to harness-native config layers.
+The re-invokable setup primitive that elicits preferences via [[grilling]] and persists them to harness-native config layers — binding [[port]]s to [[adapter]]s (checking each [[capability contract]]) and setting parameter defaults. Runs out-of-band *and* as the first leg of [[greenfield onboarding]] (the cold-start branch of [[/the-loop]]).
+*See:* ADR-0017 / ADR-0016
 
 ### research
 **category:** primitive · **aliases:** — · **status:** active
-The cross-cutting capability for *outward* knowledge (prior art, libraries, state of the art) — the twin of the [[System Map]]'s inward comprehension. Produces [[Research Findings]].
+The cross-cutting capability for *outward* knowledge (prior art, libraries, state of the art) — the twin of the [[System Map]]'s inward comprehension. Produces [[Research Findings]]. Default adapter is a **lightweight cited web search**; the `deep-research` skill is the **escalation tier** the confidence-gate reaches for on consequential, low-confidence decisions. Rigor scales with consequence: citation always, adversarial verification proportional to stakes.
+*See:* ADR-0018
+
+### /the-loop
+**category:** primitive · **aliases:** — · **status:** active
+The single stateful entry command — the system's front door. Consults the [[Project Ledger]], states its inferred position, and proposes the next action (the [[scope handshake]] in practice); `/the-loop <phase>` jumps directly to a phase. Named `/the-loop` because `/loop` is a reserved word in most harnesses.
+*See:* ADR-0002
+
+### injection-on-demand
+**category:** primitive · **aliases:** — · **status:** active
+The technique that realizes "earns its context": an agent is handed only the slice of an artifact it needs, addressed by stable `id`, never the whole document. A single session-side **resolver** maps id → physical location (the only layer that knows whether an artifact is one file or split), so layout changes are transparent to every consumer. Across the workflow edge the session extracts a compact **feature graph index** and seeds the Workflow via `args`; task agents demand-read their addressed slice for detail.
+*See:* ADR-0004
+
+### Operate
+**category:** primitive · **aliases:** — · **status:** active
+On-demand agent tooling to conduct production operations and debugging — invoked *reactively* by the human when something went wrong or needs doing, **not** a scheduled always-on agent. The always-on layer is instead an **observability solution** (sized to the project at [[Design]], possibly none) that apprises the human directly; the agent is pulled in only when needed, and a resulting code change becomes a brownfield intake → [[Evolve]]. Never acts on prod unless the human is driving. (Reclassified from Activity by ADR-0015.)
+*See:* ADR-0015
 
 ---
 
@@ -126,7 +159,8 @@ The fresh-context, adversarial agent that runs [[Validate]] with no stake in the
 
 ### orchestrator
 **category:** actor · **aliases:** the driver · **status:** active
-The actor that drives the autonomous [[inner loop]] — sequencing Plan→Build→Validate, enforcing the [[circuit breaker]], and surfacing at gates. Its concrete implementation (likely the harness Workflows feature) is deferred to solutioning.
+The actor that drives the autonomous [[inner loop]] — sequencing Plan→Build→Validate, enforcing the [[circuit breaker]], and surfacing at gates. Concretely a **Claude Code Workflow script** (deterministic JS orchestration); the human/autonomous boundary is the workflow edge.
+*See:* ADR-0001
 
 ---
 
@@ -147,11 +181,13 @@ Autonomous phase. Decomposes the current [[feature]] into right-sized [[task]]s 
 
 ### Build
 **category:** activity · **aliases:** — · **status:** active
-Autonomous phase. Executes a feature's tasks against the [[Design artifact]] to completion, with no human present unless an [[escalation]] fires.
+Autonomous phase. Executes a feature's tasks against the [[Design artifact]] to completion, with no human present unless an [[escalation]] fires. Concurrent tasks run **isolated in per-task git worktrees** (Plan keeps them file-disjoint so merge-back is clean); tasks produce diffs and defer testing/runtime to [[Validate]]; a merge conflict surfaces as a [[deviation]] (a re-plan signal). Merge-back is agent-performed and script-sequenced — the workflow script can't run git.
+*See:* ADR-0012
 
 ### Validate
 **category:** activity · **aliases:** — · **status:** active
-Checks a built [[slice]] against the design via an [[independent validator]]: deterministic conformance + acceptance-criteria tests + real runtime observation.
+Checks a built [[slice]] against the design via an [[independent validator]] (fresh, adversarial, sees only contract + acceptance + diff/runtime). Begins by integrating the feature's task branches (the Build merge folds in here — assembly, not authoring, so independence holds), then runs three legs: deterministic conformance, acceptance-criteria tests on the existing harness, and runtime observation via the project's [[runtime probe]]. A merge conflict or any short-of-perfect leg → [[deviation]].
+*See:* ADR-0013 / ADR-0012
 
 ### Adjust
 **category:** activity · **aliases:** — · **status:** active
@@ -159,15 +195,23 @@ The human re-entry phase. Reconciles what building taught, presents the options 
 
 ### Ship
 **category:** activity · **aliases:** — · **status:** active
-Human-gated deploy of the [[shippable frontier]], with automated health-gated rollback. Decoupled from build cadence.
-
-### Operate
-**category:** activity · **aliases:** — · **status:** active
-A project-shaped, often-optional concern decided at [[Design]]. When present, an event-driven watcher that monitors prod and files intakes but **never acts on prod**.
+Human-gated deploy of the [[shippable frontier]], decoupled from build cadence. The human approves an **evidence package** = full-system integration check (the [[runtime probe]] at full scope) + a baseline security review (a port; default adapter the harness `/security-review`) + an auto-derived changelog. Rollback is **health-gated and delegated**: post-deploy, the runtime probe's smoke checks run against prod; failure → the deploy target's native rollback. The one place autonomy is re-granted after the gate.
+*See:* ADR-0014
 
 ### Evolve
 **category:** activity · **aliases:** — · **status:** active
 Re-entry for a bug or feature request: [[the engine]] run on a brownfield intake with the same Design and Ship gates. RCA + fix-design is agent-assisted, human-approved.
+
+### autonomous run
+**category:** activity · **aliases:** run · **status:** active
+One stateless pass of the [[orchestrator]] over the [[feature graph]]: read the graph, process the dependency-ready [[feature]]s (Plan→Build→Validate each), commit results, and return a `BoundaryResult` at the [[run boundary]]. Holds no durable state of its own — the feature graph is the durable state machine, so "resuming" is just a fresh run over the updated graph, never a replay.
+*Not to be confused with:* [[the inner loop]] (the cycle-concept) — a run is one concrete execution of it over a [[scope envelope]].
+*See:* ADR-0009 / ADR-0008
+
+### greenfield onboarding
+**category:** activity · **aliases:** cold-start branch · **status:** active
+The guided new-project setup experience — the cold-start branch of [[/the-loop]] when a project has no config and no [[Project Ledger]] to resume. Sequences [[configure step]] (bind ports/adapters + parameter defaults) → [[Frame]] → [[Design]] (runtime-probe, observability, and lifecycle nudges), all in [[recommended-answer style]]. Stable bindings at Configure, project-judgment shaping at Design.
+*See:* ADR-0017
 
 ---
 
@@ -175,11 +219,17 @@ Re-entry for a bug or feature request: [[the engine]] run on a brownfield intake
 
 ### escalation
 **category:** event · **aliases:** surface · **status:** active
-The moment the loop pulls the human back for decisioning — fired by a [[deviation]], a gate, or a [[circuit breaker]] trip. Always carries a *recommendation menu*: the options the human chooses among — fix-in-place, re-plan the slice, amend the design, or do specific [[research]].
+The moment the loop pulls the human back for decisioning — fired by a [[deviation]], a gate, or a [[circuit breaker]] trip. Always carries a *recommendation menu*: the options the human chooses among — fix-in-place, re-plan the slice, amend the design, or do specific [[research]]. Under [[park-and-drain]] an escalation is *raised* when its trigger fires (the slice is parked) but *surfaced* batched at the next [[run boundary]].
 
 ### scope handshake
 **category:** event · **aliases:** — · **status:** active
 The moment, before autonomous execution begins, when the agent confirms the [[scope envelope]] with the human.
+
+### run boundary
+**category:** event · **aliases:** — · **status:** active
+The instant an autonomous [[orchestrator]] run concludes and returns control to the interactive session — the only point at which parked decisions are surfaced. Reached when the [[parallelizable frontier]] is exhausted, the [[circuit breaker]] trips, or a halt-class [[deviation]] fires. Under [[park-and-drain]], escalations accumulate and surface here as a batch.
+*Not to be confused with:* [[escalation]] — one surfaced decision, vs. the run boundary, the return moment that may carry a batch of them.
+*See:* ADR-0001
 
 ---
 
@@ -203,17 +253,26 @@ Output of [[Frame]]: the messy idea pressure-tested into an actionable statement
 
 ### Design artifact
 **category:** artifact · **aliases:** the design · **status:** active
-The living high-level design — architecture, data model, interface contracts, boundaries, feature breakdown. The *intended* contract; [[Validate]] checks fidelity to it.
+The living high-level design — architecture, data model, interface contracts, boundaries, feature breakdown. The *intended* contract; [[Validate]] checks fidelity to it. Lives as `design.md` in the [[target repo]] (narrative prose + embedded structured blocks, including the [[feature graph]]); scales from a single file to a split `design/` layout past ~1k lines.
 *Not to be confused with:* [[Design]] (the phase) or [[System Map]] (the *as-built* reality).
+*See:* ADR-0003
+
+### feature graph
+**category:** artifact · **aliases:** — · **status:** active
+The DAG embedded in the [[Design artifact]]: feature nodes (each with a stable `id`, `status`, `depends_on`, `interfaces`, acceptance, and `design_version`) wired by `depends_on` edges. Orders the features, exposes what [[Plan]] can pick up, and carries the per-node [[drift stamp]].
+*Not to be confused with:* [[Design artifact]] (the whole document; the feature graph is one block within it) or [[parallelizable frontier]] (the task-level concurrency within a single feature).
+*See:* ADR-0003
 
 ### System Map
 **category:** artifact · **aliases:** the map · **status:** active
-The *as-built* model of the actual system (inward knowledge). Seeded by comprehension (brownfield) or grown as the loop builds (greenfield); self-maintained with fingerprint freshness.
+The *as-built* model of the actual system (inward knowledge). Lives as `system-map.md` in the [[target repo]], addressed by `id` through the same resolver as the Design ([[injection-on-demand]]). Nodes are as-built modules/components (per-module default, configurable), each carrying its real interfaces, a `realizes` reference to the Design [[feature]](s) it implements, and a [[fingerprint]]. Seeded by comprehension (brownfield) or grown as the loop builds (greenfield); self-maintained, with scoped re-comprehension when a node goes stale.
 *Not to be confused with:* [[Design artifact]] — intended contract vs. as-built reality; their divergence is [[drift]].
+*See:* ADR-0005
 
 ### Project Ledger
 **category:** artifact · **aliases:** the Ledger · **status:** active
-The top-level re-orientation/status artifact. Born when [[Design]] is finalized, self-maintained, built to pass the [[two-weeks-cold resume test]].
+The top-level re-orientation/status artifact: a persisted, glanceable `ledger.md` that powers [[/the-loop]]. **Read-by-human, written-by-loop** — an output surface, never hand-authored. Its status is *derived* (rendered from the [[feature graph]], the single source of truth, so it cannot drift from it) and stamped with the graph [[fingerprint]] it was projected from; it owns only what lives nowhere else (orientation prose, run history, the next-action proposal). Backbone is the four questions — what is this / where are we / what needs me / what's next. Born when [[Design]] is finalized; re-rendered at each [[run boundary]]; built to pass the [[two-weeks-cold resume test]].
+*See:* ADR-0006
 
 ### ADR
 **category:** artifact · **aliases:** Architecture Decision Record · **status:** active
@@ -229,7 +288,14 @@ The durable, cited, timestamped output of the [[research]] primitive. Feeds [[AD
 
 ### Calibration Memory
 **category:** artifact · **aliases:** — · **status:** active
-Accumulated decomposition and escalation signal (Markdown + frontmatter, like harness memory), recalled at Plan/Design to decompose better over time.
+Accumulated decomposition and escalation signal (Markdown + frontmatter + index, the harness-memory pattern), held **per-project in the [[target repo]]** for tight signal-to-noise, recalled at Plan/Design to decompose better over time. Cross-project wisdom is *not* stored here — it rides the configurable defaults (the human-curated prior); this is the per-project posterior. v1 is capture-only.
+*See:* ADR-0007
+
+### escalation record
+**category:** artifact · **aliases:** — · **status:** active
+The ephemeral file (`escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, recommendation menu, context. Born when a [[feature]] parks; survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved**. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
+*Not to be confused with:* [[escalation]] (the decision-moment event) — this is the transient working file that informs it.
+*See:* ADR-0009
 
 ---
 
@@ -261,6 +327,11 @@ The accumulated set of validated, independently-deployable slices awaiting a [[S
 The set of mutually-independent [[task]]s within a feature that [[Plan]] exposes to run concurrently.
 *Not to be confused with:* [[shippable frontier]] (validated slices awaiting deploy).
 
+### fingerprint
+**category:** state · **aliases:** — · **status:** active
+The git content hash (tree/blob) of the code paths a [[System Map]] node covers, stored on the node. Recomputed at intake and [[Plan]]; a mismatch marks the node stale and triggers scoped re-comprehension. The mechanism behind fingerprint-gated freshness.
+*See:* ADR-0005
+
 ---
 
 ## Control
@@ -271,16 +342,23 @@ The strict autonomous-proceed condition: went exactly as planned, fully validate
 
 ### sizing gate
 **category:** control · **aliases:** — · **status:** active
-The hard check in [[Plan]] that every [[task]] fits ≤50% of a 256k window; bias to over-decompose; overflow bounces up to re-slice the [[feature]].
+The hard check in [[Plan]] that every [[task]] fits ≤50% of a 256k window. Rather than precisely estimate, it **over-decomposes until each task is comfortably small** — a loose threshold check fed by soft proxies (files/read-size, interface contracts touched, expected diff size) plus agent judgment, sharpened over time by [[Calibration Memory]]. Unclear/over → split again; irreducibly-too-big → bounce up to re-slice the [[feature]] (a design signal).
+*See:* ADR-0011
 
 ### circuit breaker
 **category:** control · **aliases:** — · **status:** active
-The aggregate safety backstop, in two scopes: **global** ($/time/feature-count → pause-and-check-in) and **per-task convergence** (token/iteration budget → surface thrash).
+Not a loop-managed subsystem (retired, ADR-0010). An [[autonomous run]] is bounded *structurally* — by the [[scope envelope]], [[park-and-drain]] frontier-exhaustion, the [[sizing gate]], and the harness's hard 1000-agent cap. A tighter *cost* cap is opt-in and ad hoc: the human passes a budget at launch; the loop never auto-calculates one.
+*See:* ADR-0010
 
 ### scope envelope
 **category:** control · **aliases:** — · **status:** active
-The confirmed extent of an autonomous run — one task, one feature, or a whole app. The *primary* stop condition; the [[circuit breaker]] is the secondary backstop. Confirmed at the [[scope handshake]].
+The confirmed extent of an autonomous run — one task, one feature, or a whole app. The *primary* stop condition; the structural bounds (frontier-exhaustion, [[sizing gate]], the harness agent cap) are the backstop. Confirmed at the [[scope handshake]].
 
 ### two-weeks-cold resume test
 **category:** control · **aliases:** — · **status:** active
 The acceptance test for the [[Project Ledger]]: a human who has forgotten everything can re-orient and resume from it alone.
+
+### park-and-drain
+**category:** control · **aliases:** — · **status:** active
+The escalation policy under the [[perfection bar]]: a [[deviation]] *parks* its [[slice]] (drift-stamps or blocks it) instead of halting the run, and the [[orchestrator]] keeps executing the independent frontier; parked escalations batch and surface at the next [[run boundary]]. One deviation does not end the run — the run ends only when the frontier is exhausted, the [[circuit breaker]] trips, or a halt-class deviation's [[blast radius]] forces a full stop.
+*See:* ADR-0001
