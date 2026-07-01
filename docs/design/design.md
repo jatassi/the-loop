@@ -12,6 +12,7 @@ An owned, composable augmentation layer — built from native Claude Code primit
 
 ### Substrate (ADR-0001, ADR-0002)
 - Ships as a **Claude Code plugin**. **Two-filesystem split:** the loop's code lives in the plugin (disposable, swappable); the artifacts it produces live git-versioned in the **target repo** (durable).
+- **Self-hosting collapses the split — knowingly.** When the-loop's intake is the-loop itself (its first job), the target repo *is* the plugin repo: one checkout carries both the engine's code and the artifacts it produces. The roles stay directory-disjoint (`src/`, `skills/`, `commands/` vs `docs/`), just no longer repo-disjoint. What survives: artifacts stay git-versioned and durable, and the feature graph stays the durable state machine. What lapses: "the plugin is disposable" — this checkout is load-bearing for both roles. The one new hazard is bounded: build tasks edit the engine that runs them, but a run executes the code it launched with, so self-edits take effect on the next stateless pass — the run boundary doubles as the code-swap boundary — and a bad self-edit is a git revert away, gated by the same validator as any other diff.
 - The autonomous inner loop is a **Claude Code Workflow** (deterministic JS orchestration). The human-gated phases live in the **interactive session**. The boundary is the **workflow edge**: the session conducts; the workflow runs only while no human input is required.
 - **`/the-loop`** is one stateful entry: it reads the Ledger, states its inferred position, and proposes the next action (`/loop` is reserved, hence `/the-loop`).
 
@@ -60,7 +61,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 
 ## Feature graph
 
-The v1 build order (ADR-0020): the walking skeleton reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
+The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
 design_version: 1
@@ -68,7 +69,7 @@ features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
     title: Artifact files, schemas, and the injection resolver (address-by-id)
-    status: designed
+    status: validated
     depends_on: []
     interfaces: [feature-node, injection-resolver]
     acceptance: a feature node + its contracts resolve by id; design.md round-trips through parse/render
@@ -96,12 +97,16 @@ features:
     status: designed
     depends_on: [artifact-spine]
     interfaces: [sizing-gate]
+    notes:
+      - first act of design — define the task contract, the Plan → Build handoff shape (id, acceptance criteria, injected-slice refs, expected file footprint, size estimate); build-phase and validate-phase consume it (2026-07-01 review)
     acceptance: a feature decomposes into comfortably-small tasks; an irreducible feature bounces to re-slice
 
   - id: build-phase
     title: Build (task agents; sequential within a feature for v1)
     status: designed
     depends_on: [artifact-spine, plan-phase]
+    notes:
+      - design the git branching/integration strategy as an ADR before implementation (also blocks validate-phase) — where a validated feature integrates, a parked feature's branch lifecycle across run boundaries, who rebases a rotted parked branch on fix-in-place, crash-recovery commit granularity (2026-07-01 review)
     acceptance: a feature's tasks produce a single merged diff
 
   - id: validate-phase
@@ -109,6 +114,9 @@ features:
     status: designed
     depends_on: [build-phase]
     interfaces: [validator-verdict, runtime-probe]
+    notes:
+      - design a deviation-severity axis for validator-verdict (joint session) — contract-breaking findings park the slice, advisory findings are recorded without parking; kills the "validation flagged anything" catch-all and the escalation fatigue it invites (2026-07-01 review)
+      - record the validator-independence posture as an ADR amending ADR-0013 — build agents develop TDD-style, so the validator checks acceptance differently, exercising real-world-shaped behavior via the runtime probe rather than trusting the builder's tests (2026-07-01 decision)
     acceptance: a built slice is judged perfect/deviation against contract + acceptance + runtime
 
   - id: inner-loop-workflow
@@ -130,13 +138,7 @@ features:
     depends_on: [validate-phase, surfacing]
     acceptance: a validated frontier deploys behind a human gate; a failed post-deploy health check rolls back
 
-  # ── deferred: built BY self-hosting ─────────────────────────────────────
-  - id: worktree-parallelism
-    title: Per-task worktree isolation + parallel Build (full ADR-0012)
-    status: designed
-    depends_on: [build-phase]
-    acceptance: independent tasks build concurrently in worktrees; disjoint branches merge clean; conflicts surface
-
+  # ── dogfood-readiness (ADR-0023): brownfield support lands before self-hosting ──
   - id: system-map
     title: System Map artifact (per-module nodes, fingerprints, self-maintenance)
     status: designed
@@ -148,6 +150,15 @@ features:
     status: designed
     depends_on: [system-map, design-phase]
     acceptance: pointing the loop at an existing repo seeds a fingerprinted System Map, demand-driven
+
+  # ── deferred: built BY self-hosting ─────────────────────────────────────
+  - id: worktree-parallelism
+    title: Per-task worktree isolation + parallel Build (full ADR-0012)
+    status: designed
+    depends_on: [build-phase]
+    notes:
+      - file-disjointness will fail routinely on hub files (barrel exports, route registration, shared types) — design hub-file task chaining and a trivial-merge relaxation so only semantic conflicts escalate (2026-07-01 review)
+    acceptance: independent tasks build concurrently in worktrees; disjoint branches merge clean; conflicts surface
 
   - id: evolve
     title: Evolve (bug-shaped intake; RCA + fix-design at the Design gate)
@@ -165,6 +176,8 @@ features:
     title: Calibration Memory (per-project capture, recalled at Plan/Design)
     status: designed
     depends_on: [plan-phase, design-phase]
+    notes:
+      - capture must separate loop-overhead tokens (validator, ledger renders, escalation records) from build tokens, so "earns its context" is measured against the founding thesis, not assumed (2026-07-01 review)
     acceptance: actual-vs-estimated task cost + re-slice events are captured and recalled
 
   - id: configure-step-full

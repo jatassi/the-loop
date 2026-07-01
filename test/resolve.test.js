@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parse } from '../src/parse.js';
+import { STATUS } from '../src/schema.js';
 import { resolve, resolveIn, extractIndex } from '../src/resolve.js';
 
 const realModel = () => parse(readFileSync('docs/design/design.md', 'utf8'));
@@ -36,7 +37,7 @@ test('extractIndex carries edges/status/acceptance but no contract bodies', () =
   const idx = extractIndex(realModel());
   assert.equal(idx.designVersion, 1);
   const a = idx.features.find((f) => f.id === 'artifact-spine');
-  assert.equal(a.status, 'designed');
+  assert.ok(STATUS.includes(a.status)); // carries status, without pinning the live doc's mutable value
   assert.deepEqual(a.interfaces, ['feature-node', 'injection-resolver']);
   assert.ok(typeof a.acceptance === 'string' && a.acceptance.length > 0);
   assert.ok(!('contracts' in idx)); // bodies live nowhere in the index

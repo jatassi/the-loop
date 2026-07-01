@@ -17,6 +17,8 @@ features:
     status: designed
     depends_on: []
     interfaces: [shape-a]
+    notes:
+      - watch the hub files
     acceptance: does the thing
   - id: b
     title: Feature B
@@ -45,6 +47,8 @@ test('parse extracts design version, features, and contracts', () => {
   assert.deepEqual(m.features[1].depends_on, ['a']);
   assert.equal(m.features[0].acceptance, 'does the thing');
   assert.deepEqual(m.features[1].acceptance, ['one', 'two']); // string | string[] both preserved
+  assert.deepEqual(m.features[0].notes, ['watch the hub files']); // baked-in design notes carried
+  assert.ok(!('notes' in m.features[1])); // absent notes stay absent (faithful view)
   assert.equal(m.contracts.length, 1);
   assert.equal(m.contracts[0].id, 'shape-a');
   assert.match(m.contracts[0].body, /\{ x, y \}/);

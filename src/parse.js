@@ -11,6 +11,7 @@ import { findBlocks } from './blocks.js';
  * @property {string[]} depends_on    feature ids (graph edges)
  * @property {string[]} interfaces    contract ids it owns/touches
  * @property {string|string[]} acceptance
+ * @property {string[]} [notes]        design-time notes baked into the node; travel with the injected slice
  * @property {number} [design_version] node-level drift stamp; absent → inherits the doc default
  */
 
@@ -69,6 +70,7 @@ function normalizeFeature(f) {
     depends_on: f.depends_on || [],
     interfaces: f.interfaces || [],
     acceptance: f.acceptance,
+    ...(f.notes != null ? { notes: f.notes } : {}),
     ...(f.design_version != null ? { design_version: f.design_version } : {}),
   };
 }
