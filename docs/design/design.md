@@ -47,7 +47,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 - **Evolve** — the engine on a bug-shaped intake; same gates.
 
 ### Cross-cutting (ADR-0016–0019)
-- **Ports/adapters** — adapters are native primitives (skill / subagent / MCP / command); bound per-port in harness-native config; capability contracts checked at the **configure step**, with guarantee-flag trades surfaced.
+- **Ports/adapters** — adapters are native primitives (skill / subagent / MCP / command); bound per-port in harness-native config; capability contracts checked at the **configure step**, with guarantee-flag trades surfaced. The typed inventory — every port, tiered required/optional, with its default adapter — lives in [docs/ports/ports.md](../ports/ports.md) (ADR-0024).
 - **Greenfield onboarding** — the **cold-start branch of `/the-loop`**: Configure → Frame → Design.
 - **Research** — a lightweight cited web search by default; `deep-research` is the escalation tier the confidence-gate reaches for.
 - **Walk-away surface** — composed, not built: `/workflows` (live) + Ledger (resting) + notification port (push when something needs you).
@@ -190,6 +190,9 @@ features:
     title: Full ports/adapters (swapping + capability-contract enforcement + guarantee flags)
     status: designed
     depends_on: [configure-step-full]
+    interfaces: [port-adapter]
+    notes:
+      - the port inventory (ids, tiers, required_by scopes, default adapters) is tracked in docs/ports/ports.md (ADR-0024); this feature's configure-step enforcement consumes it as spec (2026-07-01)
     acceptance: an adapter swap is one config line; the configure step validates the contract and surfaces guarantee trades
 
   - id: research-tiers

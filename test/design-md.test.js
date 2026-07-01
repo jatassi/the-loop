@@ -28,9 +28,9 @@ test('every referenced interface has a contract body (no dangling interfaces)', 
   assert.ok(!v.warnings.some((x) => x.code === 'dangling-interface'));
 });
 
-test('port-adapter remains defined-but-unreferenced (informational warning)', () => {
+test('every defined contract is referenced by some feature (no unreferenced contracts)', () => {
   const v = validate(parse(TEXT));
-  assert.ok(v.warnings.some((x) => x.code === 'unreferenced-contract' && x.where === 'port-adapter'));
+  assert.ok(!v.warnings.some((x) => x.code === 'unreferenced-contract'));
 });
 
 test('every depends_on edge resolves and the graph is acyclic', () => {

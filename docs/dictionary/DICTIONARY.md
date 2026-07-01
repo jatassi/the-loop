@@ -52,7 +52,8 @@ The autonomous per-feature cycle run inside [[the engine]]: Plan → Build → V
 
 ### port
 **aliases:** component role · **status:** active
-A typed component role the-loop defines and depends on (task tracker, artifact store, deploy target, observability backend, notification channel, research tool, component skill).
+A typed component role the-loop defines and depends on (task tracker, artifact store, deploy target, observability backend, notification channel, research tool, component skill). The full tiered inventory lives in [ports.md](../ports/ports.md).
+*See:* ADR-0024
 
 ### adapter
 **aliases:** — · **status:** active
