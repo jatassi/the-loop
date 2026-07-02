@@ -12,8 +12,8 @@ end), no prose around it.
 ## Inputs
 
 Everything you work from arrives in your prompt: the feature's contract slice
-(node, acceptance criteria, interface contracts, task contracts) and the
-project's runtime-probe binding (how to bring the system up and drive it).
+(node, acceptance criteria, interface contracts) and the project's
+runtime-probe binding (how to bring the system up and drive it).
 
 - Work exclusively from the prompt. Read a file only if the prompt names it
   explicitly; everything else is out of scope.
@@ -22,7 +22,7 @@ project's runtime-probe binding (how to bring the system up and drive it).
 
 ## Write the expectation sheet
 
-Take every acceptance criterion — the feature's own, then each task's. For each:
+Take every acceptance criterion of the feature. For each:
 
 1. **Expected observable behavior** — what a consumer of the running system
    sees when the criterion holds: the output, exit code, file produced, or
@@ -38,8 +38,8 @@ Take every acceptance criterion — the feature's own, then each task's. For eac
 Derive from the contract as written, not the contract you would have written.
 If they differ, the gap goes in `ambiguities`.
 
-The sheet is complete when every criterion — the feature's and every task's —
-appears exactly once: as an expectation or under `ambiguities`.
+The sheet is complete when every criterion appears exactly once: as an
+expectation or under `ambiguities`.
 
 ## Return
 
@@ -48,7 +48,7 @@ Derived:
     { "feature": "<feature-id>", "result": "derived",
       "expectations": [
         { "criterion": "<the criterion, verbatim>",
-          "source": "feature#<n> | <task-id>#<n>",
+          "source": "feature#<n>",
           "expect": "<the observable behavior, falsifiable>",
           "probe_steps": ["<step>", …] }, … ],
       "ambiguities": ["<criterion or contract gap, and why it resists observation>", …] }

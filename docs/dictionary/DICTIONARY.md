@@ -106,11 +106,11 @@ The bound git ref that validated [[feature]]s squash-merge into — where "done"
 
 ### blind derivation
 **aliases:** — · **status:** active
-The independence protocol at the head of [[Validate]]: a separate **blind deriver** agent receives only the resolved contract slice (feature node, acceptance criteria, interface contracts, task contracts) plus the [[runtime probe]] binding — its inputs are its blindfold: no diff, no builder tests, no completion reports — and writes the [[expectation sheet]] before any builder output is opened. **Control-group posture:** the deriver's surface is procedural only — it is never told it is blind, what it is blind to, or that anything judges against its sheet; the protocol lives in the orchestrator and the validator, never in the deriver's prompt. Interpretation divergence discovered downstream routes as a **spec-ambiguity** advisory folded back to the [[Design artifact]], not just the verdict record.
+The independence protocol at the head of [[Validate]]: a separate **blind deriver** agent receives only the feature-level contract slice (feature node, acceptance criteria, interface contracts) plus the [[runtime probe]] binding — its inputs are its blindfold: no diff, no builder tests, no completion reports, and no plan artifact (task contracts carry footprints, the implementation's file layout; task-level checking lives in legs 2 and 3) — and writes the [[expectation sheet]] before any builder output is opened. **Control-group posture:** the deriver's surface is procedural only — it is never told it is blind, what it is blind to, or that anything judges against its sheet; the protocol lives in the orchestrator and the validator, never in the deriver's prompt. Interpretation divergence discovered downstream routes as a **spec-ambiguity** advisory folded back to the [[Design artifact]], not just the verdict record.
 
 ### expectation sheet
 **aliases:** — · **status:** active
-The blind deriver's output: per acceptance criterion, the expected observable behavior and the probe steps that would elicit it, each written to be falsifiable. Anchors the conformance leg's spec axis, scripts the runtime leg's exercise, and seeds the feature's [[probe pack]] entry.
+The blind deriver's output: per **feature** acceptance criterion, the expected observable behavior and the probe steps that would elicit it, each written to be falsifiable. Anchors the conformance leg's spec axis, scripts the runtime leg's exercise, and seeds the feature's [[probe pack]] entry.
 
 ### probe pack
 **aliases:** — · **status:** active
