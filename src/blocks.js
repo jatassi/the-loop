@@ -16,7 +16,7 @@ const HEADINGS = {
 };
 
 function escapeRe(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return s.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 /**
@@ -24,15 +24,15 @@ function escapeRe(s) {
  * @returns {Span|null}
  */
 export function yamlBlockAfter(text, heading) {
-  const head = new RegExp(`^${escapeRe(heading)}\\s*$`, 'm').exec(text);
-  if (!head) return null;
+  const head = new RegExp(String.raw`^${escapeRe(heading)}\s*$`, 'm').exec(text);
+  if (!head) {return null;}
   const fence = /```ya?ml[^\n]*\n/g;
   fence.lastIndex = head.index + head[0].length;
   const open = fence.exec(text);
-  if (!open) return null;
+  if (!open) {return null;}
   const innerStart = open.index + open[0].length;
   const close = text.indexOf('\n```', innerStart);
-  if (close === -1) return null;
+  if (close === -1) {return null;}
   return { inner: text.slice(innerStart, close), innerStart, innerEnd: close };
 }
 

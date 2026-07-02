@@ -38,10 +38,10 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 
 ### Phases (ADR-0011–0015)
 - **Frame** — grilling → a sharp Brief.
-- **Design** — Brief → `design.md` + feature graph + Ledger + Dictionary seed; shapes lifecycle concerns (the **runtime-probe** and **observability** nudges).
+- **Design** — Brief → `design.md` + feature graph + Ledger + Dictionary seed; shapes lifecycle concerns (the **runtime-probe**, **observability**, and **lint-regime** nudges — greenfield seeds an aggressive per-stack lint baseline; see the `lint-gate` port).
 - **Plan** — the **sizing gate**: over-decompose until each task is comfortably small; irreducible features bounce up to re-slice, carrying a **reslice brief**. Gateless by design (ADR-0025): no human plan approval — the compensating machinery is mechanical (`spine plan check`: criterion coverage, overlap ordering, sizing, edges) plus a **fresh-context audit** when complexity/contract-surface/blast-radius warrant. The decomposition persists as a per-feature **plan artifact** (`docs/plans/<feature-id>.md`) of task contracts; Build and Validate consume them, and Build's completion reports fold back in.
-- **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate.
-- **Validate** — the **independent validator**: integrates the task branches (merge folds in), then runs three legs — conformance, acceptance tests, and **runtime observation via the runtime probe**. Anything short of perfect → deviation.
+- **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate. Work lands one-commit-per-task on a per-feature branch (`loop/<feature-id>`) cut from the **integration target** (a bound ref, default `main`, set at Design; ADR-0026).
+- **Validate** — the **independent validator**: readies the feature branch (the task-branch merge folds in), runs three legs — conformance, acceptance tests, and **runtime observation via the runtime probe** — and only on a perfect verdict squash-merges the feature into the integration target (ADR-0026). Anything short of perfect → deviation.
 - **Adjust** — the recommendation menu; drift via each feature's `design_version`; impact-scoped re-validation.
 - **Ship** — human-gated; evidence package (full-system integration via the runtime probe + a baseline security-review port + changelog); **health-gated, delegated rollback**.
 - **Operate** — **on-demand** ops/debug tooling, plus an **observability solution** that apprises the human; never a scheduled agent.
@@ -91,6 +91,8 @@ features:
     title: Design skill (Brief → design.md + feature graph + Ledger + Dictionary seed)
     status: building
     depends_on: [frame, artifact-spine]
+    notes:
+      - add the lint-regime nudge to lifecycle shaping — greenfield Design seeds an aggressive per-stack lint baseline (strictest preset as floor, complexity budgets, architecture-as-lint), brownfield detects + offers a ratchet; machine-checkable standards belong in the lint gate, prose standards in the craft layer (ports.md lint-gate, 2026-07-02)
     acceptance: a Brief yields a valid design.md with a feature graph and an established Ledger
 
   - id: plan
@@ -102,10 +104,8 @@ features:
 
   - id: build
     title: Build (task agents; sequential within a feature for v1)
-    status: designed
+    status: building
     depends_on: [artifact-spine, plan]
-    notes:
-      - design the git branching/integration strategy as an ADR before implementation (also blocks validate) — where a validated feature integrates, a parked feature's branch lifecycle across run boundaries, who rebases a rotted parked branch on fix-in-place, crash-recovery commit granularity (2026-07-01 review)
     acceptance: a feature's tasks produce a single merged diff
 
   - id: validate

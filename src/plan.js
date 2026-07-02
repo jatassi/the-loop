@@ -5,6 +5,7 @@
 // the round-trip (its _blocks shape is shared).
 
 import YAML from 'yaml';
+
 import { yamlBlockAfter } from './blocks.js';
 import { findCycle } from './schema.js';
 
@@ -61,7 +62,7 @@ export function parsePlan(text) {
   return {
     feature: js.feature,
     designVersion: js.design_version,
-    tasks: (js.tasks || []).map(normalizeTask),
+    tasks: (js.tasks || []).map((t) => normalizeTask(t)),
     _blocks: { tasks: span ? { doc, span } : null },
   };
 }
@@ -77,7 +78,7 @@ function normalizeTask(t) {
     footprint: t.footprint || [],
     size: t.size,
     depends_on: t.depends_on || [],
-    ...(t.report != null ? { report: t.report } : {}),
+    ...((t.report != null) && { report: t.report }),
   };
 }
 
@@ -92,92 +93,189 @@ function normalizeTask(t) {
 export function validatePlan(plan, design) {
   const errors = [];
   const warnings = [];
-  const err = (code, message, where) => errors.push({ code, message, where });
-  const warn = (code, message, where) => warnings.push({ code, message, where });
+  const err = (code, message, where) => { errors.push({ code, message, where }); };
+  const warn = (code, message, where) => { warnings.push({ code, message, where }); };
 
-  if (!plan._blocks || !plan._blocks.tasks) {
-    err('missing-tasks-block', 'no ```yaml tasks block found under "## Tasks"');
-  }
-  if (!Number.isInteger(plan.designVersion)) {
-    err('bad-plan-design-version', `design_version must be an integer (got ${JSON.stringify(plan.designVersion)})`);
-  }
+  checkPlanShape(plan, err);
 
-  // ── the feature this plan decomposes ──
-  const feature = (design.features || []).find((f) => f.id === plan.feature);
-  if (!feature) {
-    err('unknown-feature', `plan targets unknown feature "${plan.feature}"`);
-  } else {
-    const effective = feature.design_version != null ? feature.design_version : design.designVersion;
-    if (Number.isInteger(plan.designVersion) && plan.designVersion !== effective) {
-      warn('stale-plan', `plan was cut from design_version ${plan.designVersion}; the feature is at ${effective} — re-check before building`, plan.feature);
-    }
-  }
-  const criteria = feature ? (Array.isArray(feature.acceptance) ? feature.acceptance : [feature.acceptance]) : [];
+  const feature = matchFeature(plan, design, { err, warn });
+  const criteria = criteriaOf(feature);
   const contractIds = new Set((design.contracts || []).map((c) => c.id));
 
-  // ── task ids + uniqueness ──
   const tasks = plan.tasks || [];
-  const ids = new Set();
-  for (const t of tasks) {
-    if (!t.id || typeof t.id !== 'string') { err('missing-task-id', 'task is missing a string id', t.title); continue; }
-    if (ids.has(t.id)) err('duplicate-task-id', 'duplicate task id', t.id);
-    ids.add(t.id);
-  }
+  const ids = collectTaskIds(tasks, err);
 
-  // ── per-task field + reference checks ──
   const covered = new Set();
   for (const t of tasks) {
-    if (!t.id) continue;
-    if (!t.title) err('missing-task-title', 'task has no title', t.id);
-    if (!TASK_STATUS.includes(t.status)) err('bad-task-status', `status must be one of ${TASK_STATUS.join('|')} (got ${JSON.stringify(t.status)})`, t.id);
-    if (!hasAcceptance(t.acceptance)) err('missing-task-acceptance', 'task has no acceptance criterion of its own', t.id);
-    if (!TASK_SIZES.includes(t.size)) {
-      err('bad-size', `size must be one of ${TASK_SIZES.join('|')} — anything larger splits or bounces (got ${JSON.stringify(t.size)})`, t.id);
-    } else if (t.size === 'm') {
-      warn('size-at-ceiling', 'task sits at the comfort ceiling — the plan narrative must justify why it cannot split', t.id);
-    }
-    if (!t.footprint.length) err('missing-footprint', 'task declares no expected file footprint', t.id);
-
-    if (!t.covers.length) err('task-covers-nothing', 'task claims no feature acceptance criterion', t.id);
-    for (const k of t.covers) {
-      if (!Number.isInteger(k) || k < 1 || k > criteria.length) {
-        err('bad-covers-ref', `covers references criterion #${k} but the feature has ${criteria.length}`, t.id);
-      } else covered.add(k);
-    }
-    for (const cid of t.injects) {
-      if (!contractIds.has(cid)) err('dangling-inject', `injects unknown contract "${cid}"`, t.id);
-    }
-    for (const dep of t.depends_on) {
-      if (dep === t.id) err('self-dependency', 'task depends on itself', t.id);
-      else if (!ids.has(dep)) err('dangling-task-dependency', `depends_on unknown task "${dep}"`, t.id);
-    }
+    if (!t.id) { continue; }
+    checkTaskFields(t, { err, warn });
+    checkTaskCovers(t, { err, criteria, covered });
+    checkTaskEdges(t, { err, contractIds, ids });
   }
 
   // ── coverage: every feature criterion is claimed by some task ──
-  if (feature && tasks.length) {
+  if (feature && tasks.length > 0) {
     for (let k = 1; k <= criteria.length; k++) {
-      if (!covered.has(k)) err('uncovered-criterion', `feature acceptance criterion #${k} is claimed by no task ("${criteria[k - 1]}")`, plan.feature);
+      if (!covered.has(k)) { err('uncovered-criterion', `feature acceptance criterion #${k} is claimed by no task ("${criteria[k - 1]}")`, plan.feature); }
     }
   }
 
   const cycle = findCycle(tasks);
-  if (cycle) err('task-dependency-cycle', `depends_on cycle: ${cycle.join(' → ')}`, cycle[0]);
-
-  // ── overlap serialization: shared footprint ⇒ an ordering path must exist ──
-  if (!cycle) {
-    for (const [a, b, shared] of overlaps(tasks)) {
-      if (!reaches(tasks, a.id, b.id) && !reaches(tasks, b.id, a.id)) {
-        err('unordered-overlap', `tasks share files (${shared.join(', ')}) but neither orders before the other — chain them via depends_on`, `${a.id}+${b.id}`);
-      }
-    }
-  }
+  if (cycle) { err('task-dependency-cycle', `depends_on cycle: ${cycle.join(' → ')}`, cycle[0]); }
+  else { checkOverlaps(tasks, err); }
 
   return { ok: errors.length === 0, errors, warnings };
 }
 
+function checkPlanShape(plan, err) {
+  if (!plan._blocks || !plan._blocks.tasks) {
+    err('missing-tasks-block', 'no ```yaml tasks block found under "## Tasks"');
+  }
+  if (!Number.isSafeInteger(plan.designVersion)) {
+    err('bad-plan-design-version', `design_version must be an integer (got ${JSON.stringify(plan.designVersion)})`);
+  }
+}
+
+// The feature this plan decomposes: resolve it and check the drift stamp.
+function matchFeature(plan, design, { err, warn }) {
+  const feature = (design.features || []).find((f) => f.id === plan.feature);
+  if (!feature) {
+    err('unknown-feature', `plan targets unknown feature "${plan.feature}"`);
+    return null;
+  }
+  const effective = feature.design_version ?? design.designVersion;
+  if (Number.isSafeInteger(plan.designVersion) && plan.designVersion !== effective) {
+    warn('stale-plan', `plan was cut from design_version ${plan.designVersion}; the feature is at ${effective} — re-check before building`, plan.feature);
+  }
+  return feature;
+}
+
+// A feature's acceptance as a criterion list (no feature → no criteria).
+function criteriaOf(feature) {
+  if (!feature) { return []; }
+  return Array.isArray(feature.acceptance) ? feature.acceptance : [feature.acceptance];
+}
+
+function collectTaskIds(tasks, err) {
+  const ids = new Set();
+  for (const t of tasks) {
+    if (!t.id || typeof t.id !== 'string') { err('missing-task-id', 'task is missing a string id', t.title); continue; }
+    if (ids.has(t.id)) { err('duplicate-task-id', 'duplicate task id', t.id); }
+    ids.add(t.id);
+  }
+  return ids;
+}
+
+// Per-task field checks: title, status, acceptance, size class, footprint.
+function checkTaskFields(t, { err, warn }) {
+  if (!t.title) { err('missing-task-title', 'task has no title', t.id); }
+  if (!TASK_STATUS.includes(t.status)) { err('bad-task-status', `status must be one of ${TASK_STATUS.join('|')} (got ${JSON.stringify(t.status)})`, t.id); }
+  if (!hasAcceptance(t.acceptance)) { err('missing-task-acceptance', 'task has no acceptance criterion of its own', t.id); }
+  if (!TASK_SIZES.includes(t.size)) {
+    err('bad-size', `size must be one of ${TASK_SIZES.join('|')} — anything larger splits or bounces (got ${JSON.stringify(t.size)})`, t.id);
+  } else if (t.size === 'm') {
+    warn('size-at-ceiling', 'task sits at the comfort ceiling — the plan narrative must justify why it cannot split', t.id);
+  }
+  if (t.footprint.length === 0) { err('missing-footprint', 'task declares no expected file footprint', t.id); }
+}
+
+// Per-task coverage claims: each `covers` index lands inside the feature's criteria.
+function checkTaskCovers(t, { err, criteria, covered }) {
+  if (t.covers.length === 0) { err('task-covers-nothing', 'task claims no feature acceptance criterion', t.id); }
+  for (const k of t.covers) {
+    if (Number.isSafeInteger(k) && k >= 1 && k <= criteria.length) { covered.add(k); }
+    else { err('bad-covers-ref', `covers references criterion #${k} but the feature has ${criteria.length}`, t.id); }
+  }
+}
+
+// Per-task reference checks: injected contracts and dependency edges.
+function checkTaskEdges(t, { err, contractIds, ids }) {
+  for (const cid of t.injects) {
+    if (!contractIds.has(cid)) { err('dangling-inject', `injects unknown contract "${cid}"`, t.id); }
+  }
+  for (const dep of t.depends_on) {
+    if (dep === t.id) { err('self-dependency', 'task depends on itself', t.id); }
+    else if (!ids.has(dep)) { err('dangling-task-dependency', `depends_on unknown task "${dep}"`, t.id); }
+  }
+}
+
+// Overlap serialization: shared footprint ⇒ an ordering path must exist.
+function checkOverlaps(tasks, err) {
+  for (const [a, b, shared] of overlaps(tasks)) {
+    if (!reaches(tasks, a.id, b.id) && !reaches(tasks, b.id, a.id)) {
+      err('unordered-overlap', `tasks share files (${shared.join(', ')}) but neither orders before the other — chain them via depends_on`, `${a.id}+${b.id}`);
+    }
+  }
+}
+
+/** Completion results a build agent may return; folding one sets the task's status. */
+export const REPORT_RESULTS = ['built', 'blocked'];
+
+/**
+ * Resolve one task into the slice a build agent is handed — injection-on-demand at
+ * task granularity, the plan-side sibling of resolveIn(): the task contract, the texts
+ * of the feature acceptance criteria it covers, and the bodies of the contracts it
+ * injects. `unbuilt_dependencies` lists depends_on tasks not yet `built`, so a
+ * mis-sequenced builder can refuse mechanically instead of building on absent work.
+ * @param {PlanModel} plan
+ * @param {import('./parse.js').DesignModel} design
+ * @param {string} taskId
+ * @returns {{feature: string, design_version: number, task: TaskContract,
+ *            covers_criteria: string[], injects: Array<{id: string, body: string}>,
+ *            unbuilt_dependencies: string[]}}
+ */
+export function resolveTask(plan, design, taskId) {
+  const task = (plan.tasks || []).find((t) => t.id === taskId);
+  if (!task) {throw new Error(`unknown task id: ${plan.feature}/${taskId}`);}
+  const feature = (design.features || []).find((f) => f.id === plan.feature);
+  const criteria = criteriaOf(feature);
+  const contractById = new Map((design.contracts || []).map((c) => [c.id, c]));
+  const taskById = new Map(plan.tasks.map((t) => [t.id, t]));
+  return {
+    feature: plan.feature,
+    design_version: plan.designVersion,
+    task,
+    covers_criteria: task.covers.map((k) => criteria[k - 1]).filter((c) => c != null),
+    injects: task.injects.map((cid) => contractById.get(cid)).filter(Boolean),
+    unbuilt_dependencies: task.depends_on.filter((id) => {
+      const dep = taskById.get(id);
+      return !dep || dep.status !== 'built';
+    }),
+  };
+}
+
+/**
+ * Fold a completion report (contract: completion-report) into its task node — the
+ * boundary-step write-back. Sets `status` from `result` and embeds the rest under
+ * `report:`, in both the JS model and the retained YAML document, so render() persists
+ * it without touching any other byte of the artifact. Refuses a malformed result and a
+ * double fold — re-opening a finished task is a resolution decision, not a re-write.
+ * @param {PlanModel} plan
+ * @param {string} taskId
+ * @param {Object} report  {result, footprint_actual, diff_actual, deviations, summary}
+ */
+export function foldReport(plan, taskId, report) {
+  const idx = (plan.tasks || []).findIndex((t) => t.id === taskId);
+  if (idx === -1) {throw new Error(`unknown task id: ${plan.feature}/${taskId}`);}
+  if (!report || !REPORT_RESULTS.includes(report.result)) {
+    throw new Error(`report.result must be one of ${REPORT_RESULTS.join('|')}`);
+  }
+  const task = plan.tasks[idx];
+  if (task.report != null || task.status === 'built' || task.status === 'blocked') {
+    throw new Error(`task ${plan.feature}/${taskId} already carries a report (status: ${task.status})`);
+  }
+  if (!plan._blocks.tasks) {throw new Error('plan has no tasks block to fold into');}
+  const { task: _named, ...body } = report; // the node's own id already names the task
+  task.status = report.result;
+  task.report = body;
+  const doc = plan._blocks.tasks.doc;
+  doc.setIn(['tasks', idx, 'status'], report.result);
+  doc.setIn(['tasks', idx, 'report'], body);
+}
+
 function hasAcceptance(a) {
-  if (typeof a === 'string') return a.trim().length > 0;
-  if (Array.isArray(a)) return a.length > 0 && a.every((x) => typeof x === 'string' && x.trim().length > 0);
+  if (typeof a === 'string') {return a.trim().length > 0;}
+  if (Array.isArray(a)) {return a.length > 0 && a.every((x) => typeof x === 'string' && x.trim().length > 0);}
   return false;
 }
 
@@ -186,7 +284,7 @@ function* overlaps(tasks) {
     const fa = new Set(tasks[i].footprint);
     for (let j = i + 1; j < tasks.length; j++) {
       const shared = tasks[j].footprint.filter((p) => fa.has(p));
-      if (shared.length) yield [tasks[i], tasks[j], shared];
+      if (shared.length > 0) {yield [tasks[i], tasks[j], shared];}
     }
   }
 }
@@ -196,10 +294,11 @@ function reaches(tasks, from, to) {
   const edges = new Map(tasks.filter((t) => t.id).map((t) => [t.id, t.depends_on || []]));
   const seen = new Set();
   const stack = [from];
-  while (stack.length) {
+  while (stack.length > 0) {
     const id = stack.pop();
-    for (const dep of edges.get(id) || []) {
-      if (dep === to) return true;
+    const deps = edges.get(id) || [];
+    for (const dep of deps) {
+      if (dep === to) { return true; }
       if (!seen.has(dep)) { seen.add(dep); stack.push(dep); }
     }
   }

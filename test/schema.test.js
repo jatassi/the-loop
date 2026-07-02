@@ -1,7 +1,8 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
 import { parse } from '../src/parse.js';
-import { validate, STATUS } from '../src/schema.js';
+import { STATUS,validate } from '../src/schema.js';
 
 // Build a model from a feature-graph body + optional contracts body.
 function model(featuresYaml, contractsYaml = 'contracts: []') {

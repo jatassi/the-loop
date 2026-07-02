@@ -1,16 +1,17 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+
 import { parse } from '../src/parse.js';
+import { extractIndex,resolve, resolveIn } from '../src/resolve.js';
 import { STATUS } from '../src/schema.js';
-import { resolve, resolveIn, extractIndex } from '../src/resolve.js';
 
 const realModel = () => parse(readFileSync('docs/design/design.md', 'utf8'));
 
 test('resolve("artifact-spine") returns the node + its two contracts (the acceptance test)', () => {
   const { node, contracts } = resolve('artifact-spine');
   assert.equal(node.id, 'artifact-spine');
-  assert.deepEqual(contracts.map((c) => c.id).sort(), ['feature-node', 'injection-resolver']);
+  assert.deepEqual(contracts.map((c) => c.id).toSorted((a, b) => a.localeCompare(b)), ['feature-node', 'injection-resolver']);
   assert.match(contracts.find((c) => c.id === 'feature-node').body, /depends_on/);
 });
 

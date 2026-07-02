@@ -5,9 +5,10 @@
 // (ADR-0006). Cold-start routing per ADR-0017.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import path from 'node:path';
+
 import { parse } from './parse.js';
-import { validate, STATUS } from './schema.js';
+import { STATUS, validate } from './schema.js';
 
 const DESIGN = 'docs/design/design.md';
 const LEDGER = 'docs/ledger/ledger.md';
@@ -36,10 +37,12 @@ const ACTIONABLE = new Set(['designed', 'planned', 'building', 'drifted']);
  * @returns {{mode: 'cold-start'|'active'|'partial', hasDesign: boolean, hasLedger: boolean, hasBrief: boolean}}
  */
 export function detectState(root = '.') {
-  const hasDesign = existsSync(join(root, DESIGN));
-  const hasLedger = existsSync(join(root, LEDGER));
-  const hasBrief = existsSync(join(root, BRIEF));
-  const mode = hasDesign && hasLedger ? 'active' : hasDesign || hasLedger ? 'partial' : 'cold-start';
+  const hasDesign = existsSync(path.join(root, DESIGN));
+  const hasLedger = existsSync(path.join(root, LEDGER));
+  const hasBrief = existsSync(path.join(root, BRIEF));
+  let mode = 'cold-start';
+  if (hasDesign && hasLedger) { mode = 'active'; }
+  else if (hasDesign || hasLedger) { mode = 'partial'; }
   return { mode, hasDesign, hasLedger, hasBrief };
 }
 
@@ -53,7 +56,7 @@ export function frontier(model) {
   const byId = new Map((model.features || []).map((f) => [f.id, f]));
   const satisfied = (id) => { const d = byId.get(id); return !!d && DONE.has(d.status); };
   return (model.features || []).filter(
-    (f) => ACTIONABLE.has(f.status) && (f.depends_on || []).every(satisfied),
+    (f) => ACTIONABLE.has(f.status) && (f.depends_on || []).every((id) => satisfied(id)),
   );
 }
 
@@ -71,22 +74,22 @@ export function propose(model) {
   const withStatus = (s) => features.filter((f) => f.status === s).map((f) => f.id);
 
   const parked = withStatus('parked');
-  if (parked.length) {
+  if (parked.length > 0) {
     return { kind: 'resolve-parked', features: parked,
       summary: `${parked.length} parked escalation(s) need a decision before their slices can move` };
   }
   const ready = frontier(model).map((f) => f.id);
-  if (ready.length) {
+  if (ready.length > 0) {
     return { kind: 'advance-frontier', features: ready,
       summary: `${ready.length} feature(s) are dependency-ready to advance` };
   }
   const stuck = features.filter((f) => !DONE.has(f.status)).map((f) => f.id);
-  if (stuck.length) {
+  if (stuck.length > 0) {
     return { kind: 'blocked', features: stuck,
       summary: 'non-terminal features exist but none are actionable — the graph needs repair' };
   }
   const validated = withStatus('validated');
-  if (validated.length) {
+  if (validated.length > 0) {
     return { kind: 'ship', features: validated,
       summary: 'everything buildable is validated — the frontier is shippable' };
   }
@@ -113,7 +116,7 @@ export function orient(root = '.') {
       summary: `half-configured project (missing: ${missing.join(', ')}) — repair before resuming` } };
   }
 
-  const model = parse(readFileSync(join(root, DESIGN), 'utf8'));
+  const model = parse(readFileSync(path.join(root, DESIGN), 'utf8'));
   const position = countByStatus(model);
   const { ok, errors } = validate(model);
   if (!ok) {
@@ -123,7 +126,7 @@ export function orient(root = '.') {
   }
   return {
     ...state,
-    ledger: join(root, LEDGER),
+    ledger: path.join(root, LEDGER),
     position,
     parked: model.features.filter((f) => f.status === 'parked').map((f) => f.id),
     frontier: frontier(model).map((f) => f.id),
@@ -133,6 +136,9 @@ export function orient(root = '.') {
 
 function countByStatus(model) {
   const byStatus = Object.fromEntries(STATUS.map((s) => [s, 0]));
-  for (const f of model.features || []) if (byStatus[f.status] != null) byStatus[f.status] += 1;
-  return { designVersion: model.designVersion, total: (model.features || []).length, byStatus };
+  const features = model.features || [];
+  for (const f of features) {
+    if (byStatus[f.status] != null) { byStatus[f.status] += 1; }
+  }
+  return { designVersion: model.designVersion, total: features.length, byStatus };
 }

@@ -1,6 +1,7 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+
 import { parse } from '../src/parse.js';
 import { render } from '../src/render.js';
 

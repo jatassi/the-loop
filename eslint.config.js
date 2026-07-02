@@ -1,0 +1,99 @@
+// Lint gate for the-loop's own code (the self-hosting lint-gate binding): strictest
+// presets as the floor, explicit adds on top, complexity budgets, architecture-as-lint.
+// Suppressions follow the build-agent rule — a standing relaxation carries its
+// justification here or it doesn't land.
+import js from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import importX from 'eslint-plugin-import-x';
+import nodePlugin from 'eslint-plugin-n';
+import simpleImportSort from 'eslint-plugin-simple-import-sort';
+import unicorn from 'eslint-plugin-unicorn';
+import globals from 'globals';
+
+export default defineConfig([
+  globalIgnores(['node_modules', 'docs']),
+  {
+    files: ['**/*.js'],
+    extends: [
+      js.configs.recommended,
+      nodePlugin.configs['flat/recommended-module'],
+      unicorn.configs.recommended,
+    ],
+    languageOptions: {
+      ecmaVersion: 2024,
+      globals: globals.node,
+    },
+    plugins: {
+      'import-x': importX,
+      'simple-import-sort': simpleImportSort,
+    },
+    rules: {
+      // ── Structural budgets ─────────────────────────────────────
+      'max-lines': ['error', { max: 350, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+      'max-depth': ['error', 3],
+      'max-params': ['error', 3],
+      complexity: ['error', 10],
+      'max-nested-callbacks': ['error', 2],
+
+      // ── Architecture as lint: import direction is downward-only ─
+      // bin (CLI surface) → src (library). src imports nothing above it.
+      'import-x/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            { target: './src', from: './bin', message: 'src is the library layer; it must not reach up into the CLI surface.' },
+            { target: './src', from: './test', message: 'src must not import test code.' },
+            { target: './bin', from: './test', message: 'bin must not import test code.' },
+          ],
+        },
+      ],
+      'import-x/no-cycle': ['error', { maxDepth: 4 }],
+      'import-x/no-duplicates': 'error',
+      'simple-import-sort/imports': 'error',
+      'simple-import-sort/exports': 'error',
+
+      // ── Code quality ───────────────────────────────────────────
+      'no-console': 'error',
+      'no-debugger': 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      curly: ['error', 'all'],
+      'no-else-return': ['error', { allowElseIf: false }],
+      'no-lonely-if': 'error',
+      'no-unneeded-ternary': 'error',
+      'no-nested-ternary': 'error',
+      'object-shorthand': 'error',
+      'prefer-template': 'error',
+
+      // Destructure-and-drop ({ _blocks, ...rest }) and _-prefixed placeholders are
+      // the house omit idiom.
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
+
+      // ── Unicorn overrides ──────────────────────────────────────
+      // The codebase's JSDoc'd contracts use null deliberately ({doc, span} | null);
+      // short names (doc, opts, idx) are the house idiom, not abbreviation drift.
+      'unicorn/no-null': 'off',
+      'unicorn/prevent-abbreviations': 'off',
+      'unicorn/name-replacements': 'off',
+    },
+  },
+  {
+    // The CLI surface owns exit codes; process.exit at this boundary is the contract.
+    files: ['bin/**/*.js'],
+    rules: {
+      'n/no-process-exit': 'off',
+      'unicorn/no-process-exit': 'off',
+    },
+  },
+  {
+    // Test files: a node:test body is one narrative — fixture + acts + asserts —
+    // and callbacks nest one level deeper by construction (test(() => throws(() => …))).
+    files: ['test/**/*.js'],
+    rules: {
+      'max-lines-per-function': 'off',
+      'max-nested-callbacks': ['error', 3],
+    },
+  },
+]);

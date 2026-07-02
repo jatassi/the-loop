@@ -77,6 +77,11 @@ The one thing that is not a [[port]]: the workflow and control policy — the en
 The project repository the-loop is currently operating on — where every per-project artifact lives, git-versioned in-repo. Distinct from the plugin that holds the-loop's own code: the plugin is disposable and swappable, the target repo's artifacts are durable.
 *See:* ADR-0002
 
+### integration target
+**aliases:** — · **status:** active
+The bound git ref that validated [[feature]]s squash-merge into — where "done" work integrates. One knob, bound at [[Design]] (human-gated) and recorded in the [[Design artifact]]; default `main` (trunk-based: `main` = everything validated so far, [[Ship]] gates deployment, not integration). A rewrite-scale intake binds an intake branch (`loop/intake/<name>`) instead, which Ship merges to `main`. The run machinery is target-agnostic.
+*See:* ADR-0026
+
 ### runtime probe
 **aliases:** runtime-exercise capability · **status:** active
 The project-configured [[port]] for bringing the system up and exercising it ("how to run it"), driving the runtime-observable acceptance criteria ("what to observe"). Powers [[Validate]]'s runtime leg and the pre-Ship full-system integration check at larger scope. Greenfield has nothing to infer it from, so [[Design]] **nudges** the user to provide it; its absence is a deliberate, surfaced opt-out, never a silent skip.
@@ -214,6 +219,11 @@ The instant an autonomous [[orchestrator]] run concludes and returns control to 
 ### feature
 **aliases:** slice · **status:** active
 The unit of one [[inner loop]] pass: a vertical slice that decomposes into more than one [[task]] and is independently validatable and shippable. Used interchangeably with **slice** ("feature" stresses the unit of work, "slice" the vertical, shippable nature).
+
+### feature branch
+**aliases:** — · **status:** active
+The one git branch a [[feature]]'s build lives on: `loop/<feature-id>`, cut from the [[integration target]] when Build picks the feature up. Tasks commit onto it (one commit per task; the task is the crash-recovery quantum); it carries **code only** — bookkeeping commits on the integration target. Lifecycle invariant: the branch exists iff its feature is building or parked — a clean squash-merge or a work-discarding resolution deletes it, so the branch inventory always mirrors the graph's in-flight set.
+*See:* ADR-0026
 
 ### task
 **aliases:** — · **status:** active

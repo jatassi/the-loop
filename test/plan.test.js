@@ -1,7 +1,8 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePlan, validatePlan, planPath, TASK_SIZES } from '../src/plan.js';
+import { test } from 'node:test';
+
 import { parse } from '../src/parse.js';
+import { foldReport, parsePlan, planPath, REPORT_RESULTS, resolveTask, TASK_SIZES, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
 
 const DESIGN = parse(`## Feature graph
@@ -176,4 +177,54 @@ test('a drift-stamp mismatch warns but does not block', () => {
 
 test('planPath is the conventional artifact location', () => {
   assert.equal(planPath('widget'), 'docs/plans/widget.md');
+});
+
+test('resolveTask hands a builder its slice: contract, covered criteria texts, inject bodies', () => {
+  const s = resolveTask(model(), DESIGN, 't2');
+  assert.equal(s.feature, 'widget');
+  assert.equal(s.design_version, 2);
+  assert.equal(s.task.id, 't2');
+  assert.deepEqual(s.covers_criteria, ['persists a widget']);
+  assert.equal(s.injects.length, 1);
+  assert.match(s.injects[0].body, /render\(\), save\(\)/);
+  assert.deepEqual(s.unbuilt_dependencies, ['t1']); // t1 is still pending — builder must refuse
+});
+
+test('resolveTask: built dependencies are not blockers; an unknown task throws', () => {
+  const m = model();
+  m.tasks[0].status = 'built';
+  assert.deepEqual(resolveTask(m, DESIGN, 't2').unbuilt_dependencies, []);
+  assert.throws(() => resolveTask(model(), DESIGN, 'ghost'), /unknown task id: widget\/ghost/);
+});
+
+test('foldReport flips status, embeds the report, and render() persists both', () => {
+  const m = model();
+  foldReport(m, 't1', {
+    task: 'widget/t1', result: 'built',
+    footprint_actual: ['src/render.js', 'test/render.test.js'],
+    diff_actual: { files: 2, insertions: 40, deletions: 0 },
+    deviations: [], summary: 'render pipeline exists',
+  });
+  assert.equal(m.tasks[0].status, 'built');
+  assert.ok(!('task' in m.tasks[0].report)); // the node's own id already names the task
+
+  const text = render(PLAN, m);
+  const re = parsePlan(text);
+  assert.equal(re.tasks[0].status, 'built');
+  assert.equal(re.tasks[0].report.summary, 'render pipeline exists');
+  assert.deepEqual(re.tasks[0].report.footprint_actual, ['src/render.js', 'test/render.test.js']);
+  assert.equal(re.tasks[1].status, 'pending'); // the sibling task is untouched
+  assert.ok(text.startsWith('# Plan — widget\n\nTwo tasks;')); // narrative survives byte-for-byte
+  assert.equal(render(text, re), text); // the folded artifact still round-trips
+});
+
+test('foldReport refuses a malformed result and a double fold', () => {
+  assert.throws(() => foldReport(model(), 't1', { result: 'perfect' }), /result must be one of built\|blocked/);
+  assert.throws(() => foldReport(model(), 'ghost', { result: 'built' }), /unknown task id/);
+
+  const m = model();
+  foldReport(m, 't1', { result: 'blocked', deviations: ['footprint impossible as contracted'], summary: 'blocked' });
+  assert.equal(m.tasks[0].status, 'blocked');
+  assert.throws(() => foldReport(m, 't1', { result: 'built', summary: 'retry' }), /already carries a report/);
+  assert.deepEqual(REPORT_RESULTS, ['built', 'blocked']);
 });

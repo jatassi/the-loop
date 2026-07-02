@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import path from 'node:path';
+
 import { parse } from './parse.js';
 
 /**
@@ -11,7 +12,7 @@ import { parse } from './parse.js';
  */
 export function resolveIn(model, id) {
   const node = (model.features || []).find((f) => f.id === id);
-  if (!node) throw new Error(`unknown feature id: ${id}`);
+  if (!node) {throw new Error(`unknown feature id: ${id}`);}
   const byId = new Map((model.contracts || []).map((c) => [c.id, c]));
   const contracts = (node.interfaces || []).map((cid) => byId.get(cid)).filter(Boolean);
   return { node, contracts };
@@ -49,5 +50,5 @@ export function resolve(id, { root = 'docs/design' } = {}) {
 }
 
 function loadDesignText(root) {
-  return readFileSync(join(root, 'design.md'), 'utf8');
+  return readFileSync(path.join(root, 'design.md'), 'utf8');
 }

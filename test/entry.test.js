@@ -1,33 +1,34 @@
 // the-loop-entry's acceptance, executable: a fresh repo routes to onboarding; a
 // configured repo reads its artifacts and proposes the next action. Fixture repos are
 // temp dirs; the last test dogfoods orient() against this very repo.
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import path from 'node:path';
+import { test } from 'node:test';
+
+import { detectState, frontier, orient, propose } from '../src/entry.js';
 import { parse } from '../src/parse.js';
-import { detectState, frontier, propose, orient } from '../src/entry.js';
 
 const feat = (id, status, deps = []) =>
   `  - id: ${id}\n    title: ${id}\n    status: ${status}\n    depends_on: [${deps.join(', ')}]\n    acceptance: x\n`;
 const design = (...features) =>
-  '## Feature graph\n\n```yaml\ndesign_version: 1\nfeatures:\n' + features.join('') + '```\n';
+  `## Feature graph\n\n\`\`\`yaml\ndesign_version: 1\nfeatures:\n${features.join('')}\`\`\`\n`;
 const model = (...features) => parse(design(...features));
 
 function repo({ designText, ledgerText, briefText } = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'loop-entry-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'loop-entry-'));
   if (designText != null) {
-    mkdirSync(join(root, 'docs/design'), { recursive: true });
-    writeFileSync(join(root, 'docs/design/design.md'), designText);
+    mkdirSync(path.join(root, 'docs/design'), { recursive: true });
+    writeFileSync(path.join(root, 'docs/design/design.md'), designText);
   }
   if (ledgerText != null) {
-    mkdirSync(join(root, 'docs/ledger'), { recursive: true });
-    writeFileSync(join(root, 'docs/ledger/ledger.md'), ledgerText);
+    mkdirSync(path.join(root, 'docs/ledger'), { recursive: true });
+    writeFileSync(path.join(root, 'docs/ledger/ledger.md'), ledgerText);
   }
   if (briefText != null) {
-    mkdirSync(join(root, 'docs/briefs'), { recursive: true });
-    writeFileSync(join(root, 'docs/briefs/brief.md'), briefText);
+    mkdirSync(path.join(root, 'docs/briefs'), { recursive: true });
+    writeFileSync(path.join(root, 'docs/briefs/brief.md'), briefText);
   }
   return root;
 }
@@ -48,7 +49,7 @@ test('a configured repo orients to active with position, frontier, and a proposa
   });
   const o = orient(root);
   assert.equal(o.mode, 'active');
-  assert.equal(o.ledger, join(root, 'docs/ledger/ledger.md'));
+  assert.equal(o.ledger, path.join(root, 'docs/ledger/ledger.md'));
   assert.equal(o.position.total, 3);
   assert.equal(o.position.byStatus.validated, 1);
   assert.deepEqual(o.frontier, ['b']); // c is dep-blocked behind b
@@ -58,7 +59,8 @@ test('a configured repo orients to active with position, frontier, and a proposa
 });
 
 test('one artifact without the other is partial, proposing repair', () => {
-  const o = orient(repo({ designText: design(feat('a', 'designed')) }));
+  const designText = design(feat('a', 'designed'));
+  const o = orient(repo({ designText }));
   assert.equal(o.mode, 'partial');
   assert.deepEqual(o.missing, ['docs/ledger/ledger.md']);
   assert.equal(o.proposal.kind, 'repair');
@@ -112,8 +114,10 @@ test('parked escalations outrank a drainable frontier (they wait on the human no
 });
 
 test('all validated proposes ship; all shipped proposes a new intake', () => {
-  assert.equal(propose(model(feat('a', 'validated'), feat('b', 'shipped'))).kind, 'ship');
-  assert.equal(propose(model(feat('a', 'shipped'))).kind, 'new-intake');
+  const shippable = model(feat('a', 'validated'), feat('b', 'shipped'));
+  assert.equal(propose(shippable).kind, 'ship');
+  const allShipped = model(feat('a', 'shipped'));
+  assert.equal(propose(allShipped).kind, 'new-intake');
 });
 
 test('an exhausted-but-unfinished graph is blocked (the cycle safety net)', () => {

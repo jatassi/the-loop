@@ -1,7 +1,8 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse } from '../src/parse.js';
+import { test } from 'node:test';
+
 import { findBlocks, replaceBlock } from '../src/blocks.js';
+import { parse } from '../src/parse.js';
 
 const DOC = `# Title
 

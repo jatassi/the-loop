@@ -1,7 +1,7 @@
 {
   "name": "the-loop",
   "version": "0.1.0",
-  "description": "An owned, composable agentic dev loop built from native Claude Code primitives — shipped as a plugin. Its first job is to build itself.",
+  "description": "An owned, composable agentic dev loop built from native Claude Code primitives \u2014 shipped as a plugin. Its first job is to build itself.",
   "type": "module",
   "private": true,
   "author": "Jackson Atassi <jackson.atassi@outlook.com>",
@@ -14,12 +14,23 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node bin/spine.js check"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "node bin/spine.js check && eslint ."
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-n": "^18.2.1",
+    "eslint-plugin-simple-import-sort": "^13.0.0",
+    "eslint-plugin-unicorn": "^70.0.0",
+    "globals": "^17.7.0"
   }
 }

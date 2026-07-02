@@ -124,6 +124,13 @@ ports:
     consumers: [Operate]
 
   # ── optional: unbound routes around, never blocks ────────────────────────
+  - id: lint-gate
+    tier: optional
+    requires: [machine-checkable code-quality verdict (zero-findings pass/fail) on a tree or diff, suppressions visible in the diff]
+    default_adapter: { kind: command, ref: none universal — greenfield Design seeds an aggressive per-stack baseline via the lint-regime nudge (strictest preset as floor + explicit adds, complexity/size budgets, architecture-as-lint contracts where the stack supports them); opting out is surfaced, never silent. Brownfield detects the repo's existing gate; a tree that can't go clean at once gets a ratchet (lint changed-code-only vs the integration target + phase baselines) instead of a lowered bar (2026-07-02) }
+    unbound: Validate leg 1 falls back to type-checker/AST checks + agent judgment; Build agents skip the diff-scoped lint pass
+    consumers: [Build task agents (diff-scoped pass before commit), Validate leg 1 (conformance), greenfield onboarding (Design lint-regime nudge)]
+
   - id: notification-channel
     tier: optional
     requires: [push a message that reaches the human away from the terminal]
@@ -179,5 +186,9 @@ The target repo is the plugin repo, so the-loop's own bindings dogfood the defau
 artifact-store → `docs/` named dirs; grilling → the `/grilling` user skill;
 test-harness → `npm test` + `npm run check`;
 runtime-probe → **TBD, must be bound before `validate` is built** (likely: run
-`bin/spine.js` / the workflow against a fixture repo and observe); everything
+`bin/spine.js` / the workflow against a fixture repo and observe);
+lint-gate → `npm run lint` (bound 2026-07-02, dogfooding the regime: strictest presets
+as floor — @eslint/js + unicorn recommended + eslint-plugin-n — plus complexity/size
+budgets and import-direction architecture lint in `eslint.config.js`; zero findings,
+wired into `npm run check`); everything
 phase-scoped beyond Validate → unbound until those phases near the frontier.

@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+
 import { findBlocks } from './blocks.js';
 
 /** @typedef {import('./blocks.js').Span} Span */
@@ -39,25 +40,27 @@ import { findBlocks } from './blocks.js';
  */
 export function parse(text) {
   const blocks = findBlocks(text);
-
-  const graphDoc = blocks.featureGraph ? YAML.parseDocument(blocks.featureGraph.inner) : null;
-  const graph = (graphDoc && graphDoc.toJS()) || {};
-  const features = (graph.features || []).map(normalizeFeature);
-
-  const contractsDoc = blocks.contracts ? YAML.parseDocument(blocks.contracts.inner) : null;
-  const contractsJs = (contractsDoc && contractsDoc.toJS()) || {};
-  const contracts = (contractsJs.contracts || []).map((c) => ({ id: c.id, body: c.body }));
+  const graph = parseBlock(blocks.featureGraph);
+  const contractsBlock = parseBlock(blocks.contracts);
 
   return {
-    designVersion: graph.design_version,
-    features,
-    contracts,
+    designVersion: graph.js.design_version,
+    features: (graph.js.features || []).map((f) => normalizeFeature(f)),
+    contracts: (contractsBlock.js.contracts || []).map((c) => ({ id: c.id, body: c.body })),
     _blocks: {
-      featureGraph: blocks.featureGraph ? { doc: graphDoc, span: blocks.featureGraph } : null,
-      contracts: blocks.contracts ? { doc: contractsDoc, span: blocks.contracts } : null,
+      featureGraph: blockRef(blocks.featureGraph, graph.doc),
+      contracts: blockRef(blocks.contracts, contractsBlock.doc),
     },
   };
 }
+
+// A block span → its retained YAML document + POJO view (absent block → empty view).
+function parseBlock(span) {
+  const doc = span ? YAML.parseDocument(span.inner) : null;
+  return { doc, js: (doc && doc.toJS()) || {} };
+}
+
+const blockRef = (span, doc) => (span ? { doc, span } : null);
 
 // POJO view normalization (ergonomics only). Default the edge arrays so consumers
 // never branch on absent vs empty. We do NOT inject a design_version a node lacks —
@@ -70,7 +73,7 @@ function normalizeFeature(f) {
     depends_on: f.depends_on || [],
     interfaces: f.interfaces || [],
     acceptance: f.acceptance,
-    ...(f.notes != null ? { notes: f.notes } : {}),
-    ...(f.design_version != null ? { design_version: f.design_version } : {}),
+    ...((f.notes != null) && { notes: f.notes }),
+    ...((f.design_version != null) && { design_version: f.design_version }),
   };
 }
