@@ -38,9 +38,9 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 
 ### Phases (ADR-0011–0015)
 - **Frame** — grilling → a sharp Brief.
-- **Design** — Brief → `design.md` + feature graph + Ledger + Dictionary seed; shapes lifecycle concerns (the **runtime-probe**, **observability**, and **lint-regime** nudges — greenfield seeds an aggressive per-stack lint baseline; see the `lint-gate` port).
+- **Design** — Brief → `design.md` + feature graph + Ledger + Dictionary seed; shapes lifecycle concerns (the **runtime-probe**, **observability**, **lint-regime**, and **project-standards** nudges — greenfield seeds an aggressive per-stack lint baseline and unobvious-only project standards; see the `lint-gate` and `craft-baseline` ports; ADR-0027).
 - **Plan** — the **sizing gate**: over-decompose until each task is comfortably small; irreducible features bounce up to re-slice, carrying a **reslice brief**. Gateless by design (ADR-0025): no human plan approval — the compensating machinery is mechanical (`spine plan check`: criterion coverage, overlap ordering, sizing, edges) plus a **fresh-context audit** when complexity/contract-surface/blast-radius warrant. The decomposition persists as a per-feature **plan artifact** (`docs/plans/<feature-id>.md`) of task contracts; Build and Validate consume them, and Build's completion reports fold back in.
-- **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate. Work lands one-commit-per-task on a per-feature branch (`loop/<feature-id>`) cut from the **integration target** (a bound ref, default `main`, set at Design; ADR-0026).
+- **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate. Work lands one-commit-per-task on a per-feature branch (`loop/<feature-id>`) cut from the **integration target** (a bound ref, default `main`, set at Design; ADR-0026). Builders build under the **craft baseline**: the build constitution always, plus the task's `standards:` selection (ADR-0027).
 - **Validate** — the **independent validator**: readies the feature branch (the task-branch merge folds in), runs three legs — conformance, acceptance tests, and **runtime observation via the runtime probe** — and only on a perfect verdict squash-merges the feature into the integration target (ADR-0026). Anything short of perfect → deviation.
 - **Adjust** — the recommendation menu; drift via each feature's `design_version`; impact-scoped re-validation.
 - **Ship** — human-gated; evidence package (full-system integration via the runtime probe + a baseline security-review port + changelog); **health-gated, delegated rollback**.
@@ -65,7 +65,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
-design_version: 1
+design_version: 2
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -93,6 +93,7 @@ features:
     depends_on: [frame, artifact-spine]
     notes:
       - add the lint-regime nudge to lifecycle shaping — greenfield Design seeds an aggressive per-stack lint baseline (strictest preset as floor, complexity budgets, architecture-as-lint), brownfield detects + offers a ratchet; machine-checkable standards belong in the lint gate, prose standards in the craft layer (ports.md lint-gate, 2026-07-02)
+      - the project-standards nudge joins lifecycle shaping — greenfield seeds unobvious-only rules with per-rule confirmation, brownfield mines them from comprehension; docs/standards/<topic>.md plus an index of one-line descriptions; shrink standards the codebase now exemplifies (ADR-0027, 2026-07-02)
     acceptance: a Brief yields a valid design.md with a feature graph and an established Ledger
 
   - id: plan
@@ -108,6 +109,14 @@ features:
     depends_on: [artifact-spine, plan]
     acceptance: a feature's tasks produce a single merged diff
 
+  - id: craft-baseline
+    title: Craft bundle (craft-baseline port + build constitution + per-task standards)
+    status: designed
+    depends_on: [plan, build]
+    notes:
+      - mechanics per ADR-0027 — two layers (plugin pack + docs/standards/, repo wins); constitution always-injected; Plan selects standards per task via the task contract's standards field; Design seeds/mines the project layer; Validate consumes via the standards axis (2026-07-02)
+    acceptance: [a build agent receives the build constitution and its task's selected project standards in its slice, spine plan check validates a plan's standards field against docs/standards/]
+
   - id: validate
     title: Independent validator (merge-fold-in + three legs)
     status: designed
@@ -115,6 +124,7 @@ features:
     interfaces: [validator-verdict, runtime-probe]
     notes:
       - design a deviation-severity axis for validator-verdict (joint session) — contract-breaking findings park the slice, advisory findings are recorded without parking; kills the "validation flagged anything" catch-all and the escalation fatigue it invites (2026-07-01 review)
+      - conformance runs two axes (spec vs standards, never merged); standards findings batch into a remediation brief → one appended refactor task, hard-bounded to a single round; survivors ride the deviation-severity axis; repo standards override baseline smells (ADR-0027, 2026-07-02)
       - record the validator-independence posture as an ADR amending ADR-0013 — build agents develop TDD-style, so the validator checks acceptance differently, exercising real-world-shaped behavior via the runtime probe rather than trusting the builder's tests (2026-07-01 decision)
     acceptance: a built slice is judged perfect/deviation against contract + acceptance + runtime
 
@@ -248,6 +258,7 @@ contracts:
                   covers: [criterion-index],       # 1-based, into the feature's acceptance
                   acceptance: criterion | [criterion],   # the task's own independent test
                   injects: [contract-id],          # slices the build agent gets injected
+                  standards: [path],               # project-standards files selected for the task (optional; ADR-0027)
                   footprint: [path],               # expected files created/modified
                   size: xs|s|m,                    # m = comfort ceiling, justified in narrative
                   depends_on: [task-id],           # ordering; overlapping footprints chained

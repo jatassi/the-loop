@@ -13,8 +13,8 @@ const TEXT = readFileSync('docs/design/design.md', 'utf8');
 
 test('the real design.md parses to the full feature graph', () => {
   const m = parse(TEXT);
-  assert.equal(m.designVersion, 1);
-  assert.equal(m.features.length, 20);
+  assert.equal(m.designVersion, 2); // bumped by ADR-0027 (standards joined the task-contract)
+  assert.equal(m.features.length, 21);
   assert.ok(m.contracts.length >= 6);
 });
 

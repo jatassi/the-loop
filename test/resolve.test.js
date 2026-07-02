@@ -36,7 +36,7 @@ test('resolveIn tolerates a dangling interface ref (skips it, no throw)', () => 
 
 test('extractIndex carries edges/status/acceptance but no contract bodies', () => {
   const idx = extractIndex(realModel());
-  assert.equal(idx.designVersion, 1);
+  assert.ok(Number.isSafeInteger(idx.designVersion)); // carried, without pinning the live doc's mutable value
   const a = idx.features.find((f) => f.id === 'artifact-spine');
   assert.ok(STATUS.includes(a.status)); // carries status, without pinning the live doc's mutable value
   assert.deepEqual(a.interfaces, ['feature-node', 'injection-resolver']);

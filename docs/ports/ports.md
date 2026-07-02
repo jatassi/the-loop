@@ -131,6 +131,13 @@ ports:
     unbound: Validate leg 1 falls back to type-checker/AST checks + agent judgment; Build agents skip the diff-scoped lint pass
     consumers: [Build task agents (diff-scoped pass before commit), Validate leg 1 (conformance), greenfield onboarding (Design lint-regime nudge)]
 
+  - id: craft-baseline
+    tier: optional
+    requires: [a build constitution (one page, build-time), a review catalog (smells with observable tells, for the standards axis), design vocabulary & principles (Design/Plan)]
+    default_adapter: { kind: skill, ref: the plugin's bundled craft pack — three pieces matched to insertion points (ADR-0027); any pack honoring the three consumption points swaps in }
+    unbound: build agents carry only project standards (docs/standards/); the validator's standards axis judges those alone
+    consumers: [Build (constitution, mandatory read), Plan (vocabulary + per-task standards selection), Design (vocabulary), Validate (standards axis)]
+
   - id: notification-channel
     tier: optional
     requires: [push a message that reaches the human away from the terminal]
@@ -190,5 +197,6 @@ runtime-probe → **TBD, must be bound before `validate` is built** (likely: run
 lint-gate → `npm run lint` (bound 2026-07-02, dogfooding the regime: strictest presets
 as floor — @eslint/js + unicorn recommended + eslint-plugin-n — plus complexity/size
 budgets and import-direction architecture lint in `eslint.config.js`; zero findings,
-wired into `npm run check`); everything
+wired into `npm run check`); craft-baseline → the bundled pack, once the
+`craft-baseline` feature lands (pre-self-hosting, ADR-0027); everything
 phase-scoped beyond Validate → unbound until those phases near the frontier.

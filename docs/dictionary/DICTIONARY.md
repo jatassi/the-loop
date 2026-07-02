@@ -77,6 +77,28 @@ The one thing that is not a [[port]]: the workflow and control policy — the en
 The project repository the-loop is currently operating on — where every per-project artifact lives, git-versioned in-repo. Distinct from the plugin that holds the-loop's own code: the plugin is disposable and swappable, the target repo's artifacts are durable.
 *See:* ADR-0002
 
+### craft baseline
+**aliases:** craft pack · **status:** active
+The universal engineering-craft layer — architecture patterns, code standards, smells, dev approach — bound via the `craft-baseline` [[port]] (optional tier). The default adapter is the plugin's bundled pack: three pieces matched to insertion points — the [[build constitution]] (build-time), design vocabulary & principles (Design/Plan), and the review catalog (the validator's **standards axis**). Always overridden by [[project standards]]: a documented repo standard wins, and an endorsed pattern suppresses the baseline smell that would flag it. Admission test for every rule: would the model or the linter already know this? Then it doesn't land.
+*Not to be confused with:* [[project standards]] — the per-repo layer that outranks it.
+*See:* ADR-0027
+
+### build constitution
+**aliases:** the constitution · **status:** active
+The [[craft baseline]]'s one-page build-time piece: reuse-before-build ladder, completeness rules, banned reasoning moves, anti-speculation. Injected **unconditionally** into every build agent as a mandatory read step — deterministic, never model-triggered. Everything larger stays out of the builder's window; catalogs belong to review.
+*See:* ADR-0027
+
+### project standards
+**aliases:** — · **status:** active
+The per-repo craft layer: `docs/standards/<topic>.md` (one concept per file, lead with the rule, code example) plus an `index.md` of one-line descriptions the [[Plan]] agent matches against. Seeded greenfield / mined brownfield at [[Design]] (a lifecycle nudge beside runtime-probe, observability, lint-regime), each rule human-confirmed, unobvious-only. Selected per task into the [[task contract]]'s `standards` field. **Shrinks over time**: a rule the codebase demonstrably exemplifies is retired.
+*Not to be confused with:* [[craft baseline]] — the shipped universal layer these standards override.
+*See:* ADR-0027
+
+### remediation brief
+**aliases:** — · **status:** active
+The [[independent validator]]'s batched standards-axis findings (file:line, named smell or standard, suggested direction) — the input to the **one** refactor task the orchestrator appends to the feature's [[plan artifact]] (flags-not-fixes: a fresh build agent executes it). Hard-bounded to a single round per feature; findings that survive re-validation are recorded advisory or park per the deviation-severity axis. The sibling of the [[sizing gate]]'s reslice brief — a structured message from one phase back to another.
+*See:* ADR-0027
+
 ### integration target
 **aliases:** — · **status:** active
 The bound git ref that validated [[feature]]s squash-merge into — where "done" work integrates. One knob, bound at [[Design]] (human-gated) and recorded in the [[Design artifact]]; default `main` (trunk-based: `main` = everything validated so far, [[Ship]] gates deployment, not integration). A rewrite-scale intake binds an intake branch (`loop/intake/<name>`) instead, which Ship merges to `main`. The run machinery is target-agnostic.
