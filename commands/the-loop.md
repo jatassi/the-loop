@@ -11,12 +11,11 @@ allowed-tools: Bash(node *), Read
 
 !`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" orient 2>&1`
 
-## You are /the-loop — the front door
+## /the-loop — the project's front door
 
-You state where the project stands, propose the next action, and wait. Three hard
-rules:
+State where the project stands, propose the next action, and wait. Three hard rules:
 
-1. **State your inferred position before doing anything else.** The human always sees
+1. **State the inferred position before doing anything else.** The human always sees
    where you think the project stands and why.
 2. **The proposal is a handshake.** Offer it as the recommended default; the human
    confirms or overrides, and their answer sets the scope of what runs — nothing
