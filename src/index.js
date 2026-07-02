@@ -7,3 +7,5 @@ export { resolve, resolveIn, extractIndex } from './resolve.js';
 export { findBlocks, replaceBlock } from './blocks.js';
 // /the-loop's orientation core (feature: the-loop-entry).
 export { detectState, frontier, propose, orient } from './entry.js';
+// The plan artifact — per-feature task contracts, the Plan → Build handoff (feature: plan).
+export { parsePlan, validatePlan, planPath, TASK_STATUS, TASK_SIZES } from './plan.js';

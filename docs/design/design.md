@@ -30,6 +30,7 @@ The workflow script is a **pure-orchestration sandbox** — no filesystem, shell
 - **Design (`design.md` + feature graph)** — the *intended* contract. Addressed by stable **id** through one resolver (**injection-on-demand**); layout scales single → split past ~1k lines.
 - **System Map** — *as-built* reality; per-module nodes; **git-hash fingerprints** for scoped freshness; a `realizes` cross-walk to design features (divergence = drift).
 - **Project Ledger** — a persisted, **derived** projection of the graph (read-by-human, written-by-loop); the front the `/the-loop` resume test stands on.
+- **Plans** — per-feature task contracts (`docs/plans/<feature-id>.md`, loop-written at Plan): the Plan → Build handoff record, Validate's task-level brief, and calibration's estimate-vs-actual source (ADR-0025).
 - **ADRs · Dictionary** — the decision and vocabulary spine (dogfooded by this very repo).
 - **Research Findings · Calibration Memory** (per-project) — outward knowledge and self-tuning signal.
 
@@ -38,7 +39,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 ### Phases (ADR-0011–0015)
 - **Frame** — grilling → a sharp Brief.
 - **Design** — Brief → `design.md` + feature graph + Ledger + Dictionary seed; shapes lifecycle concerns (the **runtime-probe** and **observability** nudges).
-- **Plan** — the **sizing gate**: over-decompose until each task is comfortably small; irreducible features bounce up to re-slice.
+- **Plan** — the **sizing gate**: over-decompose until each task is comfortably small; irreducible features bounce up to re-slice, carrying a **reslice brief**. Gateless by design (ADR-0025): no human plan approval — the compensating machinery is mechanical (`spine plan check`: criterion coverage, overlap ordering, sizing, edges) plus a **fresh-context audit** when complexity/contract-surface/blast-radius warrant. The decomposition persists as a per-feature **plan artifact** (`docs/plans/<feature-id>.md`) of task contracts; Build and Validate consume them, and Build's completion reports fold back in.
 - **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate.
 - **Validate** — the **independent validator**: integrates the task branches (merge folds in), then runs three legs — conformance, acceptance tests, and **runtime observation via the runtime probe**. Anything short of perfect → deviation.
 - **Adjust** — the recommendation menu; drift via each feature's `design_version`; impact-scoped re-validation.
@@ -94,11 +95,9 @@ features:
 
   - id: plan
     title: Plan agent + sizing gate
-    status: designed
+    status: building
     depends_on: [artifact-spine]
-    interfaces: [sizing-gate]
-    notes:
-      - first act of design — define the task contract, the Plan → Build handoff shape (id, acceptance criteria, injected-slice refs, expected file footprint, size estimate); build and validate consume it (2026-07-01 review)
+    interfaces: [sizing-gate, task-contract, completion-report]
     acceptance: a feature decomposes into comfortably-small tasks; an irreducible feature bounces to re-slice
 
   - id: build
@@ -236,9 +235,32 @@ contracts:
 
   - id: sizing-gate
     body: |
-      assess(task) → fits | split | bounce
+      assess(task) → fits | split | bounce{reslice-brief}
       # soft proxies (files/read-size, contracts touched, expected diff) + agent judgment;
-      # over-decompose until comfortably small; irreducible → bounce up to re-slice the feature
+      # over-decompose until comfortably small; irreducible → bounce up to re-slice the
+      # feature, carrying a reslice brief (why irreducible + suggested re-slices)
+
+  - id: task-contract
+    body: |
+      # docs/plans/<feature-id>.md, "## Tasks" block — the Plan → Build handoff
+      { feature, design_version,          # drift stamp: the version the plan was cut from
+        tasks: [{ id, title, status: pending|building|built|blocked,
+                  covers: [criterion-index],       # 1-based, into the feature's acceptance
+                  acceptance: criterion | [criterion],   # the task's own independent test
+                  injects: [contract-id],          # slices the build agent gets injected
+                  footprint: [path],               # expected files created/modified
+                  size: xs|s|m,                    # m = comfort ceiling, justified in narrative
+                  depends_on: [task-id],           # ordering; overlapping footprints chained
+                  report: completion-report }] }   # folded in by Build
+
+  - id: completion-report
+    body: |
+      { task, result: built|blocked,
+        footprint_actual: [path],                  # git diff --name-only over the task's commits
+        diff_actual: { files, insertions, deletions },
+        deviations: [note], summary }
+      # Build's return value per task; Validate reads deviations; calibration mines
+      # estimate-vs-actual; actual ≫ expected footprint is a re-plan/re-slice signal
 
   - id: validator-verdict
     body: |

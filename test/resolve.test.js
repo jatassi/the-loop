@@ -19,10 +19,10 @@ test('resolveIn throws on an unknown id', () => {
   assert.throws(() => resolveIn(m, 'nope'), /unknown feature id/);
 });
 
-test('plan resolves to its sizing-gate contract', () => {
+test('plan resolves to the sizing-gate + handoff contracts', () => {
   const { node, contracts } = resolveIn(realModel(), 'plan');
   assert.equal(node.id, 'plan');
-  assert.deepEqual(contracts.map((c) => c.id), ['sizing-gate']);
+  assert.deepEqual(contracts.map((c) => c.id), ['sizing-gate', 'task-contract', 'completion-report']);
 });
 
 test('resolveIn tolerates a dangling interface ref (skips it, no throw)', () => {

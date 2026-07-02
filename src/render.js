@@ -7,18 +7,19 @@ import { replaceBlock } from './blocks.js';
 const STRINGIFY = { flowCollectionPadding: false, lineWidth: 0 };
 
 /**
- * Render a model back into the design doc. Block-scoped and surgical: only the
+ * Render a model back into its hybrid doc. Block-scoped and surgical: only the
  * machine-parseable YAML blocks are rewritten — from their retained yaml Documents,
  * so comments and key order survive — and every byte of narrative outside them is
- * preserved. render(text, parse(text)) is the identity.
+ * preserved. render(text, parse(text)) is the identity. Works on any model whose
+ * `_blocks` values are `{doc, span}` (the design doc and the plan artifact alike).
  *
  * @param {string} originalText
- * @param {import('./parse.js').DesignModel} model
+ * @param {{_blocks: Object}} model
  * @returns {string}
  */
 export function render(originalText, model) {
   const blocks = (model && model._blocks) || {};
-  const entries = [blocks.featureGraph, blocks.contracts].filter(Boolean);
+  const entries = Object.values(blocks).filter(Boolean);
   // Splice the later span first so earlier offsets stay valid after a length change.
   entries.sort((a, b) => b.span.innerStart - a.span.innerStart);
 

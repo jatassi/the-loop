@@ -23,7 +23,7 @@ function escapeRe(s) {
  * Find the first ```yaml fenced block after a line-anchored heading.
  * @returns {Span|null}
  */
-function yamlBlockAfter(text, heading) {
+export function yamlBlockAfter(text, heading) {
   const head = new RegExp(`^${escapeRe(heading)}\\s*$`, 'm').exec(text);
   if (!head) return null;
   const fence = /```ya?ml[^\n]*\n/g;

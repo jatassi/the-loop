@@ -152,7 +152,8 @@ Second human-gated phase. Turns the [[Brief]] into the [[Design artifact]] plus 
 
 ### Plan
 **aliases:** — · **status:** active
-Autonomous phase. Decomposes the current [[feature]] into right-sized [[task]]s exposing the widest [[parallelizable frontier]]. Home of the [[sizing gate]].
+Autonomous phase. Decomposes the current [[feature]] into right-sized [[task]]s exposing the widest [[parallelizable frontier]]. Home of the [[sizing gate]]. Gateless — no human plan approval; mechanical checks (criterion coverage, overlap ordering, sizing, edges) plus a conditional fresh-context audit compensate. Emits the [[plan artifact]].
+*See:* ADR-0025
 
 ### Build
 **aliases:** — · **status:** active
@@ -216,7 +217,17 @@ The unit of one [[inner loop]] pass: a vertical slice that decomposes into more 
 
 ### task
 **aliases:** — · **status:** active
-The atomic unit of agent execution: fits within ≤50% of a 256k context window, carries its own acceptance criteria, and yields a reviewable diff. The output of [[Plan]] decomposition.
+The atomic unit of agent execution: fits within ≤50% of a 256k context window, carries its own acceptance criteria, and yields a reviewable diff. The output of [[Plan]] decomposition; its handoff shape is the [[task contract]].
+
+### task contract
+**aliases:** — · **status:** active
+The Plan → Build handoff shape carried per [[task]] in the [[plan artifact]]: id, title, status, `covers` (which feature acceptance criteria it claims), its own acceptance criteria (one or more, each observable and binary — written for a build agent weaker than the planner), `injects` (contract slices the build agent gets), expected file `footprint`, `size` (xs|s|m — m is the comfort ceiling, justified in the narrative), and `depends_on` ordering (overlapping footprints must be chained). Carries no implementation code; Build folds a [[completion report]] into it.
+*See:* ADR-0025
+
+### completion report
+**aliases:** — · **status:** active
+Build's return value per [[task]], folded into its [[task contract]]: result, actual footprint (checkpoint diff), actual diff size, deviations, and a summary. [[Validate]] reads the deviations; [[Calibration Memory]] mines estimate-vs-actual; an actual footprint far beyond the expected one is a re-plan/re-slice signal.
+*See:* ADR-0025
 
 ---
 
@@ -248,6 +259,12 @@ The *as-built* model of the actual system (inward knowledge). Lives at `docs/sys
 **aliases:** the Ledger · **status:** active
 The top-level re-orientation/status artifact: a persisted, glanceable `docs/ledger/ledger.md` that powers [[/the-loop]]. **Read-by-human, written-by-loop** — an output surface, never hand-authored. Its status is *derived* (rendered from the [[feature graph]], the single source of truth, so it cannot drift from it) and stamped with the graph [[fingerprint]] it was projected from; it owns only what lives nowhere else (orientation prose, run history, the next-action proposal). Backbone is the four questions — what is this / where are we / what needs me / what's next. Born when [[Design]] is finalized; re-rendered at each [[run boundary]]; built to pass the [[two-weeks-cold resume test]].
 *See:* ADR-0006
+
+### plan artifact
+**aliases:** the plan · **status:** active
+Output of [[Plan]] for one [[feature]]: `docs/plans/<feature-id>.md` in the [[target repo]], loop-written — a short decomposition narrative plus the machine-parsed `## Tasks` block of [[task contract]]s, stamped with the `design_version` it was cut from. Build and [[Validate]] consume it; Build folds each task's [[completion report]] back in; [[Calibration Memory]] mines its estimate-vs-actual.
+*Not to be confused with:* [[Plan]] (the phase that writes it).
+*See:* ADR-0025
 
 ### ADR
 **aliases:** Architecture Decision Record · **status:** active
@@ -317,8 +334,8 @@ The strict autonomous-proceed condition: went exactly as planned, fully validate
 
 ### sizing gate
 **aliases:** — · **status:** active
-The hard check in [[Plan]] that every [[task]] fits ≤50% of a 256k window. Rather than precisely estimate, it **over-decomposes until each task is comfortably small** — a loose threshold check fed by soft proxies (files/read-size, interface contracts touched, expected diff size) plus agent judgment, sharpened over time by [[Calibration Memory]]. Unclear/over → split again; irreducibly-too-big → bounce up to re-slice the [[feature]] (a design signal).
-*See:* ADR-0011
+The hard check in [[Plan]] that every [[task]] fits ≤50% of a 256k window. Rather than precisely estimate, it **over-decomposes until each task is comfortably small** — a loose threshold check fed by soft proxies (files/read-size, interface contracts touched, expected diff size) plus agent judgment, sharpened over time by [[Calibration Memory]]. Unclear/over → split again; irreducibly-too-big → bounce up to re-slice the [[feature]] (a design signal), carrying a **reslice brief** — why irreducible plus suggested re-slices.
+*See:* ADR-0011 / ADR-0025
 
 ### circuit breaker
 **aliases:** — · **status:** active

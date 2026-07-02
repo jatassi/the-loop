@@ -83,7 +83,8 @@ function hasAcceptance(a) {
 }
 
 // DFS colouring; returns the first cycle as an id path (…→ x → … → x), or null.
-function findCycle(features) {
+// Generic over anything shaped {id, depends_on} — plan.js reuses it for task edges.
+export function findCycle(features) {
   const edges = new Map(features.filter((f) => f.id).map((f) => [f.id, f.depends_on || []]));
   const WHITE = 0, GREY = 1, BLACK = 2;
   const colour = new Map();

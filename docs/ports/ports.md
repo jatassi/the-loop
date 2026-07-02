@@ -62,7 +62,7 @@ ports:
     tier: required
     required_by: [engine]
     requires: [feature → comfortably-small tasks per the sizing gate, task-contract handoff to Build]
-    default_adapter: { kind: subagent, ref: plugin Plan agent }
+    default_adapter: { kind: subagent, ref: plugin Plan agent (agents/plan.md) }
     consumers: [inner loop]
 
   - id: phase-build
