@@ -6,7 +6,8 @@
   "private": true,
   "author": "Jackson Atassi <jackson.atassi@outlook.com>",
   "bin": {
-    "spine": "./bin/spine.js"
+    "spine": "./bin/spine.js",
+    "the-loop": "./bin/the-loop.js"
   },
   "exports": {
     ".": "./src/index.js"

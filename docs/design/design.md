@@ -76,7 +76,7 @@ features:
 
   - id: the-loop-entry
     title: /the-loop stateful command + cold-start detection + minimal onboarding
-    status: designed
+    status: validated
     depends_on: [artifact-spine]
     acceptance: fresh repo routes to onboarding; configured repo reads the Ledger and proposes the next action
 

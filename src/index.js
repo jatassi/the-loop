@@ -5,3 +5,5 @@ export { render } from './render.js';
 export { validate, STATUS } from './schema.js';
 export { resolve, resolveIn, extractIndex } from './resolve.js';
 export { findBlocks, replaceBlock } from './blocks.js';
+// /the-loop's orientation core (feature: the-loop-entry).
+export { detectState, frontier, propose, orient } from './entry.js';
