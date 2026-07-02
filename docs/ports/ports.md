@@ -193,7 +193,7 @@ The target repo is the plugin repo, so the-loop's own bindings dogfood the defau
 artifact-store → `docs/` named dirs; grilling → the `/grilling` user skill;
 test-harness → `npm test` + `npm run check`;
 runtime-probe → **the fixture-repo probe** (bound 2026-07-02, ADR-0028): bringUp =
-`test/probe/fixture.js` creates a temp git repo seeded as a plausible target repo
+`bin/probe-fixture.js` creates a temp git repo seeded as a plausible target repo
 (empty variant for cold-start exercises, populated variant for spine exercises);
 exercise = shell steps driving `node bin/spine.js` as a user would — never in-process
 imports — with sparse headless harness invocations (`claude -p`) for agent-pack

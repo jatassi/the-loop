@@ -11,7 +11,11 @@
 //   spine plan check <feature-id> [plan.md] [design.md] validate against the design + round-trip
 //   spine plan task <feature-id> <task-id> [plan.md] [design.md]        a build agent's task slice
 //   spine plan report <feature-id> <task-id> [report.json|-] [plan.md]  fold a completion report in
+//   spine validate scan <feature-id> [target] [branch]  forensics tripwires + patch-id dedup over
+//                                                       the feature branch's diff (target: main,
+//                                                       branch: loop/<feature-id> by default)
 
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { parse } from '../src/parse.js';
@@ -19,6 +23,7 @@ import { foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../s
 import { render } from '../src/render.js';
 import { extractIndex, resolveIn } from '../src/resolve.js';
 import { validate } from '../src/schema.js';
+import { latestPatchId, parseUnifiedDiff, scan } from '../src/validate.js';
 
 const DEFAULT = 'docs/design/design.md';
 const read = (file) => readFileSync(file || DEFAULT, 'utf8');
@@ -54,8 +59,12 @@ try {
       planCommand(rest);
       break;
     }
+    case 'validate': {
+      validateCommand(rest);
+      break;
+    }
     default: {
-      process.stdout.write('usage: spine <parse|index|resolve <id>|check|plan <parse|check|task|report> <id>> [file…]\n');
+      process.stdout.write('usage: spine <parse|index|resolve <id>|check|plan <parse|check|task|report> <id>|validate scan <id>> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }
@@ -106,6 +115,33 @@ function reportCommand(featureId, [taskId, reportFile, planFile]) {
   foldReport(plan, taskId, report);
   writeFileSync(file, render(text, plan));
   out(plan.tasks.find((t) => t.id === taskId));
+}
+
+// spine validate scan <feature-id> [target] [branch] — the forensics scanner (leg 1).
+// Gathers the git facts here (the bin edge owns effects), scans in the pure core.
+function validateCommand(argv) {
+  const [sub, featureId, ...args] = argv;
+  if (sub !== 'scan' || !featureId) { fail('usage: spine validate scan <feature-id> [target] [branch]'); }
+  const target = args[0] || 'main';
+  const branch = args[1] || `loop/${featureId}`;
+  const base = gitOut(`git merge-base ${target} ${branch}`).trim();
+  const patchId = gitOut(`git diff ${base} ${branch} | git patch-id --stable`).split(' ', 1)[0] || null;
+  const planFile = planPath(featureId);
+  const plan = existsSync(planFile) ? parsePlan(readFileSync(planFile, 'utf8')) : null;
+  const validationsFile = `docs/validations/${featureId}.md`;
+  const prior = existsSync(validationsFile) ? latestPatchId(readFileSync(validationsFile, 'utf8')) : null;
+  const diff = parseUnifiedDiff(gitOut(`git diff --unified=0 ${base} ${branch}`));
+  out({
+    feature: featureId, target, branch, base,
+    patch_id: patchId,
+    dedup: patchId != null && patchId === prior,
+    hits: scan({ diff, plan }),
+  });
+}
+
+// A declaration, not a const, so the dispatch above can reach it (see printIssue).
+function gitOut(cmd) {
+  return execSync(cmd, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
 // Read + parse a plan artifact, guarding the feature-id match.

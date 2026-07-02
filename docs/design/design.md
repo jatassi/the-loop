@@ -118,8 +118,8 @@ features:
     acceptance: [a build agent receives the build constitution and its task's selected project standards in its slice, spine plan check validates a plan's standards field against docs/standards/]
 
   - id: validate
-    title: Independent validator (merge-fold-in + three legs)
-    status: designed
+    title: Independent validator (readiness + four legs)
+    status: building
     depends_on: [build]
     interfaces: [validator-verdict, runtime-probe]
     notes:
