@@ -106,7 +106,7 @@ The bound git ref that validated [[feature]]s squash-merge into — where "done"
 
 ### blind derivation
 **aliases:** — · **status:** active
-The independence protocol at the head of [[Validate]]: a separate **blind deriver** agent receives only the resolved contract slice (feature node, acceptance criteria, interface contracts, task contracts) plus the [[runtime probe]] binding — its inputs are its blindfold: no diff, no builder tests, no completion reports — and writes the [[expectation sheet]] before any builder output is opened. Interpretation divergence discovered downstream routes as a **spec-ambiguity** advisory folded back to the [[Design artifact]], not just the verdict record.
+The independence protocol at the head of [[Validate]]: a separate **blind deriver** agent receives only the resolved contract slice (feature node, acceptance criteria, interface contracts, task contracts) plus the [[runtime probe]] binding — its inputs are its blindfold: no diff, no builder tests, no completion reports — and writes the [[expectation sheet]] before any builder output is opened. **Control-group posture:** the deriver's surface is procedural only — it is never told it is blind, what it is blind to, or that anything judges against its sheet; the protocol lives in the orchestrator and the validator, never in the deriver's prompt. Interpretation divergence discovered downstream routes as a **spec-ambiguity** advisory folded back to the [[Design artifact]], not just the verdict record.
 
 ### expectation sheet
 **aliases:** — · **status:** active
