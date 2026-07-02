@@ -54,7 +54,7 @@ ports:
   - id: phase-design
     tier: required
     required_by: [engine]
-    requires: [Brief → design.md + feature graph + Ledger + Dictionary seed, lifecycle nudges (runtime probe, observability)]
+    requires: [Brief → design.md + feature graph + Ledger + Dictionary seed, lifecycle nudges (runtime probe, observability), interview delegated to the grilling port]
     default_adapter: { kind: skill, ref: plugin Design skill }
     consumers: [Design]
 
@@ -85,7 +85,7 @@ ports:
     required_by: [frame]
     requires: [relentless one-question-at-a-time interview, recommended answer per question, explore-instead-of-asking when the repo can answer]
     default_adapter: { kind: skill, ref: the user-level /grilling skill — presence verified at the configure step; any interview skill honoring the contract swaps in (2026-07-01) }
-    consumers: [Frame (the phase-frame adapter loads it), configure step (recommended-answer style)]
+    consumers: [Frame and Design (their phase adapters load it), configure step (recommended-answer style)]
 
   - id: test-harness
     tier: required

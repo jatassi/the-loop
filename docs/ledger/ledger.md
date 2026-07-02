@@ -7,8 +7,8 @@ the-loop: an owned, composable agentic dev loop built from native Claude Code pr
 **Building the walking skeleton (hand-built until self-hosting).** The skeleton is now **12 features** (ADR-0023 pulled the System Map + brownfield comprehension inside it, so the engine can dogfood its own repo); 8 remain deferred, built by self-hosting.
 
 - ✓ 2 / 20 — `validated` (`artifact-spine`, `the-loop-entry` — hand-built; tests + `npm run check` green)
-- ◐ 1 / 20 — `building` (`frame` — the skill + Brief-aware routing landed; validates on its first live Frame session)
-- ○ 17 / 20 — `designed`
+- ◐ 2 / 20 — `building` (`frame`, `design` — both skills landed; each validates on its first live session, one real Frame → Design run covers both)
+- ○ 16 / 20 — `designed`
 - ▶ Next milestone — **the walking skeleton (v1.0)**: the thinnest end-to-end greenfield engine, plus brownfield comprehension of its own repo, reaching self-hosting.
 
 ## What needs you
@@ -17,9 +17,9 @@ Nothing parked — no open escalations. Feature-scoped design actions from the 2
 ## What's next
 Continue the skeleton in dependency order (`artifact-spine`, `the-loop-entry` ✓ done):
 
-`frame` (◐ in flight — validate it with a real Frame session) · `plan` · `system-map` → `design` · `build` → `validate` → `inner-loop-workflow` → `surfacing` → `ship` · `brownfield-comprehension`.
+`frame` ◐ · `design` ◐ (validate both with one real Frame → Design run) · `plan` · `system-map` · `build` → `validate` → `inner-loop-workflow` → `surfacing` → `ship` · `brownfield-comprehension`.
 
 The moment that path is green end-to-end, **stop hand-building and self-host** — feed the 8 deferred features (worktree parallelism, Evolve + severity tiering, Operate, calibration capture, full configure step, full ports/adapters, research tiers) through the-loop as its own intakes. From then on, hand-building only as a recorded escalation decision (see actions.md).
 
 ## Run history
-None yet — the loop hasn't run itself. Hand-maintained per the CLAUDE.md rule (same-commit graph + ledger updates) until self-hosting; last hand-render 2026-07-01 (frame building: `skills/frame/SKILL.md` — the plugin's first skill, a thin wrapper over the new grilling port (default adapter `/grilling`) — plus Brief-aware orientation; flips to validated when a live Frame session whittles a real brain-dump into `docs/briefs/brief.md`).
+None yet — the loop hasn't run itself. Hand-maintained per the CLAUDE.md rule (same-commit graph + ledger updates) until self-hosting; last hand-render 2026-07-01 (design building: `skills/design/SKILL.md` — Brief → design.md + feature graph, with the Ledger and Dictionary born at finalize; validated by `spine check`'s hard gate plus a live session, the same Frame → Design run that validates `frame`).

@@ -93,7 +93,7 @@ The ambient "what is my loop doing" visibility + escalation-notification surface
 
 ### grilling
 **aliases:** grill-me · **status:** active
-The adversarial interview primitive (one question at a time, each with a recommended answer) that drives [[Frame]] and the [[configure step]]. Whittles a wide input to an actionable output. A [[port]]: the default adapter is the user-level `/grilling` skill, and [[Frame]] is a thin wrapper that loads whichever interview skill is bound.
+The adversarial interview primitive (one question at a time, each with a recommended answer) that drives [[Frame]], [[Design]], and the [[configure step]]. Whittles a wide input to an actionable output. A [[port]]: the default adapter is the user-level `/grilling` skill, loaded by whichever phase needs the interview.
 
 ### recommended-answer style
 **aliases:** — · **status:** active

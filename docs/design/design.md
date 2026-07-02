@@ -88,7 +88,7 @@ features:
 
   - id: design
     title: Design skill (Brief → design.md + feature graph + Ledger + Dictionary seed)
-    status: designed
+    status: building
     depends_on: [frame, artifact-spine]
     acceptance: a Brief yields a valid design.md with a feature graph and an established Ledger
 
