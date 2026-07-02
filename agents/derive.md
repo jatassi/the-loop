@@ -38,6 +38,9 @@ Take every acceptance criterion — the feature's own, then each task's. For eac
 Derive from the contract as written, not the contract you would have written.
 If they differ, the gap goes in `ambiguities`.
 
+The sheet is complete when every criterion — the feature's and every task's —
+appears exactly once: as an expectation or under `ambiguities`.
+
 ## Return
 
 Derived:
