@@ -75,8 +75,8 @@ ports:
   - id: phase-validate
     tier: required
     required_by: [engine]
-    requires: [merged slice → validator-verdict (three legs), independence from Build]
-    default_adapter: { kind: subagent, ref: plugin independent validator }
+    requires: [merged slice → validator-verdict (readiness + four legs, ADR-0028), independence from Build (blind derivation), verdict persistence at docs/validations/]
+    default_adapter: { kind: subagent, ref: plugin independent validator (agents/validate.md) + blind deriver (agents/derive.md) + the spine validate scan forensics scanner }
     consumers: [inner loop]
 
   # ── phase-scoped required: unbound blocks that phase, checked lazily ─────
@@ -192,8 +192,13 @@ Kept here so the inventory's edge stays sharp:
 The target repo is the plugin repo, so the-loop's own bindings dogfood the defaults:
 artifact-store → `docs/` named dirs; grilling → the `/grilling` user skill;
 test-harness → `npm test` + `npm run check`;
-runtime-probe → **TBD, must be bound before `validate` is built** (likely: run
-`bin/spine.js` / the workflow against a fixture repo and observe);
+runtime-probe → **the fixture-repo probe** (bound 2026-07-02, ADR-0028): bringUp =
+`test/probe/fixture.js` creates a temp git repo seeded as a plausible target repo
+(empty variant for cold-start exercises, populated variant for spine exercises);
+exercise = shell steps driving `node bin/spine.js` as a user would — never in-process
+imports — with sparse headless harness invocations (`claude -p`) for agent-pack
+surfaces (the binding's recorded soft spot: costly, least deterministic, first thing
+the effort dial sheds); teardown = remove the temp dir;
 lint-gate → `npm run lint` (bound 2026-07-02, dogfooding the regime: strictest presets
 as floor — @eslint/js + unicorn recommended + eslint-plugin-n — plus complexity/size
 budgets and import-direction architecture lint in `eslint.config.js`; zero findings,

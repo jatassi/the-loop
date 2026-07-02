@@ -41,7 +41,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 - **Design** — Brief → `design.md` + feature graph + Ledger + Dictionary seed; shapes lifecycle concerns (the **runtime-probe**, **observability**, **lint-regime**, and **project-standards** nudges — greenfield seeds an aggressive per-stack lint baseline and unobvious-only project standards; see the `lint-gate` and `craft-baseline` ports; ADR-0027).
 - **Plan** — the **sizing gate**: over-decompose until each task is comfortably small; irreducible features bounce up to re-slice, carrying a **reslice brief**. Gateless by design (ADR-0025): no human plan approval — the compensating machinery is mechanical (`spine plan check`: criterion coverage, overlap ordering, sizing, edges) plus a **fresh-context audit** when complexity/contract-surface/blast-radius warrant. The decomposition persists as a per-feature **plan artifact** (`docs/plans/<feature-id>.md`) of task contracts; Build and Validate consume them, and Build's completion reports fold back in.
 - **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate. Work lands one-commit-per-task on a per-feature branch (`loop/<feature-id>`) cut from the **integration target** (a bound ref, default `main`, set at Design; ADR-0026). Builders build under the **craft baseline**: the build constitution always, plus the task's `standards:` selection (ADR-0027).
-- **Validate** — the **independent validator**: readies the feature branch (the task-branch merge folds in), runs three legs — conformance, acceptance tests, and **runtime observation via the runtime probe** — and only on a perfect verdict squash-merges the feature into the integration target (ADR-0026). Anything short of perfect → deviation.
+- **Validate** — the **independent validator** under the ADR-0028 protocol. A cheap **blind deriver** first writes the **expectation sheet** from the contract slice alone (its inputs are its blindfold). The validator then readies the feature branch (rebase + task-branch fold-in; **trivial conflicts** union-resolve and are evidence-recorded, **semantic conflicts** park) and runs four legs — **integrity forensics** (the `spine validate scan` tripwire scanner + justified triage), two-axis **conformance** (ADR-0027), **acceptance** on the project's harness, and **runtime observation** (full probe-pack replay + the new exercise + the **delta proof**: red on merge-base, green on merged tree). Per-leg verdicts (PASS/FAIL/BLOCKED/SKIP, fail-closed) compose mechanically — perfect iff readiness clean and every leg PASS or sanctioned-SKIP; findings carry two severities by the **citation test**; a confirmed forensics hit short-circuits. Only a perfect verdict squash-merges into the integration target (ADR-0026); a **waiver** is a typed human resolution, never a verdict value. Verdicts persist append-only at `docs/validations/` (patch-id dedup); validated exercises pin into the **probe pack** (`docs/probes/`), which Ship replays at full scope.
 - **Adjust** — the recommendation menu; drift via each feature's `design_version`; impact-scoped re-validation.
 - **Ship** — human-gated; evidence package (full-system integration via the runtime probe + a baseline security-review port + changelog); **health-gated, delegated rollback**.
 - **Operate** — **on-demand** ops/debug tooling, plus an **observability solution** that apprises the human; never a scheduled agent.
@@ -65,7 +65,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
-design_version: 2
+design_version: 3
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -123,9 +123,7 @@ features:
     depends_on: [build]
     interfaces: [validator-verdict, runtime-probe]
     notes:
-      - design a deviation-severity axis for validator-verdict (joint session) — contract-breaking findings park the slice, advisory findings are recorded without parking; kills the "validation flagged anything" catch-all and the escalation fatigue it invites (2026-07-01 review)
-      - conformance runs two axes (spec vs standards, never merged); standards findings batch into a remediation brief → one appended refactor task, hard-bounded to a single round; survivors ride the deviation-severity axis; repo standards override baseline smells (ADR-0027, 2026-07-02)
-      - record the validator-independence posture as an ADR amending ADR-0013 — build agents develop TDD-style, so the validator checks acceptance differently, exercising real-world-shaped behavior via the runtime probe rather than trusting the builder's tests (2026-07-01 decision)
+      - protocol per ADR-0028 (2026-07-02 grilling; survey at docs/research/2026-07-02-validate-landscape-survey.md) — readiness + four legs, blind derivation via the blind deriver, two-severity findings via the citation test, waiver-as-resolution, probe pack + delta proof, verdicts append-only at docs/validations/ with patch-id dedup, capability envelope with the declared-mutation invariant, rigor dials named for effort-level scaling (actions.md); mutation audit + validator-regret loop deferred — the verdict record is the regret loop's day-one seam
     acceptance: a built slice is judged perfect/deviation against contract + acceptance + runtime
 
   - id: inner-loop-workflow
@@ -275,9 +273,22 @@ contracts:
 
   - id: validator-verdict
     body: |
-      { merge: clean|conflict,
-        legs: { conformance, acceptance, runtime },
-        result: perfect|deviation, detail }
+      # one entry appended to docs/validations/<feature-id>.md per validation (ADR-0028)
+      { feature, design_version, patch_id,          # git patch-id of the validated diff — dedup key
+        readiness: { rebase: clean|trivial-resolved|blocked,
+                     resolutions: [union-resolved hunk],     # declared-mutation invariant
+                     preconditions },               # harness/probe runnable
+        legs: { forensics, conformance, acceptance, runtime },
+        #  each leg: { verdict: PASS|FAIL|BLOCKED|SKIP(reason, sanctioned?),
+        #              findings: [{ severity: contract-breaking|advisory,
+        #                           cites,          # the falsified obligation — mandatory for contract-breaking
+        #                           location, observation, reobserve? }],
+        #              evidence,                    # captured excerpts, never paraphrased
+        #              unobserved }                 # the negative space, even on PASS
+        result: perfect|deviation,   # mechanical: readiness clean ∧ all legs PASS|sanctioned-SKIP
+        exercise: [step],            # executed probe steps + captured observations — the pack-pin source
+        spec_ambiguities: [note],    # blind-derivation divergences, folded back to Design
+        waivers: [{ obligation, reason, approver, expiry? }] }  # human resolutions — never a verdict value
 
   - id: runtime-probe
     body: |

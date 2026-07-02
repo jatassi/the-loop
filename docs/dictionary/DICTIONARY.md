@@ -104,6 +104,26 @@ The [[independent validator]]'s batched standards-axis findings (file:line, name
 The bound git ref that validated [[feature]]s squash-merge into — where "done" work integrates. One knob, bound at [[Design]] (human-gated) and recorded in the [[Design artifact]]; default `main` (trunk-based: `main` = everything validated so far, [[Ship]] gates deployment, not integration). A rewrite-scale intake binds an intake branch (`loop/intake/<name>`) instead, which Ship merges to `main`. The run machinery is target-agnostic.
 *See:* ADR-0026
 
+### blind derivation
+**aliases:** — · **status:** active
+The independence protocol at the head of [[Validate]]: a separate **blind deriver** agent receives only the resolved contract slice (feature node, acceptance criteria, interface contracts, task contracts) plus the [[runtime probe]] binding — its inputs are its blindfold: no diff, no builder tests, no completion reports — and writes the [[expectation sheet]] before any builder output is opened. Interpretation divergence discovered downstream routes as a **spec-ambiguity** advisory folded back to the [[Design artifact]], not just the verdict record.
+
+### expectation sheet
+**aliases:** — · **status:** active
+The blind deriver's output: per acceptance criterion, the expected observable behavior and the probe steps that would elicit it, each written to be falsifiable. Anchors the conformance leg's spec axis, scripts the runtime leg's exercise, and seeds the feature's [[probe pack]] entry.
+
+### probe pack
+**aliases:** — · **status:** active
+The accreting suite of validated features' pinned probe exercises: `docs/probes/<feature-id>.md`, steps + expected observations captured from the green validation run (volatile fields masked at pin time so replays are judgment-free). Emitted by the validator, written by the boundary fold-in. Full-pack replay runs in every validation's runtime leg (the regression half of the behavioral diff) and *is* [[Ship]]'s full-system check. A failed replay retries twice: consistent red → contract-breaking regression citing the pinning feature; intermittent → entry marked `flaky` (advisory once, then a Ledger attention item). A replay failure is legitimate only when the new feature's contract citably supersedes the pinned behavior — then the fold-in re-pins.
+
+### delta proof
+**aliases:** — · **status:** active
+The runtime leg's causality check: the new feature's blind-derived exercise must run **red on the merge-base tree and green on the merged tree** — proof the diff caused the claimed behavior, TDD's watch-it-fail lifted to the probe level. Green on both trees is a **vacuous exercise**: contract-breaking, citing the acceptance criterion whose runtime-observability failed to discriminate.
+
+### integrity forensics
+**aliases:** forensics leg · **status:** active
+[[Validate]]'s first leg: a deterministic spine scanner over the merge-base diff, plan artifact, and completion reports, hunting constitution-banned moves (existing-test mutation, disabling directives, suppressions, harness/config tampering, test-environment sniffing, exit-code manipulation, undeclared footprint excursions). Hits are **presumed findings**: the validator triages each — confirm (contract-breaking; short-circuits the run) or dismiss with a structured justification recorded in leg evidence, never silently. The one sanctioned downgrade of a mechanical signal, bounded by per-hit structure and audit visibility.
+
 ### runtime probe
 **aliases:** runtime-exercise capability · **status:** active
 The project-configured [[port]] for bringing the system up and exercising it ("how to run it"), driving the runtime-observable acceptance criteria ("what to observe"). Powers [[Validate]]'s runtime leg and the pre-Ship full-system integration check at larger scope. Greenfield has nothing to infer it from, so [[Design]] **nudges** the user to provide it; its absence is a deliberate, surfaced opt-out, never a silent skip.
@@ -157,7 +177,8 @@ On-demand agent tooling to conduct production operations and debugging — invok
 
 ### independent validator
 **aliases:** — · **status:** active
-The fresh-context, adversarial agent that runs [[Validate]] with no stake in the build — what makes the [[perfection bar]] trustworthy rather than self-graded.
+The fresh-context, adversarial agent that runs [[Validate]] with no stake in the build — what makes the [[perfection bar]] trustworthy rather than self-graded. Judges against the [[expectation sheet]] (written blind before any builder output is opened) and checks acceptance *differently* from the builder: real-world-shaped behavior via the [[runtime probe]], never trust in the builder's tests. Flags-not-fixes; its only sanctioned tree mutations are mechanical git operations and union-rule conflict resolutions, each declared in verdict evidence (the declared-mutation invariant); it cannot spawn agents.
+*See:* ADR-0028
 
 ### orchestrator
 **aliases:** the driver · **status:** active
@@ -189,8 +210,8 @@ Autonomous phase. Executes a feature's tasks against the [[Design artifact]] to 
 
 ### Validate
 **aliases:** — · **status:** active
-Checks a built [[slice]] against the design via an [[independent validator]] (fresh, adversarial, sees only contract + acceptance + diff/runtime). Begins by integrating the feature's task branches (the Build merge folds in here — assembly, not authoring, so independence holds), then runs three legs: deterministic conformance, acceptance-criteria tests on the existing harness, and runtime observation via the project's [[runtime probe]]. A merge conflict or any short-of-perfect leg → [[deviation]].
-*See:* ADR-0013 / ADR-0012
+Checks a built [[slice]] against the design via an [[independent validator]]. [[blind derivation]] first produces the [[expectation sheet]]; readiness then integrates the feature's task branches and rebases onto the [[integration target]] (assembly, not authoring — [[trivial conflict]]s union-resolve, [[semantic conflict]]s park), and four legs follow: [[integrity forensics]], two-axis conformance (spec vs standards, never merged), acceptance-criteria tests on the existing harness, and runtime observation via the project's [[runtime probe]] (full [[probe pack]] replay + the [[delta proof]]). Per-leg verdicts (PASS/FAIL/BLOCKED/SKIP, fail-closed) compose mechanically into perfect|deviation; only a perfect verdict squash-merges. Verdicts persist append-only at `docs/validations/`.
+*See:* ADR-0028 / ADR-0013 / ADR-0012
 
 ### Adjust
 **aliases:** — · **status:** active
@@ -223,6 +244,11 @@ The guided new-project setup experience — the cold-start branch of [[/the-loop
 ### escalation
 **aliases:** surface · **status:** active
 The moment the loop pulls the human back for decisioning — fired by a [[deviation]], a gate, or a [[circuit breaker]] trip. Always carries a *recommendation menu*: the options the human chooses among — fix-in-place, re-plan the slice, amend the design, or do specific [[research]]. Under [[park-and-drain]] an escalation is *raised* when its trigger fires (the slice is parked) but *surfaced* batched at the next [[run boundary]].
+
+### waiver
+**aliases:** — · **status:** active
+A typed human resolution on a contract-breaking [[finding]]: "this obligation-violation doesn't matter for this feature; merge anyway." Shape: the obligation cited (never file:line — obligations are stable, lines aren't), reason, approver, optional expiry (a date or a feature-id condition). The verdict stays `deviation` — a waiver is a **resolution, never a verdict value** — and the fold-back squash-merges on human authority with the waiver recorded. Suppresses re-flagging of that obligation-violation on re-validations of the same feature only; never generalizes. Expired-unresolved waivers surface as Ledger attention items; [[Ship]]'s evidence package lists all waivers on the frontier.
+*Not to be confused with:* [[deviation]] — the machine-observed state a waiver resolves, which it never erases.
 
 ### scope handshake
 **aliases:** — · **status:** active
@@ -328,6 +354,19 @@ The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escal
 ### deviation
 **aliases:** — · **status:** active
 The condition of not clearing the [[perfection bar]], measured at the **outcome/contract** boundary (not the step boundary). Fires an [[escalation]].
+
+### finding
+**aliases:** validator finding · **status:** active
+The unit the [[independent validator]] emits: one observation citing its location (file:line or probe observation), naming what it violates or suggests. Carries exactly one of two severities — **contract-breaking** (falsifies a citable obligation: an acceptance criterion, an interface-contract clause, a task-selected [[project standards]] rule, or an integrity rule; the citation is mandatory, and a finding that cannot cite an obligation is not contract-breaking, by construction) or **advisory** (recorded, never parks). Leg verdicts derive mechanically from finding severities; no judgment sits at the composition step.
+
+### trivial conflict
+**aliases:** union-resolvable conflict · **status:** active
+A merge/rebase conflict whose resolution is the pure union of both sides — every conflicted hunk resolves by keeping both sides' lines, authoring no new tokens and discarding none (the barrel-export / route-table case). The [[independent validator]] resolves it mechanically during Validate's readiness stage and records the resolution as verdict evidence; the downstream legs validate the resolved tree, so a semantically-wrong union surfaces as a leg failure rather than landing silently.
+*Not to be confused with:* [[semantic conflict]] — anything past the union line, which parks.
+
+### semantic conflict
+**aliases:** — · **status:** active
+A merge/rebase conflict that is not a [[trivial conflict]]: resolution would require choosing a side, editing content, or authoring new tokens — authoring, which the [[independent validator]] must never do. Blocks Validate's readiness stage and parks the feature as a conflict-shaped [[deviation]].
 
 ### drift
 **aliases:** — · **status:** active
