@@ -86,33 +86,33 @@ features:
     depends_on: [the-loop-entry]
     acceptance: a brain-dump is whittled to a structured, actionable Brief
 
-  - id: design-phase
+  - id: design
     title: Design skill (Brief → design.md + feature graph + Ledger + Dictionary seed)
     status: designed
     depends_on: [frame, artifact-spine]
     acceptance: a Brief yields a valid design.md with a feature graph and an established Ledger
 
-  - id: plan-phase
+  - id: plan
     title: Plan agent + sizing gate
     status: designed
     depends_on: [artifact-spine]
     interfaces: [sizing-gate]
     notes:
-      - first act of design — define the task contract, the Plan → Build handoff shape (id, acceptance criteria, injected-slice refs, expected file footprint, size estimate); build-phase and validate-phase consume it (2026-07-01 review)
+      - first act of design — define the task contract, the Plan → Build handoff shape (id, acceptance criteria, injected-slice refs, expected file footprint, size estimate); build and validate consume it (2026-07-01 review)
     acceptance: a feature decomposes into comfortably-small tasks; an irreducible feature bounces to re-slice
 
-  - id: build-phase
+  - id: build
     title: Build (task agents; sequential within a feature for v1)
     status: designed
-    depends_on: [artifact-spine, plan-phase]
+    depends_on: [artifact-spine, plan]
     notes:
-      - design the git branching/integration strategy as an ADR before implementation (also blocks validate-phase) — where a validated feature integrates, a parked feature's branch lifecycle across run boundaries, who rebases a rotted parked branch on fix-in-place, crash-recovery commit granularity (2026-07-01 review)
+      - design the git branching/integration strategy as an ADR before implementation (also blocks validate) — where a validated feature integrates, a parked feature's branch lifecycle across run boundaries, who rebases a rotted parked branch on fix-in-place, crash-recovery commit granularity (2026-07-01 review)
     acceptance: a feature's tasks produce a single merged diff
 
-  - id: validate-phase
+  - id: validate
     title: Independent validator (merge-fold-in + three legs)
     status: designed
-    depends_on: [build-phase]
+    depends_on: [build]
     interfaces: [validator-verdict, runtime-probe]
     notes:
       - design a deviation-severity axis for validator-verdict (joint session) — contract-breaking findings park the slice, advisory findings are recorded without parking; kills the "validation flagged anything" catch-all and the escalation fatigue it invites (2026-07-01 review)
@@ -122,7 +122,7 @@ features:
   - id: inner-loop-workflow
     title: The Workflow orchestration (Plan→Build→Validate, park-and-drain, BoundaryResult)
     status: designed
-    depends_on: [plan-phase, build-phase, validate-phase]
+    depends_on: [plan, build, validate]
     interfaces: [boundary-result]
     acceptance: a feature graph runs to a BoundaryResult; a deviation parks its slice and drains the frontier
 
@@ -132,10 +132,10 @@ features:
     depends_on: [inner-loop-workflow]
     acceptance: a parked escalation surfaces with a menu; a decision folds into the graph; the next run resumes
 
-  - id: ship-phase
+  - id: ship
     title: Ship (human-gated, evidence package, health-gated delegated rollback)
     status: designed
-    depends_on: [validate-phase, surfacing]
+    depends_on: [validate, surfacing]
     acceptance: a validated frontier deploys behind a human gate; a failed post-deploy health check rolls back
 
   # ── dogfood-readiness (ADR-0023): brownfield support lands before self-hosting ──
@@ -148,14 +148,14 @@ features:
   - id: brownfield-comprehension
     title: Brownfield intake — comprehension seeding of the System Map
     status: designed
-    depends_on: [system-map, design-phase]
+    depends_on: [system-map, design]
     acceptance: pointing the loop at an existing repo seeds a fingerprinted System Map, demand-driven
 
   # ── deferred: built BY self-hosting ─────────────────────────────────────
   - id: worktree-parallelism
     title: Per-task worktree isolation + parallel Build (full ADR-0012)
     status: designed
-    depends_on: [build-phase]
+    depends_on: [build]
     notes:
       - file-disjointness will fail routinely on hub files (barrel exports, route registration, shared types) — design hub-file task chaining and a trivial-merge relaxation so only semantic conflicts escalate (2026-07-01 review)
     acceptance: independent tasks build concurrently in worktrees; disjoint branches merge clean; conflicts surface
@@ -163,7 +163,7 @@ features:
   - id: evolve
     title: Evolve (bug-shaped intake; RCA + fix-design at the Design gate)
     status: designed
-    depends_on: [inner-loop-workflow, design-phase]
+    depends_on: [inner-loop-workflow, design]
     acceptance: a bug intake runs the engine with the same gates; RCA + fix-design is human-approved
 
   - id: operate-tooling
@@ -175,7 +175,7 @@ features:
   - id: calibration-capture
     title: Calibration Memory (per-project capture, recalled at Plan/Design)
     status: designed
-    depends_on: [plan-phase, design-phase]
+    depends_on: [plan, design]
     notes:
       - capture must separate loop-overhead tokens (validator, ledger renders, escalation records) from build tokens, so "earns its context" is measured against the founding thesis, not assumed (2026-07-01 review)
     acceptance: actual-vs-estimated task cost + re-slice events are captured and recalled

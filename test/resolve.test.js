@@ -19,9 +19,9 @@ test('resolveIn throws on an unknown id', () => {
   assert.throws(() => resolveIn(m, 'nope'), /unknown feature id/);
 });
 
-test('plan-phase resolves to its sizing-gate contract', () => {
-  const { node, contracts } = resolveIn(realModel(), 'plan-phase');
-  assert.equal(node.id, 'plan-phase');
+test('plan resolves to its sizing-gate contract', () => {
+  const { node, contracts } = resolveIn(realModel(), 'plan');
+  assert.equal(node.id, 'plan');
   assert.deepEqual(contracts.map((c) => c.id), ['sizing-gate']);
 });
 

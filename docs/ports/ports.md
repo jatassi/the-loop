@@ -178,6 +178,6 @@ Kept here so the inventory's edge stays sharp:
 The target repo is the plugin repo, so the-loop's own bindings dogfood the defaults:
 artifact-store → `docs/` named dirs; grilling → the `/grilling` user skill;
 test-harness → `npm test` + `npm run check`;
-runtime-probe → **TBD, must be bound before `validate-phase` is built** (likely: run
+runtime-probe → **TBD, must be bound before `validate` is built** (likely: run
 `bin/spine.js` / the workflow against a fixture repo and observe); everything
 phase-scoped beyond Validate → unbound until those phases near the frontier.

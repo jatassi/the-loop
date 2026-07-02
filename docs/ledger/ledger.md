@@ -17,7 +17,7 @@ Nothing parked — no open escalations. Feature-scoped design actions from the 2
 ## What's next
 Continue the skeleton in dependency order (`artifact-spine`, `the-loop-entry` ✓ done):
 
-`frame` (◐ in flight — validate it with a real Frame session) · `plan-phase` · `system-map` → `design-phase` · `build-phase` → `validate-phase` → `inner-loop-workflow` → `surfacing` → `ship-phase` · `brownfield-comprehension`.
+`frame` (◐ in flight — validate it with a real Frame session) · `plan` · `system-map` → `design` · `build` → `validate` → `inner-loop-workflow` → `surfacing` → `ship` · `brownfield-comprehension`.
 
 The moment that path is green end-to-end, **stop hand-building and self-host** — feed the 8 deferred features (worktree parallelism, Evolve + severity tiering, Operate, calibration capture, full configure step, full ports/adapters, research tiers) through the-loop as its own intakes. From then on, hand-building only as a recorded escalation decision (see actions.md).
 
