@@ -197,6 +197,7 @@ runtime-probe → **TBD, must be bound before `validate` is built** (likely: run
 lint-gate → `npm run lint` (bound 2026-07-02, dogfooding the regime: strictest presets
 as floor — @eslint/js + unicorn recommended + eslint-plugin-n — plus complexity/size
 budgets and import-direction architecture lint in `eslint.config.js`; zero findings,
-wired into `npm run check`); craft-baseline → the bundled pack, once the
-`craft-baseline` feature lands (pre-self-hosting, ADR-0027); everything
+wired into `npm run check`); craft-baseline → the bundled pack (`skills/craft/` — constitution, design
+principles, review catalog; bound 2026-07-02), with project standards seeded at
+`docs/standards/` (derived-artifacts, pure-core, loop-surfaces); everything
 phase-scoped beyond Validate → unbound until those phases near the frontier.

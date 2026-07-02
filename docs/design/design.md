@@ -111,7 +111,7 @@ features:
 
   - id: craft-baseline
     title: Craft bundle (craft-baseline port + build constitution + per-task standards)
-    status: designed
+    status: building
     depends_on: [plan, build]
     notes:
       - mechanics per ADR-0027 — two layers (plugin pack + docs/standards/, repo wins); constitution always-injected; Plan selects standards per task via the task contract's standards field; Design seeds/mines the project layer; Validate consumes via the standards axis (2026-07-02)

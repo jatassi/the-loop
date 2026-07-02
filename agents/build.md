@@ -14,6 +14,13 @@ machine-readable JSON only (shapes at the end), no prose around it.
 
 This is your contract: the task (title, acceptance criteria, expected footprint),
 the feature criteria it covers, and the interface contracts you build against.
+Then load the craft layer, in order:
+
+1. the **build constitution** — `$CLAUDE_PLUGIN_ROOT/skills/craft/constitution.md` —
+   binding on every line you write;
+2. every file in the task's `standards` list — project rules that outrank the
+   constitution wherever they conflict.
+
 Read the plan narrative (`docs/plans/<feature-id>.md`) for the wiring story, and
 the code your footprint touches. Refuse mechanically before building anything:
 

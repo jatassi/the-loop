@@ -43,6 +43,7 @@ tasks:
     covers: [1]
     acceptance: given a widget model, rendering returns markup
     injects: [widget-api]
+    standards: [docs/standards/render.md]
     footprint: [src/render.js, test/render.test.js]
     size: s
     depends_on: []
@@ -70,6 +71,8 @@ test('parsePlan extracts feature, drift stamp, and normalized tasks', () => {
   assert.deepEqual(m.tasks[0].covers, [1]);
   assert.deepEqual(m.tasks[1].depends_on, ['t1']);
   assert.deepEqual(m.tasks[0].footprint, ['src/render.js', 'test/render.test.js']);
+  assert.deepEqual(m.tasks[0].standards, ['docs/standards/render.md']);
+  assert.deepEqual(m.tasks[1].standards, []); // absent field normalizes to none
   assert.ok(!('report' in m.tasks[0])); // absent report stays absent
 });
 
@@ -179,6 +182,21 @@ test('planPath is the conventional artifact location', () => {
   assert.equal(planPath('widget'), 'docs/plans/widget.md');
 });
 
+test('task standards: docs/standards/ paths only, existence via the injected probe', () => {
+  const clean = validatePlan(model(), DESIGN, { standardExists: (p) => p === 'docs/standards/render.md' });
+  assert.deepEqual(clean.errors, []); // t1's standard exists per the probe
+
+  const missing = validatePlan(model(), DESIGN, { standardExists: () => false });
+  assert.ok(codes(missing).includes('unknown-standard'));
+
+  const stray = model();
+  stray.tasks[0].standards = ['src/render.js']; // not a docs/standards/ path
+  assert.ok(codes(validatePlan(stray, DESIGN)).includes('bad-standards-path'));
+
+  // no probe injected → shape-checked only, never an existence error
+  assert.deepEqual(validatePlan(model(), DESIGN).errors, []);
+});
+
 test('resolveTask hands a builder its slice: contract, covered criteria texts, inject bodies', () => {
   const s = resolveTask(model(), DESIGN, 't2');
   assert.equal(s.feature, 'widget');
@@ -188,6 +206,7 @@ test('resolveTask hands a builder its slice: contract, covered criteria texts, i
   assert.equal(s.injects.length, 1);
   assert.match(s.injects[0].body, /render\(\), save\(\)/);
   assert.deepEqual(s.unbuilt_dependencies, ['t1']); // t1 is still pending — builder must refuse
+  assert.deepEqual(resolveTask(model(), DESIGN, 't1').task.standards, ['docs/standards/render.md']); // standards ride the slice
 });
 
 test('resolveTask: built dependencies are not blockers; an unknown task throws', () => {

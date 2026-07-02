@@ -12,7 +12,7 @@
 //   spine plan task <feature-id> <task-id> [plan.md] [design.md]        a build agent's task slice
 //   spine plan report <feature-id> <task-id> [report.json|-] [plan.md]  fold a completion report in
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { parse } from '../src/parse.js';
 import { foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
@@ -117,7 +117,12 @@ function loadPlan(featureId, planFile) {
   return { file, text, plan };
 }
 
-const printIssue = (kind, i) => process.stdout.write(`  ${kind} ${i.code}: ${i.message}${i.where ? ` (${i.where})` : ''}\n`);
+// A function declaration, deliberately: the CLI dispatch above runs at module
+// evaluation, before any `const` below it would initialize — only hoisted
+// declarations are safely callable from it.
+function printIssue(kind, i) {
+  process.stdout.write(`  ${kind} ${i.code}: ${i.message}${i.where ? ` (${i.where})` : ''}\n`);
+}
 
 function printIssues(warnings, errors) {
   for (const w of warnings) { printIssue('warn ', w); }
@@ -145,7 +150,7 @@ function planCheck(featureId, planFile, designFile) {
   const text = readFileSync(planFile || planPath(featureId), 'utf8');
   const model = parsePlan(text);
   const design = parse(read(designFile));
-  const { ok, errors, warnings } = validatePlan(model, design);
+  const { ok, errors, warnings } = validatePlan(model, design, { standardExists: (p) => existsSync(p) });
   if (model.feature !== featureId) {
     errors.push({ code: 'feature-mismatch', message: `plan declares feature "${model.feature}" but was checked as "${featureId}"` });
   }

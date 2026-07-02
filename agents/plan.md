@@ -49,6 +49,11 @@ Cut the feature into tasks under these rules:
 - **Cover everything, invent nothing.** Every feature acceptance criterion is
   claimed by at least one task (`covers`); no task exists that no criterion asked
   for.
+- **Select each task's standards.** If `docs/standards/index.md` exists, read it
+  and give each task exactly the standards its footprint makes relevant
+  (`standards: [path]`), matched against the index's one-line descriptions. An
+  empty list is the norm; never assign one "just in case" — the builder pays a
+  read for every file you list.
 
 ## 3 · Size each task — the sizing gate
 
@@ -90,6 +95,7 @@ under its exact heading:
         covers: [1]             # 1-based indexes into the feature's acceptance criteria
         acceptance: criterion | [criterion]  # the task's independent test — one or more, each observable and binary
         injects: [contract-id]  # contracts the build agent gets injected
+        standards: []           # docs/standards/ files the task builds under (empty is the norm)
         footprint: [path, …]    # expected files created or modified
         size: xs                # xs | s | m
         depends_on: []          # task ordering; overlapping footprints must be chained

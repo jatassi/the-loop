@@ -35,6 +35,7 @@ export function planPath(featureId, root = 'docs/plans') {
  * @property {number[]} covers      1-based indexes into the feature's acceptance criteria
  * @property {string|string[]} acceptance  the task's own observable, binary criterion
  * @property {string[]} injects     contract ids the build agent gets injected
+ * @property {string[]} standards   docs/standards/ files the task builds under (Plan-selected)
  * @property {string[]} footprint   expected files created/modified
  * @property {string} size          xs | s | m
  * @property {string[]} depends_on  task-ordering edges (overlapping footprints must be chained)
@@ -75,6 +76,7 @@ function normalizeTask(t) {
     covers: t.covers || [],
     acceptance: t.acceptance,
     injects: t.injects || [],
+    standards: t.standards || [],
     footprint: t.footprint || [],
     size: t.size,
     depends_on: t.depends_on || [],
@@ -88,9 +90,11 @@ function normalizeTask(t) {
  * size ceiling is a signal, not a blocker.
  * @param {PlanModel} plan
  * @param {import('./parse.js').DesignModel} design
+ * @param {{standardExists?: (path: string) => boolean}} [opts]  existence probe for
+ *        standards paths — injected by the CLI (fs there, purity here)
  * @returns {{ok: boolean, errors: import('./schema.js').Issue[], warnings: import('./schema.js').Issue[]}}
  */
-export function validatePlan(plan, design) {
+export function validatePlan(plan, design, { standardExists } = {}) {
   const errors = [];
   const warnings = [];
   const err = (code, message, where) => { errors.push({ code, message, where }); };
@@ -111,14 +115,10 @@ export function validatePlan(plan, design) {
     checkTaskFields(t, { err, warn });
     checkTaskCovers(t, { err, criteria, covered });
     checkTaskEdges(t, { err, contractIds, ids });
+    checkTaskStandards(t, { err, standardExists });
   }
 
-  // ── coverage: every feature criterion is claimed by some task ──
-  if (feature && tasks.length > 0) {
-    for (let k = 1; k <= criteria.length; k++) {
-      if (!covered.has(k)) { err('uncovered-criterion', `feature acceptance criterion #${k} is claimed by no task ("${criteria[k - 1]}")`, plan.feature); }
-    }
-  }
+  checkCoverage({ feature, tasks, criteria, covered, err });
 
   const cycle = findCycle(tasks);
   if (cycle) { err('task-dependency-cycle', `depends_on cycle: ${cycle.join(' → ')}`, cycle[0]); }
@@ -196,6 +196,26 @@ function checkTaskEdges(t, { err, contractIds, ids }) {
   for (const dep of t.depends_on) {
     if (dep === t.id) { err('self-dependency', 'task depends on itself', t.id); }
     else if (!ids.has(dep)) { err('dangling-task-dependency', `depends_on unknown task "${dep}"`, t.id); }
+  }
+}
+
+// Coverage: every feature acceptance criterion is claimed by some task.
+function checkCoverage({ feature, tasks, criteria, covered, err }) {
+  if (!feature || tasks.length === 0) { return; }
+  for (let k = 1; k <= criteria.length; k++) {
+    if (!covered.has(k)) { err('uncovered-criterion', `feature acceptance criterion #${k} is claimed by no task ("${criteria[k - 1]}")`, feature.id); }
+  }
+}
+
+// Per-task standards references: docs/standards/ paths, existing when probeable.
+function checkTaskStandards(t, { err, standardExists }) {
+  const standards = t.standards || [];
+  for (const s of standards) {
+    if (typeof s !== 'string' || !s.startsWith('docs/standards/')) {
+      err('bad-standards-path', `standards entries are docs/standards/ paths (got ${JSON.stringify(s)})`, t.id);
+    } else if (standardExists && !standardExists(s)) {
+      err('unknown-standard', `standards references a missing file "${s}"`, t.id);
+    }
   }
 }
 
