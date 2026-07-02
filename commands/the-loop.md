@@ -36,8 +36,11 @@ can accept or override:
 1. **Configure (minimal)** — confirm the baked-in defaults: artifacts live in named
    directories under `docs/`; the test harness is the project's native test command.
    Runtime, deploy, and observability choices are deferred until their phase nears.
-2. **Frame** — route to the Frame skill (a brain-dump becomes a Brief).
+2. **Frame** — route to the `frame` skill (a brain-dump becomes a Brief).
 3. **Design** — the Brief flows into the Design skill.
+
+If the orientation shows `hasBrief: true`, a Frame session already produced
+`docs/briefs/brief.md` — confirm Configure, then resume at Design; don't re-frame.
 
 **`active`** — a live project. Read `docs/ledger/ledger.md` for the story (what is
 this / where are we / what needs you / what's next), then report:
@@ -55,7 +58,7 @@ not guess forward.
 
 ### Explicit jumps — `/the-loop <phase>`
 
-Orient and state position first, then route: `frame` → the Frame skill · `design` →
+Orient and state position first, then route: `frame` → the `frame` skill · `design` →
 the Design skill · `plan` / `build` / `validate` → the inner-loop Workflow · `ship` →
 Ship · `config` → `/loop-config`.
 

@@ -82,7 +82,7 @@ features:
 
   - id: frame
     title: Frame skill (grilling → Brief)
-    status: designed
+    status: building
     depends_on: [the-loop-entry]
     acceptance: a brain-dump is whittled to a structured, actionable Brief
 

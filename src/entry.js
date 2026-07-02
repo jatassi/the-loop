@@ -11,6 +11,7 @@ import { validate, STATUS } from './schema.js';
 
 const DESIGN = 'docs/design/design.md';
 const LEDGER = 'docs/ledger/ledger.md';
+const BRIEF = 'docs/briefs/brief.md';
 
 // Statuses that satisfy a depends_on edge (the work behind it is done)…
 const DONE = new Set(['validated', 'shipped']);
@@ -28,15 +29,18 @@ const ACTIONABLE = new Set(['designed', 'planned', 'building', 'drifted']);
 /**
  * Cold-start detection (ADR-0017): a project with no design doc and no Ledger has
  * nothing to resume, so /the-loop routes to onboarding. The durable artifacts are the
- * state proxy — harness-native config arrives with configure-step-full.
+ * state proxy — harness-native config arrives with configure-step-full. A Brief never
+ * changes the mode (Frame's output, not Design's); it only moves onboarding's resume
+ * point past Frame.
  * @param {string} [root]
- * @returns {{mode: 'cold-start'|'active'|'partial', hasDesign: boolean, hasLedger: boolean}}
+ * @returns {{mode: 'cold-start'|'active'|'partial', hasDesign: boolean, hasLedger: boolean, hasBrief: boolean}}
  */
 export function detectState(root = '.') {
   const hasDesign = existsSync(join(root, DESIGN));
   const hasLedger = existsSync(join(root, LEDGER));
+  const hasBrief = existsSync(join(root, BRIEF));
   const mode = hasDesign && hasLedger ? 'active' : hasDesign || hasLedger ? 'partial' : 'cold-start';
-  return { mode, hasDesign, hasLedger };
+  return { mode, hasDesign, hasLedger, hasBrief };
 }
 
 /**
@@ -99,7 +103,9 @@ export function orient(root = '.') {
   const state = detectState(root);
   if (state.mode === 'cold-start') {
     return { ...state, proposal: { kind: 'onboard', features: [],
-      summary: 'no design.md and no Ledger — nothing to resume; route to greenfield onboarding (Configure → Frame → Design, ADR-0017)' } };
+      summary: state.hasBrief
+        ? 'a Brief exists (docs/briefs/brief.md) but no design.md or Ledger — resume onboarding at Design'
+        : 'no design.md and no Ledger — nothing to resume; route to greenfield onboarding (Configure → Frame → Design, ADR-0017)' } };
   }
   if (state.mode === 'partial') {
     const missing = [!state.hasDesign && DESIGN, !state.hasLedger && LEDGER].filter(Boolean);

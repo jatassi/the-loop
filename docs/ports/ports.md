@@ -16,9 +16,9 @@ Two tiers; required ports carry a scope:
 
 - **`required`** — unbound blocks. `required_by` says *when*: `engine` ports block
   everything (all ship in-box defaults, so out-of-box always runs); phase-scoped ports
-  (`validate`, `ship`, `operate`) block only their phase, checked at the configure step
-  and re-checked when that phase enters the frontier — nobody answers Ship-time
-  questions at onboarding. Three phase-scoped ports have **no universal default**
+  (`frame`, `validate`, `ship`, `operate`) block only their phase, checked at the
+  configure step and re-checked when that phase enters the frontier — nobody answers
+  Ship-time questions at onboarding. Three phase-scoped ports have **no universal default**
   (runtime-probe, deploy-target, observability-backend): they are bound per-project via
   the Design/Configure nudges (ADR-0013/-0015/-0017). Arriving at the phase unbound is a
   surfaced deviation; the runtime probe's documented opt-out (ADR-0013) is the one
@@ -47,8 +47,8 @@ ports:
   - id: phase-frame
     tier: required
     required_by: [engine]
-    requires: [brain-dump → Brief, grilling elicitation]
-    default_adapter: { kind: skill, ref: plugin Frame skill }
+    requires: [brain-dump → Brief, interview delegated to the grilling port]
+    default_adapter: { kind: skill, ref: plugin Frame skill — a thin wrapper over the grilling port }
     consumers: [Frame]
 
   - id: phase-design
@@ -80,6 +80,13 @@ ports:
     consumers: [inner loop]
 
   # ── phase-scoped required: unbound blocks that phase, checked lazily ─────
+  - id: grilling
+    tier: required
+    required_by: [frame]
+    requires: [relentless one-question-at-a-time interview, recommended answer per question, explore-instead-of-asking when the repo can answer]
+    default_adapter: { kind: skill, ref: the user-level /grilling skill — presence verified at the configure step; any interview skill honoring the contract swaps in (2026-07-01) }
+    consumers: [Frame (the phase-frame adapter loads it), configure step (recommended-answer style)]
+
   - id: test-harness
     tier: required
     required_by: [validate]
@@ -169,7 +176,8 @@ Kept here so the inventory's edge stays sharp:
 ## Bindings for this repo (self-hosting seed)
 
 The target repo is the plugin repo, so the-loop's own bindings dogfood the defaults:
-artifact-store → `docs/` named dirs; test-harness → `npm test` + `npm run check`;
+artifact-store → `docs/` named dirs; grilling → the `/grilling` user skill;
+test-harness → `npm test` + `npm run check`;
 runtime-probe → **TBD, must be bound before `validate-phase` is built** (likely: run
 `bin/spine.js` / the workflow against a fixture repo and observe); everything
 phase-scoped beyond Validate → unbound until those phases near the frontier.

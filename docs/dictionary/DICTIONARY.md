@@ -93,7 +93,7 @@ The ambient "what is my loop doing" visibility + escalation-notification surface
 
 ### grilling
 **aliases:** grill-me · **status:** active
-The adversarial interview primitive (one question at a time, each with a recommended answer) that drives [[Frame]] and the [[configure step]]. Whittles a wide input to an actionable output.
+The adversarial interview primitive (one question at a time, each with a recommended answer) that drives [[Frame]] and the [[configure step]]. Whittles a wide input to an actionable output. A [[port]]: the default adapter is the user-level `/grilling` skill, and [[Frame]] is a thin wrapper that loads whichever interview skill is bound.
 
 ### recommended-answer style
 **aliases:** — · **status:** active
@@ -224,7 +224,7 @@ The atomic unit of agent execution: fits within ≤50% of a 256k context window,
 
 ### Brief
 **aliases:** sharpened brief · **status:** active
-Output of [[Frame]]: the messy idea pressure-tested into an actionable statement of intent that [[Design]] consumes.
+Output of [[Frame]]: the messy idea pressure-tested into an actionable statement of intent that [[Design]] consumes. Lives at `docs/briefs/brief.md` in the [[target repo]] — one intake at a time; a superseded Brief survives in git history.
 
 ### Design artifact
 **aliases:** the design · **status:** active

@@ -15,7 +15,7 @@ const design = (...features) =>
   '## Feature graph\n\n```yaml\ndesign_version: 1\nfeatures:\n' + features.join('') + '```\n';
 const model = (...features) => parse(design(...features));
 
-function repo({ designText, ledgerText } = {}) {
+function repo({ designText, ledgerText, briefText } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'loop-entry-'));
   if (designText != null) {
     mkdirSync(join(root, 'docs/design'), { recursive: true });
@@ -24,6 +24,10 @@ function repo({ designText, ledgerText } = {}) {
   if (ledgerText != null) {
     mkdirSync(join(root, 'docs/ledger'), { recursive: true });
     writeFileSync(join(root, 'docs/ledger/ledger.md'), ledgerText);
+  }
+  if (briefText != null) {
+    mkdirSync(join(root, 'docs/briefs'), { recursive: true });
+    writeFileSync(join(root, 'docs/briefs/brief.md'), briefText);
   }
   return root;
 }
@@ -58,7 +62,22 @@ test('one artifact without the other is partial, proposing repair', () => {
   assert.equal(o.mode, 'partial');
   assert.deepEqual(o.missing, ['docs/ledger/ledger.md']);
   assert.equal(o.proposal.kind, 'repair');
-  assert.deepEqual(detectState(repo({ ledgerText: 'x' })), { mode: 'partial', hasDesign: false, hasLedger: true });
+  assert.deepEqual(detectState(repo({ ledgerText: 'x' })), { mode: 'partial', hasDesign: false, hasLedger: true, hasBrief: false });
+});
+
+// ── frame's routing seam: a Brief moves onboarding's resume point past Frame ──
+test('cold-start with a Brief proposes onboarding resumed at Design', () => {
+  const o = orient(repo({ briefText: '# Brief — fixture\n' }));
+  assert.equal(o.mode, 'cold-start'); // a Brief alone never makes a project active
+  assert.equal(o.hasBrief, true);
+  assert.equal(o.proposal.kind, 'onboard');
+  assert.match(o.proposal.summary, /resume onboarding at Design/);
+});
+
+test('cold-start without a Brief still routes onboarding through Frame', () => {
+  const o = orient(repo());
+  assert.equal(o.hasBrief, false);
+  assert.match(o.proposal.summary, /Frame/);
 });
 
 test('an invalid graph orients to repair, never a frontier', () => {
