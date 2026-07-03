@@ -389,7 +389,7 @@ tasks:
 
   - id: t11
     title: inner-loop.js park-and-drain — typed feature parks, frontier draining
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - a plan bounce (kind feature) produces a parked entry { feature, deviation, menu } carrying the agent-authored menu verbatim, and the run continues
@@ -400,6 +400,17 @@ tasks:
     footprint: [workflows/inner-loop.js, test/inner-loop-park.test.js]
     size: s
     depends_on: [t10]
+    report:
+      result: built
+      footprint_actual:
+        - workflows/inner-loop.js
+        - test/inner-loop-park.test.js
+      diff_actual:
+        files: 2
+        insertions: 180
+        deletions: 8
+      deviations: []
+      summary: "workflows/inner-loop.js gained typed feature-shaped parking layered over t10's happy path: runBuild now returns the first feature-kind blocked build return so runFeature stops spawning further tasks for that feature (build.md's 'first block parks' contract); runFeature itself short-circuits on a plan 'bounce' return before ever calling runBuild; and the outer loop's verdict switch gained a 'deviation' arm alongside the existing 'perfect' arm. All three park sources funnel through a new parkEntry(featureId, r) helper that reconciles plan/build's differently-shaped defect fields (plan's singular deviation; build's plural deviations array joined into one string; validate's deviation verdict carries neither field on its own return, since that detail already lives only in the escalation record the validate agent itself booked) into the pinned { feature, deviation, menu } parked-entry shape. Because a parked feature's statusById entry never advances past its pre-run status, isRunnable's existing dependenciesSatisfied check excludes its dependents for free — no new exclusion logic was needed, just the existing frontier semantics running against a status a park never flips. Four tests in test/inner-loop-park.test.js, each watched red against the unmodified t10 code then green: (1) a plan bounce parks with its deviation/menu carried verbatim while an independent feature completes in the same run; (2) a feature-kind blocked build return stops task spawning at the first block, before derive/validate ever run for that feature; (3) a validate deviation return parks the feature after the full phase sequence runs; (4) an in-scope dependent of a parked feature contributes zero spawns while an unrelated in-scope feature still completes — the drain, asserted on the spawn-phase sequence. Full suite (96 tests), eslint, and npm run check all pass; one commit (568c2aa) on loop/inner-loop-workflow, rebase onto main's tip was a no-op."
 
   - id: t12
     title: inner-loop.js halts and stalls — environment blocks, budget, agent death
