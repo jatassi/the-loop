@@ -164,7 +164,7 @@ tasks:
 
   - id: t2
     title: Remediation round-marker — appendRemediation + plan-check exemption
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - appendRemediation(plan, findings) appends the pinned round-marker task (id remediation, remediation true, pending, covers empty, footprint = the deduplicated file paths from the findings' file-and-line locations, one addressed-or-rebutted acceptance entry per finding, size s, depends_on = all existing task ids) to both the JS model and the retained YAML document, and the result survives render() round-trip
@@ -175,6 +175,17 @@ tasks:
     footprint: [src/plan.js, test/plan.test.js]
     size: s
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/plan.js
+        - test/plan.test.js
+      diff_actual:
+        files: 2
+        insertions: 98
+        deletions: 2
+      deviations: []
+      summary: "src/plan.js gains appendRemediation(plan, findings): it refuses a second append when any task already carries remediation:true (the marker is durable, one round per feature), derives footprint as the deduplicated file paths parsed from findings whose location matches the 'path:line' shape (probe-observation locations without a trailing :line contribute nothing), and refuses when that set is empty, leaving the plan untouched. On success it pushes the pinned marker task onto both plan.tasks and the retained YAML doc via doc.setIn, so render() persists it and the artifact still round-trips. checkTaskCovers gained a one-line exemption so an empty covers on the marker raises no task-covers-nothing, without touching coverage accounting elsewhere. normalizeTask now carries the remediation flag through parsePlan, so a consumer detects the round mechanically. All three acceptance criteria proven by one test each in test/plan.test.js, each watched red then green. Full suite (75 tests), eslint, and npm run check all pass; one commit (0c957f4) on loop/inner-loop-workflow, rebased cleanly onto main's current tip."
 
   - id: t3
     title: Escalation-record block parsing
