@@ -140,6 +140,15 @@ function isSignal(r) {
   return Boolean(r.halted || r.stalled);
 }
 
+// Plan and validate name an environment block's blocker in `detail`; build names it in
+// `deviations` (plural) with `summary` as backing prose and carries no `detail`; derive
+// names it in `missing` and carries neither. This reconciles all four shapes into the
+// single `detail` the pinned run-level halt names, so no environment block halts the run
+// detail-less — the human reads the blocker off the BoundaryResult, not the run journal.
+function haltDetail(r) {
+  return r.detail ?? r.deviations?.join('; ') ?? r.missing?.join('; ') ?? r.summary;
+}
+
 // The one spawn choke point every phase call funnels through: classifies a thrown error
 // or the agent's own return per the pinned exception policy (ADR-0029). Returns either
 // the ordinary agent return, or a run-level `{halted}`/feature-level `{stalled}` signal
@@ -157,7 +166,7 @@ async function spawn(prompt, opts, featureId) {
     return { stalled: { feature: featureId, phase: opts.agentType, note: 'agent returned null' } };
   }
   if (isEnvironmentBlock(opts.agentType, r)) {
-    return { halted: { reason: 'environment-blocked', detail: r.detail } };
+    return { halted: { reason: 'environment-blocked', detail: haltDetail(r) } };
   }
   return r;
 }

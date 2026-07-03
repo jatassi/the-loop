@@ -75,6 +75,36 @@ test('an environment-kind blocked build return halts the run, preserving complet
   assert.deepEqual(result.budget, budget);
 });
 
+// ── criterion 1: a real build environment block names its blocker in `deviations`
+// (plural) and `summary` and carries no `detail` at all — the script reconciles that
+// prose into `halted.detail` so the blocker never drops silently out of the halt ──
+test('a build environment block with prose in deviations, no detail, halts with the reconciled detail', async () => {
+  const args = {
+    target: 'main',
+    scope: ['alpha'],
+    index: { designVersion: 1, features: [featureNode('alpha')] },
+    slices: { alpha: slice('alpha') },
+    plans: {},
+    probe: {},
+  };
+  const budget = { spent: 0, remaining: 10 };
+  const buildBlocked = {
+    task: 'alpha/t1', result: 'blocked', kind: 'environment',
+    deviations: ['git status was dirty before any work began', 'untracked file scratch.txt'],
+    summary: 'stopped before touching the tree',
+  };
+  const agentReplies = [
+    { returns: { result: 'planned', feature: 'alpha', tasks: [{ id: 't1', status: 'pending', depends_on: [], size: 'xs' }] } },
+    { returns: buildBlocked },
+  ];
+
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+
+  assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build']); // derive never spawns
+  assert.deepEqual(result.halted, { reason: 'environment-blocked', detail: buildBlocked.deviations.join('; ') });
+  assert.deepEqual(result.completed, []);
+});
+
 // ── criterion 1: derive's blocked return carries no `kind` field at all — the pinned
 // convention treats any blocked return from derive as environment-shaped regardless ──
 test('a blocked return from derive halts the run even though it carries no kind field', async () => {
