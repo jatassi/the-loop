@@ -163,9 +163,9 @@ ports:
 
   - id: delegate-executor
     tier: optional
-    requires: [headless autonomous coding CLI (prompt-file in, committed edit out), git-worktree isolation for the edit, machine-checkable completion (a commit the driver can verify)]
-    default_adapter: { kind: command, ref: the grok CLI (grok-build / grok-composer-2.5-fast, model always passed explicitly — the CLI default is Composer) operated by the plugin drive agent (ADR-0031); any headless coding CLI honoring the contract swaps in behind the same driver }
-    unbound: rote-tier tasks build on Claude per the model bindings; a via grok-cli binding with the CLI absent fails the launch-leg pre-flight, never silently
+    requires: [headless autonomous coding CLI (prompt-file in, committed edit out), git-worktree isolation for the edit (native or driver-made), machine-checkable completion (a commit the driver can verify), an executor playbook (executors/<id>.md — machine block + operational lore) registering the adapter]
+    default_adapter: { kind: command, ref: multi-adapter by design (ADR-0031) — playbooks bind concurrently, keyed by executor id, selected per binding by the model bindings' via field, all operated by the one plugin drive agent; ships with the grok playbook (grok-build / grok-composer-2.5-fast, model always passed explicitly — the CLI default is Composer); codex- or gemini-style CLIs register by adding a playbook }
+    unbound: rote-tier tasks build on Claude per the model bindings; a via binding naming a missing or unregistered executor fails the launch-leg pre-flight, never silently
     consumers: [drive agent (executor-delegation), /the-loop launch-leg pre-flight]
 
   - id: vcs-host
@@ -194,8 +194,9 @@ Kept here so the inventory's edge stays sharp:
 - **The harness itself** — Workflow runtime, agent spawning, config layering.
   Cross-harness portability is a posture (ADR-0002), not a port.
 - **The model binding table** — engine *parameters* (ADR-0030), not a component role:
-  nothing swaps behind it. Only the delegated executor a binding can route to is a
-  port (`delegate-executor`, above).
+  nothing swaps behind it. Only the delegated executors a binding can route to are
+  port-shaped (`delegate-executor`, above — one port, concurrently-bound adapters
+  keyed by executor id).
 
 ## Bindings for this repo (self-hosting seed)
 

@@ -145,8 +145,8 @@ The typed identity a spawn surface declares when it launches a subagent — bare
 *See:* ADR-0030
 
 ### delegated executor
-**aliases:** — · **status:** active
-A non-Claude headless coding CLI that a rote-tier task's binding may route to (`via: grok-cli`), always operated and verified by the [[driver]] — its self-reported success is never trusted. A [[port]] (`delegate-executor`, optional tier); the grok CLI is the default adapter. Off unless a project rebinds `build.rote`.
+**aliases:** executor · **status:** active
+A non-Claude headless coding CLI that a rote-tier task's binding may route to (`via` naming its registered executor id), always operated and verified by the [[driver]] — its self-reported success is never trusted. Registered by an **executor playbook** (`executors/<id>.md`: a machine block for the resolver and pre-flight, operational lore for the driver) behind the `delegate-executor` [[port]], which binds its adapters concurrently, keyed by executor id. The grok CLI ships first; codex- or gemini-style CLIs register the same way. Off unless a project rebinds `build.rote`.
 *See:* ADR-0031
 
 ---
@@ -202,7 +202,7 @@ The actor that drives the autonomous [[inner loop]] — sequencing Plan→Build�
 
 ### driver
 **aliases:** drive agent · **status:** active
-The Claude agent that executes a rote-tier [[task]] through a [[delegated executor]]: it assembles the prompt from the [[task contract]] plus the craft baseline, runs the CLI in an isolated worktree, verifies the result itself (per-criterion tests, lint, diff review, commit presence — the executor's self-report is never trusted), folds the commit onto the [[feature branch]], and books like any build agent. Spawned by the `drive` [[spawn role]] when a task's binding says `via: grok-cli`.
+The one Claude agent that executes rote-tier [[task]]s through any [[delegated executor]], parameterized by the executor's playbook: it assembles the prompt from the [[task contract]] plus the craft baseline, runs the CLI in an isolated worktree per the playbook's invocation template, verifies the result itself (per-criterion tests, lint, diff review, commit presence — the executor's self-report is never trusted), folds the commit onto the [[feature branch]], and books like any build agent. Spawned by the `drive` [[spawn role]] when a task's binding routes `via` a registered executor.
 *See:* ADR-0031
 
 ---
