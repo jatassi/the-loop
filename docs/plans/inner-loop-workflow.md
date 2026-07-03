@@ -140,7 +140,7 @@ design_version: 4
 tasks:
   - id: t1
     title: setStatus — round-trip-safe feature-status mutation in the pure core
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - setStatus(model, featureId, status) flips exactly that feature's status in both the JS model and the retained YAML document, and render() of the mutated model changes only that feature's status line of the source text
@@ -150,6 +150,17 @@ tasks:
     footprint: [src/status.js, test/status.test.js]
     size: xs
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/status.js
+        - test/status.test.js
+      diff_actual:
+        files: 2
+        insertions: 70
+        deletions: 0
+      deviations: []
+      summary: "src/status.js exports setStatus(model, featureId, status), following the same parse→mutate-retained-doc→render pattern as plan.js's foldReport: it locates the feature by id in model.features, validates the new status against schema.js's STATUS enum, then writes the flip into both the in-memory node and the retained YAML doc via doc.setIn, so render() changes only that feature's status line and the artifact still round-trips byte-identically elsewhere. An unknown feature id or an out-of-enum status throws an Error naming the offender before any mutation occurs. Both acceptance criteria proven by one test each in test/status.test.js, watched red then green. Full suite (72 tests) and eslint pass; one commit on loop/inner-loop-workflow."
 
   - id: t2
     title: Remediation round-marker — appendRemediation + plan-check exemption
