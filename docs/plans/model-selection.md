@@ -387,7 +387,7 @@ tasks:
       summary: "skills/design/SKILL.md now teaches both session-side spawns the model-binding table governs. The 'Design it twice' bullet (step 2) instructs resolving the alternates' model via `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" models`, reading the `design.alternative` role's entry (its bound model, or the session inherit when that value is literally \"session\" or the role is absent from the printed table), then sketching the parallel alternates on that model with each spawn's title prefixed `[<resolved-model>] `; the same parenthetical notes that session-side spawns take a model only, a bound effort does not apply there. Step 5's Reader test bullet mirrors the pattern: resolve `design.reader`'s entry the same way, then hand the draft to a fresh subagent on that model with its title similarly prefixed. The file stays self-contained: `grep -n \"ADR\" skills/design/SKILL.md` yields no hits (exit 1), verified after the edit — the two pre-existing legitimate ADR mentions (offering to record a target-project Architecture Decision Record, and committing any decision records at finalize) were reworded to avoid the literal string while preserving meaning and the docs/adr/ path reference. No test suite covers skills/*.md (confirmed by grep across test/ for skills/ references, zero hits) and the task's own footprint carries no test file, so verification is the two criteria checked directly against the edited text: the model-resolution/spawn-labeling instructions for both roles, and the ADR grep. `npm run check` (spine check + eslint over the whole tree) is green."
   - id: t9
     title: Fold-back fix — the spine plan remediate test asserts pass semantics tolerant of warn lines
-    status: pending
+    status: built
     covers: [4]
     acceptance:
       - test/spine-cli.test.js's "spine plan remediate" test no longer requires OK to open the output — it asserts plan check passes (exit 0, output ending in the OK line) while tolerating leading warn lines, pinning criterion 4's grandfather posture (an untiered task warns, never errors) as observed behavior
@@ -396,4 +396,14 @@ tasks:
     size: xs
     tier: rote
     depends_on: [t3, t4]
+    report:
+      result: built
+      footprint_actual:
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 1
+        insertions: 5
+        deletions: 1
+      deviations: []
+      summary: "The \"spine plan remediate\" test in test/spine-cli.test.js no longer requires the plan check output to start with OK. Replacing REMEDIATE_PLAN's t1 has no tier field (the fixture predates the tier field this feature adds), so once the remediation round-marker is appended and plan check runs, the output now opens with a leading '  warn  missing-tier: ...' line for t1 before the OK summary line, per t4's grandfather posture (an untiered task warns, downstream defaults to build.standard, but the plan still checks clean). The assertion was changed from /^OK/ to /^(?: {2}warn .*\\n)*OK {2}.*\\n$/, which tolerates zero or more leading warn lines while still requiring the output to end in the OK summary line (never FAIL) -- pinning the grandfather posture as observed CLI behavior. Watched red first: the prior assertion failed against the real output ('  warn  missing-tier: task has no tier ... (t1)\\nOK   plan widget: 2 task(s) -- 0 error(s), 1 warning(s)\\n' did not match /^OK/), confirming this was a real, currently-failing assertion inherited from t4/t5's work, not a stale test. After the fix, the same test goes green, and I verified the new regex actually discriminates: it accepts the real pass-with-warning output and a warning-free OK output, and rejects a synthetic FAIL/ERROR output and an OK line followed by trailing garbage. Full suite (node --test, 120 tests) and npm run check (spine check + eslint over the whole tree) are green on the feature branch."
 ```
