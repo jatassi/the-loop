@@ -339,7 +339,7 @@ tasks:
       summary: "commands/the-loop.md's launch leg now assembles a `models` field in step 3 via `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" models` verbatim (placed alongside the other global, non-per-feature command, `index`), and the `plans` bullet's per-task reduction is now `{ id, status, depends_on, size, tier }`, carrying the tier the plan agent stamps through to the workflow. Step 6 (Relay the result) now instructs scanning the run's log output (the workflow's live output, surfaced in the /workflows view and returned by the Workflow tool) for lines prefixed `model-selection —` and stating them to the human verbatim alongside the BoundaryResult, so an unbound-role or untiered-task fallback stays visible at the run boundary; no BoundaryResult field was added, matching the design's unchanged-boundary-contract note. The file remains self-contained: `grep -n \"ADR\" commands/the-loop.md` yields no hits (exit 1), verified after the edit. No test suite covers commands/*.md (confirmed by grep across test/ for `commands/` references, zero hits) and the task's own footprint carries no test file, so verification is the three criteria checked directly: the assembled fields, the relay instruction's presence and wording, and the ADR grep. `npm run check` (spine plan/design check + eslint over the whole tree) is green."
   - id: t7
     title: Plan agent surface — stamp tier on every task, resolve the audit spawn's model
-    status: pending
+    status: built
     covers: [1, 4]
     acceptance:
       - agents/plan.md's step-6 template includes tier with a self-contained decision-density rubric (rote|standard|complex; rote additionally requires correctness fully captured by the task's tests + lint; unsure means standard; tier is not size), and its step-9 planned return's task summaries gain tier
@@ -351,6 +351,16 @@ tasks:
     size: s
     tier: standard
     depends_on: [t3, t4]
+    report:
+      result: built
+      footprint_actual:
+        - agents/plan.md
+      diff_actual:
+        files: 1
+        insertions: 19
+        deletions: 7
+      deviations: []
+      summary: "agents/plan.md's step-6 plan-artifact section now teaches `tier` alongside `size`: a short paragraph precedes the ## Tasks template stating tier is decision-density, not size — rote means nothing is left to decide *and* correctness is fully captured by the task's own tests plus lint, complex means real judgment calls remain, standard is everything in between, and unsure means standard — and the yaml template itself gains a `tier: standard` field with an inline comment pointing back to that rubric. Step 9's planned-return shape gains `\"tier\": \"rote|standard|complex\"` in each task summary, matching the `{ id, status, depends_on, size, tier }` shape the workflow's TASK_SUMMARY schema expects. Step 7 (fresh-context audit) now instructs resolving the audit's model before spawning — `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" models`, reading the `plan.audit` role's entry (its bound model, or the session inherit when that value is literally `\"session\"` or the role is absent from the printed table) — and spawning the audit agent on that model with its title/label prefixed `[<resolved-model>] ` (e.g. `[opus] plan-audit:<feature-id>`), mirroring the `[<model>] ` label convention the rest of the feature establishes. The file remains self-contained: `grep -n \"ADR\" agents/plan.md` yields no hits (exit 1), verified after the edit. No test suite covers agents/*.md (confirmed by grep across test/ for `agents/` references, zero hits) and the task's own footprint carries no test file, so verification is the three criteria checked directly against the edited text: the tier rubric and template field, the audit-spawn resolution and label instruction, and the ADR grep. `npm run check` (spine check + eslint over the whole tree) is green."
   - id: t8
     title: Design skill surface — reader and alternative spawns resolve their bound models
     status: pending
