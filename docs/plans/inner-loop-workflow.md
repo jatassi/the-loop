@@ -189,7 +189,7 @@ tasks:
 
   - id: t3
     title: Escalation-record block parsing
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - parseEscalation(text) returns { feature, phase, kind, deviation, menu, branch } from the yaml block under the pinned "## Escalation" heading, defaulting menu to an empty list and absent scalars to null
@@ -199,6 +199,17 @@ tasks:
     footprint: [src/escalation.js, test/escalation.test.js]
     size: xs
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/escalation.js
+        - test/escalation.test.js
+      diff_actual:
+        files: 2
+        insertions: 98
+        deletions: 0
+      deviations: []
+      summary: "src/escalation.js exports parseEscalation(text), reusing blocks.js's yamlBlockAfter to locate the yaml block under the pinned '## Escalation' heading, then YAML.parse's the inner text into a plain object with the pinned keys {feature, phase, kind, deviation, menu, branch}: absent scalars default to null, an absent menu defaults to []. No Document/round-trip machinery since this task carries no mutation contract — escalation records are write-once and deleted at resolution, never edited in place. Both acceptance criteria proven by one test each in test/escalation.test.js, each watched genuinely red (the second by temporarily removing the null-guard) then green. Full suite (77 tests), eslint, and npm run check all pass; one commit (9784f7d) on loop/inner-loop-workflow, rebased cleanly onto main's current tip before building."
 
   - id: t4
     title: renderLedger — deterministic Ledger projection from graph + escalations
