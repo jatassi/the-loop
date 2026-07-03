@@ -452,7 +452,7 @@ tasks:
 
   - id: t13
     title: inner-loop.js remediation round — one bounded pass, sheet reuse
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - a remediation-pending verdict makes the script spawn a build agent for the named remediation_task and then re-validate passing the pass-1 expectation sheet — the deriver is not respawned, asserted on the spawn sequence
@@ -463,6 +463,17 @@ tasks:
     footprint: [workflows/inner-loop.js, test/inner-loop-remediation.test.js]
     size: s
     depends_on: [t12]
+    report:
+      result: built
+      footprint_actual:
+        - test/inner-loop-remediation.test.js
+        - workflows/inner-loop.js
+      diff_actual:
+        files: 2
+        insertions: 175
+        deletions: 27
+      deviations: []
+      summary: "workflows/inner-loop.js gains the one bounded remediation round layered over t10-t12: runFeature's derive+validate tail became runValidationCycle(featureId) — derive once, validate against the sheet, and only on remediation-pending call runRemediation(featureId, remediation_task, sheet), which builds the named round-marker task (reusing runBuild's single-task handling) and re-validates against the same sheet object, never respawning the deriver. A second remediation-pending is a protocol violation converting to a stalled signal, never a third round. A feature-kind block on the round's own build parks inside runRemediation. The new branching pushed runFeature to complexity 17 (budget 10), so the legs factored into runPlan, runValidationCycle, and an isSignal(r) predicate; runFeature now sits at 7 — a refactor the new code directly demanded, suite green throughout. Three tests, each watched genuinely red first: one-derive spawn sequence with the identical sheet JSON riding both validate prompts; round-2 perfect completes while a round-2 deviation parks in the same BoundaryResult; a second remediation-pending stalls with the protocol-violation note and spawns nothing further. Full suite (104 tests), eslint, npm run check pass; the file sits at 247 lines. One commit (562d06c) on loop/inner-loop-workflow, rebased onto main's tip."
 
   - id: t14
     title: /the-loop launch leg — args assembly, clean-tree gate, agent resolution, relay
