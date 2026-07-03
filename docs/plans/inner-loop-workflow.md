@@ -477,7 +477,7 @@ tasks:
 
   - id: t14
     title: /the-loop launch leg — args assembly, clean-tree gate, agent resolution, relay
-    status: pending
+    status: built
     covers: [1, 3]
     acceptance:
       - the advance-frontier route instructs the session to verify a clean tree at the integration-target checkout before launching (dirty tree is surfaced, unattributed, and nothing runs), confirm the scope handshake, and assemble the pinned args snapshot mechanically — target from the design binding, index via spine index, per-feature slices via spine resolve, task summaries via spine plan parse for features with plans, and the runtime-probe binding excerpt
@@ -489,4 +489,15 @@ tasks:
     footprint: [commands/the-loop.md]
     size: s
     depends_on: [t10]
+    report:
+      result: built
+      footprint_actual:
+        - commands/the-loop.md
+      diff_actual:
+        files: 1
+        insertions: 50
+        deletions: 4
+      deviations:
+        - No test file — commands/*.md are prose surfaces with no test harness (same convention as agents/*.md); verification was a criterion-by-criterion re-read plus a full-suite regression run.
+      summary: "commands/the-loop.md gained '### The launch leg', entered by both the advance-frontier proposal and the explicit plan/build/validate jumps — one shared procedure. Six steps: clean-tree gate (checkout target, git status; dirty stops everything, unattributed, nothing launches); scope confirmation (the handshake — the human's accept-or-override becomes scope); mechanical args assembly one command per field (target from the design binding, index via spine index, slices via spine resolve per scoped feature, plans via spine plan parse reduced to task summaries for planned/building features, probe = the recorded runtime-probe binding excerpt); plugin-agent resolution check with mkdir+symlink fallback into .claude/agents/; Workflow launch via scriptPath + args; BoundaryResult relay stating completed, parked (menus verbatim), stalled, and halted. Frontmatter allowed-tools gained Bash(git *), Bash(ln *), Bash(mkdir *), and Workflow. Grepped for ADR refs (none); re-read end-to-end for self-containment. Full suite (104 tests), spine check, eslint pass; one commit (bf141fd) on loop/inner-loop-workflow, rebased onto main's tip."
 ```
