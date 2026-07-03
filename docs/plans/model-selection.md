@@ -385,4 +385,15 @@ tasks:
       deviations:
         - the file already carried two pre-existing, legitimate uses of the literal string "ADR" (instructing the design skill to offer recording a target-project decision as an ADR in docs/adr/, and to commit any ADRs at finalize) that predate this task and are unrelated to model resolution; criterion 2 demands a whole-file grep for "ADR" yield no hits, so both were reworded to "Architecture Decision Record"/"decision record(s)" (meaning preserved, docs/adr/ path untouched) rather than left as false positives — a small excursion beyond the model-resolution wiring, done in-footprint since the file itself is the task's whole lease
       summary: "skills/design/SKILL.md now teaches both session-side spawns the model-binding table governs. The 'Design it twice' bullet (step 2) instructs resolving the alternates' model via `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" models`, reading the `design.alternative` role's entry (its bound model, or the session inherit when that value is literally \"session\" or the role is absent from the printed table), then sketching the parallel alternates on that model with each spawn's title prefixed `[<resolved-model>] `; the same parenthetical notes that session-side spawns take a model only, a bound effort does not apply there. Step 5's Reader test bullet mirrors the pattern: resolve `design.reader`'s entry the same way, then hand the draft to a fresh subagent on that model with its title similarly prefixed. The file stays self-contained: `grep -n \"ADR\" skills/design/SKILL.md` yields no hits (exit 1), verified after the edit — the two pre-existing legitimate ADR mentions (offering to record a target-project Architecture Decision Record, and committing any decision records at finalize) were reworded to avoid the literal string while preserving meaning and the docs/adr/ path reference. No test suite covers skills/*.md (confirmed by grep across test/ for skills/ references, zero hits) and the task's own footprint carries no test file, so verification is the two criteria checked directly against the edited text: the model-resolution/spawn-labeling instructions for both roles, and the ADR grep. `npm run check` (spine check + eslint over the whole tree) is green."
+  - id: t9
+    title: Fold-back fix — the spine plan remediate test asserts pass semantics tolerant of warn lines
+    status: pending
+    covers: [4]
+    acceptance:
+      - test/spine-cli.test.js's "spine plan remediate" test no longer requires OK to open the output — it asserts plan check passes (exit 0, output ending in the OK line) while tolerating leading warn lines, pinning criterion 4's grandfather posture (an untiered task warns, never errors) as observed behavior
+      - npm test is fully green on the feature branch
+    footprint: [test/spine-cli.test.js]
+    size: xs
+    tier: rote
+    depends_on: [t3, t4]
 ```
