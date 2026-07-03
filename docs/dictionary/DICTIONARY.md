@@ -235,7 +235,8 @@ Checks a built [[slice]] against the design via an [[independent validator]]. [[
 
 ### Adjust
 **aliases:** — · **status:** active
-The human re-entry phase. Reconciles what building taught, presents the options at an [[escalation]], and governs [[drift]] management.
+The human re-entry phase, realized as the **adjust skill** (two routes in: the run-boundary relay hands off when something parked, and [[/the-loop]]'s resolve-parked proposal routes here at re-entry). Walks the parked docket one [[escalation]] at a time in graph order, presents each kind-stamped menu recommended-first, orchestrates pre-steps, and folds the chosen [[resolution kind]] back mechanically — `spine escalation resolve` is always the last act, one booking commit per resolution, ref deletions after it. Reconciles what building taught and governs [[drift]] management.
+*See:* ADR-0032
 
 ### Ship
 **aliases:** — · **status:** active
@@ -254,7 +255,7 @@ One stateless pass of the [[orchestrator]] over the [[feature graph]]: read the 
 
 ### booking
 **aliases:** self-booking · **status:** active
-The durable, target-side commit(s) a phase agent makes recording its own phase's ending — the rule being: **the agent that ends a feature's run-participation books that ending.** The plan agent books the plan artifact + `designed→planned` (or its bounce-park); each build agent books its own completion-report fold-in (first task also `planned→building`); a blocked build agent books the park; the [[independent validator]] books validate-or-park post-verdict (validations append, [[probe pack]] pin, graph flip, Ledger re-render, [[escalation record]] on deviation). Bookings use the mechanical toolkit (`spine plan report` / `set-status` / `ledger render` / `plan remediate`) — no agent hand-edits graph YAML or Ledger prose. Any booking that flips graph status re-renders the Ledger in the same commit.
+The durable, target-side commit(s) a phase agent makes recording its own phase's ending — the rule being: **the agent that ends a feature's run-participation books that ending.** The plan agent books the plan artifact + `designed→planned` (or its bounce-park); each build agent books its own completion-report fold-in (first task also `planned→building`); a blocked build agent books the park; the [[independent validator]] books validate-or-park post-verdict (validations append, [[probe pack]] pin, graph flip, Ledger re-render, [[escalation record]] on deviation). Bookings use the mechanical toolkit (`spine plan report` / `set-status` / `ledger render` / `plan remediate`, joined at Adjust by `escalation resolve` / `plan fix` / `note` / `validate waive` / `ledger append-run` — ADR-0032) — no agent hand-edits graph YAML or Ledger prose. Any booking that flips graph status re-renders the Ledger in the same commit.
 *Not to be confused with:* the phase's *work product* (a diff, a verdict) — booking is the bookkeeping that records it on the [[integration target]].
 *See:* ADR-0029
 
@@ -269,12 +270,17 @@ The guided new-project setup experience — the cold-start branch of [[/the-loop
 
 ### escalation
 **aliases:** surface · **status:** active
-The moment the loop pulls the human back for decisioning — fired by a [[deviation]], a gate, or a [[circuit breaker]] trip. Always carries a *recommendation menu*: the options the human chooses among — fix-in-place, re-plan the slice, amend the design, or do specific [[research]]. Under [[park-and-drain]] an escalation is *raised* when its trigger fires (the slice is parked) but *surfaced* batched at the next [[run boundary]].
+The moment the loop pulls the human back for decisioning — fired by a [[deviation]], a gate, or a [[circuit breaker]] trip. Always carries a *recommendation menu*: kind-stamped options (`{resolution, option}`, recommended first) authored by the parking agent, each naming the [[resolution kind]] the human would be choosing; pre-steps like [[research]] or a design amendment attach content without changing the kind, and the human may always go off-menu. Under [[park-and-drain]] an escalation is *raised* when its trigger fires (the slice is parked) but *surfaced* batched at the next [[run boundary]].
 
 ### waiver
 **aliases:** — · **status:** active
 A typed human resolution on a contract-breaking [[finding]]: "this obligation-violation doesn't matter for this feature; merge anyway." Shape: the obligation cited (never file:line — obligations are stable, lines aren't), reason, approver. No expiry — a waiver is permanent for its feature until a human deletes it (git archives everything). The verdict stays `deviation` — a waiver is a **resolution, never a verdict value** — and the fold-back squash-merges on human authority with the waiver recorded. Recorded mechanically (`spine validate waive`, appending into the feature's latest validations entry); a waiver may also accompany a `fix-in-place` resolution as a pre-step, so re-validation doesn't re-park on the waived findings. Suppresses re-flagging of that obligation-violation on re-validations of the same feature only; never generalizes. [[Ship]]'s evidence package lists all waivers on the frontier.
 *Not to be confused with:* [[deviation]] — the machine-observed state a waiver resolves, which it never erases.
+
+### resolution kind
+**aliases:** — · **status:** active
+The closed set of typed human decisions resolving a parked [[escalation]], each naming where the [[feature]] re-enters the engine: `retry` (same phase — on a validate park, the `retried` mark makes the re-judgment survive patch-id dedup), `fix-in-place` (Build, via an appended [[fix task]] — or a feature-node note on a plan park), `re-plan` (Plan; plan artifact deleted, branch discarded), `waive` (terminal; squash-merge on human authority — validate parks only), `defer` (stays parked). Pre-steps attach content without changing the kind: [[research]], a design amendment, a config rebind, waiver recording. Fold-back is mechanical — `spine escalation resolve` is always the last act, deleting the [[escalation record]]; its commit message is the durable trace.
+*See:* ADR-0032
 
 ### scope handshake
 **aliases:** — · **status:** active
@@ -313,6 +319,12 @@ The atomic unit of agent execution: fits within ≤50% of a 256k context window,
 **aliases:** — · **status:** active
 The Plan → Build handoff shape carried per [[task]] in the [[plan artifact]]: id, title, status, `covers` (which feature acceptance criteria it claims), its own acceptance criteria (one or more, each observable and binary — written for a build agent weaker than the planner), `injects` (contract slices the build agent gets), expected file `footprint`, `size` (xs|s|m — m is the comfort ceiling, justified in the narrative), `tier` (the [[decision-density tier]]), and `depends_on` ordering (overlapping footprints must be chained). Carries no implementation code; Build folds a [[completion report]] into it.
 *See:* ADR-0025 / ADR-0030
+
+### fix task
+**aliases:** — · **status:** active
+A human-dictated [[task]] appended to a live [[plan artifact]] by `spine plan fix` at a `fix-in-place` fold-back (`fix-1, fix-2, …`, flagged `fix: true`): covers no feature criterion, exempt from plan check's coverage rules both ways, depends on every existing task; on a build park the blocked task resets to pending, chained behind it.
+*Not to be confused with:* the remediation task (validator-appended, standards findings, once per feature) — a fix task is human-ordered, unbounded in count, and its flag is distinct so a fix never burns the feature's one remediation round.
+*See:* ADR-0032
 
 ### completion report
 **aliases:** — · **status:** active
@@ -380,7 +392,7 @@ Accumulated decomposition and escalation signal (Markdown + frontmatter + index,
 
 ### escalation record
 **aliases:** — · **status:** active
-The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, recommendation menu, context. Born when a [[feature]] parks — written by the parking agent's [[booking]] (the plan agent on bounce, the blocked build agent, the validator on deviation); survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved**. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
+The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, kind-stamped recommendation menu (`{resolution, option}`, recommended first), context. Born when a [[feature]] parks — written by the parking agent's [[booking]] (the plan agent on bounce, the blocked build agent, the validator on deviation); survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved** — by `spine escalation resolve`, whose commit message (`<feature-id>: escalation resolved — <kind>`) is the durable trace. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
 *Not to be confused with:* [[escalation]] (the decision-moment event) — this is the transient working file that informs it.
 *See:* ADR-0009
 

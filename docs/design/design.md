@@ -23,7 +23,7 @@ The workflow script is a **pure-orchestration sandbox** — no filesystem, shell
 - **One engine, many intakes:** `Frame → Design → ( Plan → Build → Validate → Adjust )* → Ship`, with Operate/Evolve turning deployed apps back into intakes.
 - **Perfection bar:** the inner loop is autonomous *only on the happy path*; any deviation surfaces.
 - **The feature graph is the durable state machine; every run is a stateless pass over it.** A run reads the graph, does the dependency-ready work, commits, and returns a `BoundaryResult`. **park-and-drain:** a deviation parks its slice and the run keeps draining the independent frontier; escalations batch and surface at the **run boundary**. Bookkeeping is **self-booked** (ADR-0029): the agent that ends a feature's run-participation books that ending on the target — per-task fold-ins, the validator's post-verdict booking — through the mechanical booking toolkit; feature-shaped failures park, run-shaped ones (environment, budget) **halt** the run.
-- **Surfacing / re-entry:** run returns → session surfaces parked escalations (with recommendation menus — results are already booked in-run, ADR-0029) → human decides → session folds decisions into the graph → a fresh stateless run continues. The **resumable unit is the feature**; `runId`/`resume` is reserved for crash-recovery of an interrupted run.
+- **Surfacing / re-entry:** run returns → session surfaces parked escalations (with recommendation menus — results are already booked in-run, ADR-0029) → human decides → session folds decisions into the graph → a fresh stateless run continues. Decisions are **typed resolution kinds** — `retry | fix-in-place | re-plan | waive | defer` — naming where the feature re-enters the engine; pre-steps (research, a design amendment, a config rebind, waiver recording) attach content without changing the kind, and fold-back is mechanical through the **adjust skill** (`spine escalation resolve`, ADR-0032). The **resumable unit is the feature**; `runId`/`resume` is reserved for crash-recovery of an interrupted run.
 - **Bounds, not a breaker:** an autonomous run is bounded by the **scope envelope** + frontier-exhaustion + the **sizing gate** + the harness's hard agent cap. No circuit-breaker subsystem; a tighter cost cap is an opt-in ad-hoc budget.
 
 ### The artifact spine (ADR-0003–0007)
@@ -42,7 +42,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 - **Plan** — the **sizing gate**: over-decompose until each task is comfortably small; irreducible features bounce up to re-slice, carrying a **reslice brief**. Gateless by design (ADR-0025): no human plan approval — the compensating machinery is mechanical (`spine plan check`: criterion coverage, overlap ordering, sizing, edges) plus a **fresh-context audit** when complexity/contract-surface/blast-radius warrant. The decomposition persists as a per-feature **plan artifact** (`docs/plans/<feature-id>.md`) of task contracts; Build and Validate consume them, and Build's completion reports fold back in.
 - **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate. Work lands one-commit-per-task on a per-feature branch (`loop/<feature-id>`) cut from the **integration target** (a bound ref, default `main`, set at Design; ADR-0026). Builders build under the **craft baseline**: the build constitution always, plus the task's `standards:` selection (ADR-0027).
 - **Validate** — the **independent validator** under the ADR-0028 protocol. A cheap **blind deriver** first writes the **expectation sheet** from the contract slice alone (its inputs are its blindfold). The validator then readies the feature branch (rebase + task-branch fold-in; **trivial conflicts** union-resolve and are evidence-recorded, **semantic conflicts** park) and runs four legs — **integrity forensics** (the `spine validate scan` tripwire scanner + justified triage), two-axis **conformance** (ADR-0027), **acceptance** on the project's harness, and **runtime observation** (full probe-pack replay + the new exercise + the **delta proof**: red on merge-base, green on merged tree). Per-leg verdicts (PASS/FAIL/BLOCKED/SKIP, fail-closed) compose mechanically — perfect iff readiness clean and every leg PASS or sanctioned-SKIP; findings carry two severities by the **citation test**; a confirmed forensics hit short-circuits. Only a perfect verdict squash-merges into the integration target (ADR-0026); a **waiver** is a typed human resolution, never a verdict value. Verdicts persist append-only at `docs/validations/` (patch-id dedup); validated exercises pin into the **probe pack** (`docs/probes/`), which Ship replays at full scope.
-- **Adjust** — the recommendation menu; drift via each feature's `design_version`; impact-scoped re-validation.
+- **Adjust** — the adjust skill walks the parked docket in graph order: kind-stamped recommendation menus presented recommended-first, typed resolutions folded back mechanically (ADR-0032); drift via each feature's `design_version`; impact-scoped re-validation.
 - **Ship** — human-gated; evidence package (full-system integration via the runtime probe + a baseline security-review port + changelog); **health-gated, delegated rollback**.
 - **Operate** — **on-demand** ops/debug tooling, plus an **observability solution** that apprises the human; never a scheduled agent.
 - **Evolve** — the engine on a bug-shaped intake; same gates.
@@ -65,7 +65,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
-design_version: 5
+design_version: 6
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -201,7 +201,19 @@ features:
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
     status: designed
     depends_on: [inner-loop-workflow]
-    acceptance: a parked escalation surfaces with a menu; a decision folds into the graph; the next run resumes
+    interfaces: [escalation-record]
+    notes:
+      - designed 2026-07-03 by grilling (ADR-0032) — the adjust skill (skills/adjust/) realizes the Adjust phase; two routes in — the-loop.md's run-boundary relay hands off when parked is non-empty, and the resolve-parked proposal routes here at re-entry; spine owns every artifact mutation
+      - typed resolution kinds name re-entry points — retry | fix-in-place | re-plan | waive | defer; pre-steps attach content without changing the kind (research, config rebind, design amendment via the design skill or spine note, waiver recording); amend-design collapses into re-plan-with-pre-step, drop = a design amendment removing the node; waive valid on validate parks only, every other kind valid everywhere; menu options kind-stamped at authoring ({resolution, option}, recommended first — parsers stay lenient to pre-amendment bare strings); the human may always go off-menu
+      - the resolution toolkit (ADR-0029's booking toolkit grows) — spine escalation resolve <id> <kind> is the shared spine (validate kind against record phase, flip status, kind-specific extras, delete the record, re-render Ledger), always the last mutation, --phase the damaged-park escape hatch; spine plan fix appends fix-N (the fix flag, never the remediation round-marker; covers [], plan-check-exempt both ways, depends_on all prior; on a build park it also resets the blocked task pending, chained behind the fix); spine note <id> <text> appends feature-node notes — the plan-park fix channel; spine validate waive appends { obligation, reason, approver } into the latest validations entry (waivers never expire); spine ledger append-run writes one deterministic newest-first bullet under Run history, invoked by the session at every run boundary in its own booking commit
+      - retry vs patch-id dedup — resolve's retry-on-validate recipe stamps the latest validations entry with a retried mark (date — reason); ADR-0028's dedup rule amends to judge the latest entry for the patch_id (unmarked → dedup-skip; marked → all four legs run fresh, the new entry consuming the mark by position); the latent deviation-crash gap closes — dedup-skip on an unmarked deviation entry with the graph short of parked completes the missing park booking reconstruction-style
+      - waive mechanics — waivers are recordings, waive is the kind only when every contract-breaking finding is waived (mixed = fix-in-place with waivers as pre-step); the skill squash-merges on human authority mirroring the validator's perfect-path (message suffixed — waived), probe-pack pin iff the runtime leg PASSed; agents/validate.md gains the consuming half — a finding matching a recorded waiver (same feature, any prior entry) is recorded as waived, never counted toward the verdict
+      - choreography + commit discipline — docket first, then one escalation at a time in graph order, recommended-answer style; stalled/halted relayed, never decisioned; clean-tree gate at adjust entry (tell, never reset); one booking commit per resolution (its message — feature-id, escalation resolved, the kind — is the durable trace; waive adds the merge commit first, its crash window healing by merge-message probe); ref deletions last — re-plan deletes the plan artifact in the resolve commit and plain-deletes the branch after booking (the human's discard is the authority; the recoverability principle scopes to file deletions); port-gated one-line push (notification-channel, harness-native default) when parked/halted is non-empty; landing this feature retires CLAUDE.md's hand-maintenance rule
+    acceptance:
+      - a parked escalation surfaces with its kind-stamped menu at the run boundary and again at re-entry via /the-loop
+      - each resolution kind folds back mechanically — status flipped, record deleted, Ledger re-rendered in one booking commit — and the next stateless run resumes the feature where the kind re-enters
+      - a retry on a validate park re-runs all four legs despite patch-id dedup
+      - spine ledger append-run records every run boundary as one newest-first Run-history line
 
   - id: ship
     title: Ship (human-gated, evidence package, health-gated delegated rollback)
@@ -334,6 +346,9 @@ contracts:
                                                    #   fully captured by the task's tests + lint
                   depends_on: [task-id],           # ordering; overlapping footprints chained
                   report: completion-report }] }   # folded in by Build
+      # marker tasks — remediation (remediation: true, ADR-0029) and fix-N (fix: true,
+      # ADR-0032) — are appended mechanically (spine plan remediate / fix), cover no
+      # criterion, and are exempt from plan check's coverage rules both ways
 
   - id: completion-report
     body: |
@@ -365,7 +380,11 @@ contracts:
         remediation_task: task-id?,  # the appended round-marker, when result is remediation-pending
         exercise: [step],            # executed probe steps + captured observations — the pack-pin source
         spec_ambiguities: [note],    # blind-derivation divergences, folded back to Design
-        waivers: [{ obligation, reason, approver, expiry? }] }  # human resolutions — never a verdict value
+        retried?: note,              # "<date> — <reason>", stamped by adjust's retry resolution
+                                     #   (ADR-0032): a marked latest entry re-judges despite
+                                     #   patch-id dedup; the fresh entry consumes the mark
+        waivers: [{ obligation, reason, approver }] }  # human resolutions — never a verdict
+                                     #   value; no expiry — permanent for the feature (ADR-0032)
 
   - id: model-binding
     body: |
@@ -381,10 +400,15 @@ contracts:
   - id: escalation-record
     body: |
       # docs/escalations/<feature-id>.md — narrative + one structured block (ADR-0029);
-      # written by the parking agent's booking, deleted at resolution (ADR-0009)
+      # written by the parking agent's booking, deleted at resolution by
+      # spine escalation resolve (ADR-0009/0032)
       { feature, phase: plan|build|validate, kind: feature|environment,
         deviation,                      # summary; full detail in the narrative
-        menu: [option],                 # authored by the parking agent
+        menu: [{ resolution, option }], # authored by the parking agent, recommended first;
+                                        #   resolution: retry|fix-in-place|re-plan|waive|defer
+                                        #   (the resolution kind — named `resolution` because
+                                        #   `kind` above means feature|environment; ADR-0032);
+                                        #   parsers lenient to pre-amendment bare strings
         branch }                        # the loop/<feature-id> ref, when one exists
 
   - id: runtime-probe
