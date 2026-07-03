@@ -373,7 +373,7 @@ tasks:
 
   - id: t10
     title: inner-loop.js core — args, frontier, happy-path spawn sequence
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - workflows/inner-loop.js exists with an export const meta line, consumes the pinned args snapshot, and computes the runnable frontier per the pinned semantics from args.index plus in-memory status updates
@@ -386,6 +386,19 @@ tasks:
     footprint: [workflows/inner-loop.js, test/inner-loop-happy.test.js, eslint.config.js]
     size: m
     depends_on: [t9]
+    report:
+      result: built
+      footprint_actual:
+        - eslint.config.js
+        - test/inner-loop-happy.test.js
+        - workflows/inner-loop.js
+      diff_actual:
+        files: 3
+        insertions: 272
+        deletions: 0
+      deviations:
+        - "The plan narrative names the eslint mechanism as 'preprocesses the meta export before parsing with globalReturn on'. Checked directly against the installed espree: no sourceType/parserOptions combination parses a file needing both a top-level await and a top-level return together. Used an async-IIFE-wrapping processor instead (preprocess wraps the body, neutralizing only the export const meta line; postprocess un-shifts line numbers), satisfying the criterion's functional requirement without the specific named knob."
+      summary: "workflows/inner-loop.js exists with export const meta and consumes the pinned args snapshot plus the agent/log/budget harness globals — no imports, no filesystem. Frontier: statusById/nodeById seed from args.index.features; isRunnable() checks the feature's status against designed|planned|building and every depends_on edge against validated|shipped; statusById updates in memory on a perfect verdict so a later in-scope dependent sees an in-run completion. runFeature() runs Plan (only from designed) then runBuild() — topologically orders task summaries by depends_on, filters to non-built, spawns one build agent per remaining task — then always spawns Derive (effort low, prompt carrying args.slices[id] + args.probe verbatim) before Validate (prompt carrying the derive return as the expectation sheet). Every spawn passes agentType, label, phase: featureId, and a schema encoding the pinned result enum and minimum required keys. planned/building features skip Plan and resume from args.plans at the first non-built task; a non-runnable in-scope feature is skipped via one log() line. The BoundaryResult is the literal top-level return, echoed as the final log() line. Three tests, each watched red then green: two-feature happy path (frontier, phase sequence, depends_on-ordered builds despite an out-of-order plan return, result+echo), building-status resume with Plan skipped, unsatisfied-dependency skip with zero spawns. eslint.config.js gained the workflows/ processor block with in-comment justifications; the file's real max-lines budget untouched (108 lines). Full suite (92 tests) and npm run check pass; one commit (91e7f46) on loop/inner-loop-workflow, rebased onto main's tip."
 
   - id: t11
     title: inner-loop.js park-and-drain — typed feature parks, frontier draining
