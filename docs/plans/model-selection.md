@@ -203,7 +203,7 @@ tasks:
       summary: "docs/research/2026-07-03-workflow-spawn-opts-precedence.md exists, stating the precedence question (workflow agent() opts vs agent-definition frontmatter model), the tension in ADR-0030 that motivates it, and seven channels attempted with exact commands: this repo's own ADR/design record, the workflow harness's own source and test shim, a full-history grep confirming no plugin agent file has ever carried model frontmatter, the local Claude Code changelog cache, a live fetch of code.claude.com/docs (workflows, agent-sdk/typescript, sub-agents, llms-full.txt) turning up a generic (not workflow-agent()-scoped) subagent model-resolution order and confirming the docs never publish a field reference for the in-script agent() opts object, this Build agent's own tools: frontmatter (no Workflow/Agent tool, so it cannot itself spawn the conflicting pair the question needs), and live introspection of this very task's own workflow spawn transcript (no model opt sent, no frontmatter present, resolved to the launching session's model). The conclusion states plainly that no channel available in this environment can produce a workflow-agent()-specific empirical observation, names the concrete structural reason (the Build agent tool boundary), and cites the doc language found as a signal only, never as the answer. The standing-consequence section states both pinned facts: spawn opts are passed regardless of the unresolved precedence (the plumbing's contribution is supplying the opt, not adjudicating a conflict), and grep -n \"model\" agents/*.md returns no model: frontmatter anywhere today (only two unrelated prose hits in agents/plan.md), so the gap is real but currently inert."
   - id: t2
     title: Model-binding resolver core (src/models.js) + shipped default table (config/model-bindings.json)
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - config/model-bindings.json exists carrying exactly the ten pinned default rows (plan session · plan.audit opus · build.rote sonnet · build.standard sonnet · build.complex opus · drive sonnet · derive opus with effort low · validate sonnet · design.reader sonnet · design.alternative opus), each entry shaped per the model-binding contract
@@ -216,6 +216,19 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - config/model-bindings.json
+        - src/index.js
+        - src/models.js
+        - test/models.test.js
+      diff_actual:
+        files: 4
+        insertions: 148
+        deletions: 0
+      deviations: []
+      summary: "config/model-bindings.json now ships exactly the ten pinned default rows (plan session, plan.audit opus, build.rote sonnet, build.standard sonnet, build.complex opus, drive sonnet, derive opus/effort low, validate sonnet, design.reader sonnet, design.alternative opus), each shaped { model, effort? }. src/models.js exports EFFORTS (the five-value effort enum), resolveModels({ defaults, project, local }) which merges the three layers in that order with whole-entry replacement per role and stamps provenance default|project|local on every resolved entry, and bindingFor(table, role) which returns the bound entry or the session fallback ({ model: 'session', provenance: 'fallback' }) for an unbound role; all three are re-exported from src/index.js. resolveModels throws (TypeError for the missing/non-string-model case, Error for a non-object entry or an out-of-enum effort) naming the offending role and layer. test/models.test.js proves the shipped default table's exact shape, the three-layer merge with per-layer provenance (including a project row replacing a default wholesale and a local row beating both), bindingFor's bound/unbound behavior, a bound via field riding the merge into the resolved entry untouched, and each malformed-entry rejection (non-object, missing model, non-string model, out-of-enum effort) — 5 tests, all green under node --test. src/models.js imports nothing from node:fs, node:process, or any clock source; every test in the file passes in-memory JS objects only, never a file path, to resolveModels/bindingFor, so purity is exercised by construction rather than asserted separately. npm run check (spine plan/design check + eslint over the whole tree) is green."
   - id: t3
     title: spine models — the CLI resolver command over settings layers
     status: pending
