@@ -14,7 +14,7 @@ const TEXT = readFileSync('docs/design/design.md', 'utf8');
 test('the real design.md parses to the full feature graph', () => {
   const m = parse(TEXT);
   assert.equal(m.designVersion, 4); // bumped by ADR-0029 (boundary-result + validator-verdict amended)
-  assert.equal(m.features.length, 22); // +ledger-title-preservation (2026-07-03 intake)
+  assert.equal(m.features.length, 23); // +ledger-title-preservation, +model-selection (2026-07-03 intakes)
   assert.ok(m.contracts.length >= 6);
 });
 

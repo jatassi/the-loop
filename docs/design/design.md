@@ -152,6 +152,19 @@ features:
       - renderLedger preserves all priorText content preceding the first "## " heading byte-identically, and seeds the standard title line when priorText has none
       - after a spine ledger render on this repo, docs/ledger/ledger.md carries its title line again
 
+  - id: model-selection
+    title: Model selection framework — per-role model/effort bindings at every spawn surface
+    status: designed
+    depends_on: [inner-loop-workflow]
+    notes:
+      - intake 2026-07-03, from the first self-hosted runs — every workflow spawn inherited the session model (Fable); the "everything else inherits session model/effort" v1 posture becomes the visible fallback, not the policy, once this is built
+      - shape — a per-role binding table (role → model + effort; roles at least plan, build, derive, validate, plus surface-declared roles like plan's fresh-context audit and design's reader test), defaults shipped in the plugin, overridable per project in harness-native config; the workflow script has no filesystem, so the launch leg assembles the resolved bindings into the args snapshot and every agent() spawn passes model/effort from them; agent-definition model frontmatter is an available mechanism, spawn-time opts override it
+      - observed dogfood tiers to seed defaults from (2026-07-03 hand-runs) — build and validate on sonnet, derive on opus at low effort, plan on the session model; the shipped default table is this feature's design detail — capture the observations, don't guess the table
+    acceptance:
+      - a binding table resolves every spawn role to a model and effort, shipped with plugin defaults and overridable per project in harness-native config
+      - every workflow spawn passes the resolved model and effort from the bindings riding args
+      - every agent or skill surface that spawns a subagent selects from the same bindings, and an unbound role's session-model fallback is visible, never silent
+
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
     status: designed
