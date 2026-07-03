@@ -238,7 +238,7 @@ tasks:
 
   - id: t5
     title: CLI wiring — spine set-status, spine ledger render, spine plan remediate
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - spine set-status <feature-id> <status> rewrites docs/design/design.md with only that feature's status changed (byte-identical elsewhere), prints the updated node as JSON, and exits 0; an unknown id or bad status exits 1 without writing
@@ -250,6 +250,17 @@ tasks:
     footprint: [bin/spine.js, test/spine-cli.test.js]
     size: s
     depends_on: [t1, t2, t4]
+    report:
+      result: built
+      footprint_actual:
+        - bin/spine.js
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 2
+        insertions: 273
+        deletions: 6
+      deviations: []
+      summary: "bin/spine.js gains the three booking-toolkit commands over the src/ logic built in t1/t2/t4: spine set-status (writes design.md only on success, prints the updated node, exits 1 via the existing top-level catch before any write on refusal), spine ledger render (readEscalations() helper guards an absent docs/escalations/ to []; idempotent via renderLedger's determinism), and spine plan remediate (findings from file, '-', or stdin mirroring plan report; refuses a second round-marker or footprint-less findings with nothing written). Usage string and header name all three; effects stay at the bin edge, mutation logic in src/ untouched. Four criteria, one test each, each spawning the real CLI as a subprocess against a throwaway fixture dir; all four watched genuinely red by stashing the bin diff against the old CLI, then green restored. Full suite (89 tests) and eslint pass; one commit (5482238) on loop/inner-loop-workflow, rebased onto main's tip."
 
   - id: t6
     title: agents/plan.md — self-booking, typed blocks, task-summary return
