@@ -112,7 +112,7 @@ test('spine ledger render reads design.md + docs/escalations/*.md (absent dir = 
 
     spine(['ledger', 'render'], { cwd: root }); // no docs/escalations/ dir yet
     const noEscalations = readFileSync(ledgerPath, 'utf8');
-    assert.match(noEscalations, /^## What this is\nFixture ledger for the CLI wiring test\./);
+    assert.match(noEscalations, /^# Ledger — projected from design\.md \(feature graph\)\n\n## What this is\nFixture ledger for the CLI wiring test\./);
     assert.match(noEscalations, /## Where we are\nTotal: 2 \(design_version 1\)/);
     assert.match(noEscalations, /Nothing parked — no open escalations\./);
     assert.match(noEscalations, /## Run history\n2026-01-01: first hand-render\.\n$/);

@@ -25,7 +25,19 @@ export function renderLedger(model, escalations, priorText) {
     whatsNext(model),
     section(priorText, '## Run history'),
   ];
-  return `${sections.join('\n\n')}\n`;
+  return `${preamble(priorText)}${sections.join('\n\n')}\n`;
+}
+
+const SEEDED_TITLE = '# Ledger — projected from design.md (feature graph)';
+
+// Everything in priorText before its first "## " heading — the human-owned title
+// region — carried byte-identically. A priorText with no "## " heading at all is
+// all preamble; one with nothing before its first heading (fresh or empty) seeds
+// the standard title line instead.
+function preamble(priorText) {
+  const first = /^## /m.exec(priorText);
+  const kept = first ? priorText.slice(0, first.index) : priorText;
+  return kept === '' ? `${SEEDED_TITLE}\n\n` : kept;
 }
 
 // A preserved section's prior text verbatim: the heading line through the line before
