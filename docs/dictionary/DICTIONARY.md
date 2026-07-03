@@ -96,8 +96,8 @@ The per-repo craft layer: `docs/standards/<topic>.md` (one concept per file, lea
 
 ### remediation brief
 **aliases:** — · **status:** active
-The [[independent validator]]'s batched standards-axis findings (file:line, named smell or standard, suggested direction) — the input to the **one** refactor task the orchestrator appends to the feature's [[plan artifact]] (flags-not-fixes: a fresh build agent executes it). Hard-bounded to a single round per feature; findings that survive re-validation are recorded advisory or park per the deviation-severity axis. The sibling of the [[sizing gate]]'s reslice brief — a structured message from one phase back to another.
-*See:* ADR-0027
+The [[independent validator]]'s batched standards-axis findings (file:line, named smell or standard, suggested direction) — the input to the **one** refactor task the validator's [[booking]] appends to the feature's [[plan artifact]] via the mechanical `spine plan remediate` (flags-not-fixes: the command shapes the task, a fresh build agent executes it). The appended task doubles as the durable round-marker: its presence in the plan means the round is burned. Hard-bounded to a single round per feature, and triggered only when standards findings are the *sole* blocker between the verdict and perfect — composed mechanically as the verdict value `remediation-pending` (merge withheld; never `perfect`, so ADR-0026's only-validated-work-merges invariant holds); findings that survive re-validation are recorded advisory or park per the deviation-severity axis. The sibling of the [[sizing gate]]'s reslice brief — a structured message from one phase back to another.
+*See:* ADR-0027 / ADR-0029
 
 ### integration target
 **aliases:** — · **status:** active
@@ -106,7 +106,7 @@ The bound git ref that validated [[feature]]s squash-merge into — where "done"
 
 ### blind derivation
 **aliases:** — · **status:** active
-The independence protocol at the head of [[Validate]]: a separate **blind deriver** agent receives only the feature-level contract slice (feature node, acceptance criteria, interface contracts) plus the [[runtime probe]] binding — its inputs are its blindfold: no diff, no builder tests, no completion reports, and no plan artifact (task contracts carry footprints, the implementation's file layout; task-level checking lives in legs 2 and 3) — and writes the [[expectation sheet]] before any builder output is opened. **Control-group posture:** the deriver's surface is procedural only — it is never told it is blind, what it is blind to, or that anything judges against its sheet; the protocol lives in the orchestrator and the validator, never in the deriver's prompt. Interpretation divergence discovered downstream routes as a **spec-ambiguity** advisory folded back to the [[Design artifact]], not just the verdict record.
+The independence protocol at the head of [[Validate]]: a separate **blind deriver** agent receives only the feature-level contract slice (feature node, acceptance criteria, interface contracts) plus the [[runtime probe]] binding — its inputs are its blindfold: no diff, no builder tests, no completion reports, and no plan artifact (task contracts carry footprints, the implementation's file layout; task-level checking lives in legs 2 and 3) — and writes the [[expectation sheet]] before any builder output is opened. The slice arrives by injection from the run's `args` snapshot (resolved by the session at launch) — the deriver stays Read-only and prompt-fed, holding no way to fetch what the blindfold excludes. **Control-group posture:** the deriver's surface is procedural only — it is never told it is blind, what it is blind to, or that anything judges against its sheet; the protocol lives in the orchestrator and the validator, never in the deriver's prompt. Interpretation divergence discovered downstream routes as a **spec-ambiguity** advisory folded back to the [[Design artifact]], not just the verdict record.
 
 ### expectation sheet
 **aliases:** — · **status:** active
@@ -114,7 +114,7 @@ The blind deriver's output: per **feature** acceptance criterion, the expected o
 
 ### probe pack
 **aliases:** — · **status:** active
-The accreting suite of validated features' pinned probe exercises: `docs/probes/<feature-id>.md`, steps + expected observations captured from the green validation run (volatile fields masked at pin time so replays are judgment-free). Emitted by the validator, written by the boundary fold-in. Full-pack replay runs in every validation's runtime leg (the regression half of the behavioral diff) and *is* [[Ship]]'s full-system check. A failed replay retries twice: consistent red → contract-breaking regression citing the pinning feature; intermittent → entry marked `flaky` (advisory once, then a Ledger attention item). A replay failure is legitimate only when the new feature's contract citably supersedes the pinned behavior — then the fold-in re-pins.
+The accreting suite of validated features' pinned probe exercises: `docs/probes/<feature-id>.md`, steps + expected observations captured from the green validation run (volatile fields masked at pin time so replays are judgment-free). Emitted and pinned by the validator's post-verdict [[booking]]. Full-pack replay runs in every validation's runtime leg (the regression half of the behavioral diff) and *is* [[Ship]]'s full-system check. A failed replay retries twice: consistent red → contract-breaking regression citing the pinning feature; intermittent → entry marked `flaky` (advisory once, then a Ledger attention item). A replay failure is legitimate only when the new feature's contract citably supersedes the pinned behavior — then the booking re-pins.
 
 ### delta proof
 **aliases:** — · **status:** active
@@ -232,6 +232,12 @@ One stateless pass of the [[orchestrator]] over the [[feature graph]]: read the 
 *Not to be confused with:* [[the inner loop]] (the cycle-concept) — a run is one concrete execution of it over a [[scope envelope]].
 *See:* ADR-0009 / ADR-0008
 
+### booking
+**aliases:** self-booking · **status:** active
+The durable, target-side commit(s) a phase agent makes recording its own phase's ending — the rule being: **the agent that ends a feature's run-participation books that ending.** The plan agent books the plan artifact + `designed→planned` (or its bounce-park); each build agent books its own completion-report fold-in (first task also `planned→building`); a blocked build agent books the park; the [[independent validator]] books validate-or-park post-verdict (validations append, [[probe pack]] pin, graph flip, Ledger re-render, [[escalation record]] on deviation). Bookings use the mechanical toolkit (`spine plan report` / `set-status` / `ledger render` / `plan remediate`) — no agent hand-edits graph YAML or Ledger prose. Any booking that flips graph status re-renders the Ledger in the same commit.
+*Not to be confused with:* the phase's *work product* (a diff, a verdict) — booking is the bookkeeping that records it on the [[integration target]].
+*See:* ADR-0029
+
 ### greenfield onboarding
 **aliases:** cold-start branch · **status:** active
 The guided new-project setup experience — the cold-start branch of [[/the-loop]] when a project has no config and no [[Project Ledger]] to resume. Sequences [[configure step]] (bind ports/adapters + parameter defaults) → [[Frame]] → [[Design]] (runtime-probe, observability, and lifecycle nudges), all in [[recommended-answer style]]. Stable bindings at Configure, project-judgment shaping at Design.
@@ -256,9 +262,15 @@ The moment, before autonomous execution begins, when the agent confirms the [[sc
 
 ### run boundary
 **aliases:** — · **status:** active
-The instant an autonomous [[orchestrator]] run concludes and returns control to the interactive session — the only point at which parked decisions are surfaced. Reached when the [[parallelizable frontier]] is exhausted, the [[circuit breaker]] trips, or a halt-class [[deviation]] fires. Under [[park-and-drain]], escalations accumulate and surface here as a batch.
+The instant an autonomous [[orchestrator]] run concludes and returns control to the interactive session — the only point at which parked decisions are surfaced. Reached when the dependency-ready frontier is exhausted or a [[run halt]] fires. Under [[park-and-drain]], escalations accumulate and surface here as a batch.
 *Not to be confused with:* [[escalation]] — one surfaced decision, vs. the run boundary, the return moment that may carry a batch of them.
 *See:* ADR-0001
+
+### run halt
+**aliases:** halt · **status:** active
+Run-level early termination — distinct from a park, which is feature-level. Two causes: an **environment block** (dirty tree, test-harness or probe precondition down — a condition that would fail every subsequent feature identically, typed as such in the blocking agent's return) and **budget exhaustion** (the harness ceiling throws at the next spawn; in-flight agents complete and their [[booking]]s land). A halting run books nothing for the halting condition and returns a `BoundaryResult` with `halted: {reason, detail}` set, so the session distinguishes "decide something" from "fix the environment / raise the budget."
+*Not to be confused with:* [[park-and-drain]] — feature-shaped failures park and the run drains on; run-shaped failures halt.
+*See:* ADR-0029
 
 ---
 
@@ -343,7 +355,7 @@ Accumulated decomposition and escalation signal (Markdown + frontmatter + index,
 
 ### escalation record
 **aliases:** — · **status:** active
-The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, recommendation menu, context. Born when a [[feature]] parks; survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved**. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
+The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, recommendation menu, context. Born when a [[feature]] parks — written by the parking agent's [[booking]] (the plan agent on bounce, the blocked build agent, the validator on deviation); survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved**. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
 *Not to be confused with:* [[escalation]] (the decision-moment event) — this is the transient working file that informs it.
 *See:* ADR-0009
 
@@ -354,6 +366,12 @@ The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escal
 ### deviation
 **aliases:** — · **status:** active
 The condition of not clearing the [[perfection bar]], measured at the **outcome/contract** boundary (not the step boundary). Fires an [[escalation]].
+
+### stall
+**aliases:** stalled feature · **status:** active
+A [[feature]] the run could neither advance nor park: its phase agent died (a `null` return — user skip or terminal API error). Nothing is booked and nothing retried in-run — the graph never advanced, so the next stateless pass simply re-runs the phase. Reported in `BoundaryResult.stalled` `{feature, phase, note}` so a dead agent is never silently absorbed.
+*Not to be confused with:* a park — a stall leaves no [[escalation record]] and needs no human decision, only a re-run.
+*See:* ADR-0029
 
 ### finding
 **aliases:** validator finding · **status:** active

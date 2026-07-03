@@ -13,7 +13,7 @@ const TEXT = readFileSync('docs/design/design.md', 'utf8');
 
 test('the real design.md parses to the full feature graph', () => {
   const m = parse(TEXT);
-  assert.equal(m.designVersion, 3); // bumped by ADR-0028 (validator-verdict rewritten)
+  assert.equal(m.designVersion, 4); // bumped by ADR-0029 (boundary-result + validator-verdict amended)
   assert.equal(m.features.length, 21);
   assert.ok(m.contracts.length >= 6);
 });

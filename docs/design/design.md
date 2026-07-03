@@ -22,8 +22,8 @@ The workflow script is a **pure-orchestration sandbox** — no filesystem, shell
 ### The engine (ADR-0008, ADR-0009, ADR-0010)
 - **One engine, many intakes:** `Frame → Design → ( Plan → Build → Validate → Adjust )* → Ship`, with Operate/Evolve turning deployed apps back into intakes.
 - **Perfection bar:** the inner loop is autonomous *only on the happy path*; any deviation surfaces.
-- **The feature graph is the durable state machine; every run is a stateless pass over it.** A run reads the graph, does the dependency-ready work, commits, and returns a `BoundaryResult`. **park-and-drain:** a deviation parks its slice and the run keeps draining the independent frontier; escalations batch and surface at the **run boundary**.
-- **Surfacing / re-entry:** run returns → session persists results + surfaces parked escalations (with recommendation menus) → human decides → session folds decisions into the graph → a fresh stateless run continues. The **resumable unit is the feature**; `runId`/`resume` is reserved for crash-recovery of an interrupted run.
+- **The feature graph is the durable state machine; every run is a stateless pass over it.** A run reads the graph, does the dependency-ready work, commits, and returns a `BoundaryResult`. **park-and-drain:** a deviation parks its slice and the run keeps draining the independent frontier; escalations batch and surface at the **run boundary**. Bookkeeping is **self-booked** (ADR-0029): the agent that ends a feature's run-participation books that ending on the target — per-task fold-ins, the validator's post-verdict booking — through the mechanical booking toolkit; feature-shaped failures park, run-shaped ones (environment, budget) **halt** the run.
+- **Surfacing / re-entry:** run returns → session surfaces parked escalations (with recommendation menus — results are already booked in-run, ADR-0029) → human decides → session folds decisions into the graph → a fresh stateless run continues. The **resumable unit is the feature**; `runId`/`resume` is reserved for crash-recovery of an interrupted run.
 - **Bounds, not a breaker:** an autonomous run is bounded by the **scope envelope** + frontier-exhaustion + the **sizing gate** + the harness's hard agent cap. No circuit-breaker subsystem; a tighter cost cap is an opt-in ad-hoc budget.
 
 ### The artifact spine (ADR-0003–0007)
@@ -65,7 +65,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
-design_version: 3
+design_version: 4
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -130,8 +130,17 @@ features:
     title: The Workflow orchestration (Plan→Build→Validate, park-and-drain, BoundaryResult)
     status: designed
     depends_on: [plan, build, validate]
-    interfaces: [boundary-result]
-    acceptance: a feature graph runs to a BoundaryResult; a deviation parks its slice and drains the frontier
+    interfaces: [boundary-result, escalation-record]
+    notes:
+      - run mechanics per ADR-0029 (2026-07-02 grilling) — self-booking phase agents (the agent that ends a feature's run-participation books that ending on the target; no scribe agent; the validator books validate-or-park post-verdict, amending ADR-0028's write ban to the judged tree only), per-task completion-report fold-in by each build agent (amends ADR-0026's fold-at-validate-or-park; first task flips planned→building), first-block-parks (within-feature drain deferred to worktree-parallelism)
+      - typed blocks — feature-shaped (contract defect, semantic conflict) parks and drains; environment-shaped (dirty tree, harness/probe precondition down) halts the run unbooked, as does budget exhaustion (in-flight bookings land); agent death (null return) is reported as stalled, nothing booked, next stateless pass re-runs the phase; boundary-result amended with halted/stalled (design_version 3→4)
+      - remediation round triggers only as sole blocker (all legs would-PASS, readiness clean, standards findings exist — advisory-only still triggers — and no remediation task in the plan), composing the third mechanical verdict value remediation-pending (merge withheld; validator-verdict contract amended); the validator's booking appends the task via the mechanical spine plan remediate (its presence in the plan is the durable round-marker; exempt from plan check's criterion-coverage rules) and names it in its return; re-validation reuses the pass-1 expectation sheet in-run, re-derives across a crash
+      - args is the run's orientation snapshot — { target, scope, index, slices (per in-scope feature, the deriver's injection payload — the blindfold stays prompt-fed), plans (task summaries for re-entry), probe binding }; the plan agent's return carries task summaries so the script learns fresh task lists; booking toolkit lands with this feature (spine set-status + spine ledger render + spine plan remediate — no agent hand-edits graph YAML or Ledger prose; escalation records gain a structured block, contract escalation-record)
+      - spawning via agentType with plugin-local resolution (the build's first probe); fallback symlinks the plugin's agents/*.md into the target repo's .claude/agents/; every spawn schema-validated; deriver at effort low; v1 fully sequential (no parallel()/pipeline() until worktree-parallelism); script at workflows/inner-loop.js launched by /the-loop via scriptPath, tested by a shim harness executing the real script under node:test
+    acceptance:
+      - a feature graph runs to a BoundaryResult with completed and parked features booked on the target
+      - a deviation parks its slice and the run drains the remaining frontier
+      - an environment-shaped block or budget exhaustion halts the run with halted set
 
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
@@ -234,6 +243,8 @@ contracts:
     body: |
       { completed: [feature-id],
         parked:    [{ feature-id, deviation, recommendation-menu }],
+        stalled:   [{ feature-id, phase, note }],   # agent died; nothing booked; next pass re-runs
+        halted?:   { reason: budget-exhausted | environment-blocked, detail },
         budget:    { spent, remaining } }
 
   - id: injection-resolver
@@ -285,10 +296,23 @@ contracts:
         #                           location, observation, reobserve? }],
         #              evidence,                    # captured excerpts, never paraphrased
         #              unobserved }                 # the negative space, even on PASS
-        result: perfect|deviation,   # mechanical: readiness clean ∧ all legs PASS|sanctioned-SKIP
+        result: perfect|deviation|remediation-pending,
+        #  mechanical: perfect iff readiness clean ∧ all legs PASS|sanctioned-SKIP;
+        #  remediation-pending iff all legs would-PASS ∧ standards findings ∧ no round-marker
+        #  in the plan (merge withheld; one round per feature — ADR-0027/0029)
+        remediation_task: task-id?,  # the appended round-marker, when result is remediation-pending
         exercise: [step],            # executed probe steps + captured observations — the pack-pin source
         spec_ambiguities: [note],    # blind-derivation divergences, folded back to Design
         waivers: [{ obligation, reason, approver, expiry? }] }  # human resolutions — never a verdict value
+
+  - id: escalation-record
+    body: |
+      # docs/escalations/<feature-id>.md — narrative + one structured block (ADR-0029);
+      # written by the parking agent's booking, deleted at resolution (ADR-0009)
+      { feature, phase: plan|build|validate, kind: feature|environment,
+        deviation,                      # summary; full detail in the narrative
+        menu: [option],                 # authored by the parking agent
+        branch }                        # the loop/<feature-id> ref, when one exists
 
   - id: runtime-probe
     body: |
