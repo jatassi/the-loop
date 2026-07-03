@@ -231,7 +231,7 @@ tasks:
       summary: "config/model-bindings.json now ships exactly the ten pinned default rows (plan session, plan.audit opus, build.rote sonnet, build.standard sonnet, build.complex opus, drive sonnet, derive opus/effort low, validate sonnet, design.reader sonnet, design.alternative opus), each shaped { model, effort? }. src/models.js exports EFFORTS (the five-value effort enum), resolveModels({ defaults, project, local }) which merges the three layers in that order with whole-entry replacement per role and stamps provenance default|project|local on every resolved entry, and bindingFor(table, role) which returns the bound entry or the session fallback ({ model: 'session', provenance: 'fallback' }) for an unbound role; all three are re-exported from src/index.js. resolveModels throws (TypeError for the missing/non-string-model case, Error for a non-object entry or an out-of-enum effort) naming the offending role and layer. test/models.test.js proves the shipped default table's exact shape, the three-layer merge with per-layer provenance (including a project row replacing a default wholesale and a local row beating both), bindingFor's bound/unbound behavior, a bound via field riding the merge into the resolved entry untouched, and each malformed-entry rejection (non-object, missing model, non-string model, out-of-enum effort) — 5 tests, all green under node --test. src/models.js imports nothing from node:fs, node:process, or any clock source; every test in the file passes in-memory JS objects only, never a file path, to resolveModels/bindingFor, so purity is exercised by construction rather than asserted separately. npm run check (spine plan/design check + eslint over the whole tree) is green."
   - id: t3
     title: spine models — the CLI resolver command over settings layers
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - spine models prints the resolved table as JSON, reading defaults from <plugin-root>/config/model-bindings.json resolved relative to bin/spine.js's own location (never cwd), the project layer from ./.claude/settings.json and the local layer from ./.claude/settings.local.json under the "the-loop" modelBindings key; a missing settings file or missing key is an empty layer and the command still succeeds
@@ -243,6 +243,17 @@ tasks:
     size: s
     tier: standard
     depends_on: [t2]
+    report:
+      result: built
+      footprint_actual:
+        - bin/spine.js
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 2
+        insertions: 113
+        deletions: 1
+      deviations: []
+      summary: "bin/spine.js gains the `models [defaults.json]` command: it resolves PLUGIN_ROOT from bin/spine.js's own file location (never cwd), reads plugin defaults from <plugin-root>/config/model-bindings.json (or the optional trailing override path), reads the project layer from ./.claude/settings.json and the local layer from ./.claude/settings.local.json (both against cwd) under the \"the-loop\".modelBindings key, merges them via src/models.js's resolveModels, and prints the resolved table as JSON via the CLI's existing out() helper. A missing settings file, or a present one missing the modelBindings key, is an empty layer and the command still succeeds; unparseable JSON in a present settings file, a missing/unparseable defaults file, or a resolver rejection all propagate through the CLI's existing top-level try/catch into fail(), exiting 1 with the offending file or role/layer named on stderr (verified: 'unparseable JSON in .claude/settings.json: ...' and 'role \"build\" in the default layer is missing a string \"model\" (got undefined)'). The usage string gains 'models [defaults.json]'. test/spine-cli.test.js adds three tests exercising the command as a subprocess against fixture directories: one proving resolution happens relative to bin/spine.js's own location (an empty fixture cwd with no config/ or .claude/ still resolves the real shipped 'plan' role) and that missing settings succeed; one proving the full merge story against a defaults-file override — defaults-only, a project override winning wholesale (dropping the default's effort field), a local override beating project, per-role provenance visible in the printed JSON at every step, and a via-bearing row (drive) riding untouched through every merge; and one proving a malformed defaults entry and unparseable project-settings JSON each exit 1 with the role/layer or file named on stderr, and that the usage string names 'models'. All three tests were watched red (command unrecognized / assertions failing) before the implementation landed, then green after. Full suite (node --test, 116 tests) and npm run check (spine plan/design check + eslint over the whole tree) are green."
   - id: t4
     title: tier in the plan spine — parse, validate, and resolve the decision-density field
     status: pending
