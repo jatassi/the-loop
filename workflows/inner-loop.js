@@ -6,7 +6,7 @@
 // workflow script exports: a single `export const meta` line, and a bare top-level
 // `return` of the BoundaryResult once the harness (and test/workflow-shim.js, in tests)
 // applies its own async-body transform to this text.
-export const meta = { name: 'inner-loop', version: 1 };
+export const meta = { name: 'inner-loop', description: 'One autonomous pass over the feature graph: Plan → Build → Validate per in-scope feature, park-and-drain, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the args orientation snapshot — never invoked bare' };
 
 // A dependency is satisfied once its feature has shipped its validated result; these are
 // the only statuses the engine may still advance without a human decision (ADR-0029).
