@@ -291,7 +291,7 @@ tasks:
 
   - id: t9
     title: Workflow shim harness — execute the real script under node:test
-    status: pending
+    status: built
     covers: [1, 2, 3]
     acceptance:
       - the shim executes a workflow script file with stub agent/parallel/pipeline/log/args/budget installed as the harness globals, isolated per scenario (repeat runs of the same file with different scripted replies never share state), and returns { result, spawns, logs } where result is the script's returned value — the shim wraps the body so the workflow-script shape (meta export + top-level return) executes
@@ -303,6 +303,17 @@ tasks:
     footprint: [test/workflow-shim.js, test/workflow-shim.test.js]
     size: s
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - test/workflow-shim.js
+        - test/workflow-shim.test.js
+      diff_actual:
+        files: 2
+        insertions: 156
+        deletions: 0
+      deviations: []
+      summary: "test/workflow-shim.js exports runWorkflowScript(scriptPath, {agentReplies, args, budget}): it reads the script file, neutralizes the export const meta line, then compiles the rest as the body of a dynamically-constructed AsyncFunction taking agent/parallel/pipeline/log/args/budget as parameters — so the workflow-script shape's top-level await and return execute as the real harness runs them. Fresh closures per call: two runs of the same file scripted differently never share state. The agent stub replays agentReplies in call order, records {prompt, opts} per spawn, returns .returns (null past the end) or throws .throws — proven with a null + thrown BudgetExceededError fixture. A self-test fixture proves the recorded spawn carries its exact opts (including effort) and the fixture's returned value comes back as result. The shim module has no top-level side effects; bare node --test discovery of it is a no-op pass, asserted by shelling out (clearing NODE_TEST_CONTEXT) and red-proofed via a temporary top-level throw. Full suite (82 tests), eslint, npm run check pass; one commit (51f34c7) on loop/inner-loop-workflow, rebased onto main's tip."
 
   - id: t10
     title: inner-loop.js core — args, frontier, happy-path spawn sequence
