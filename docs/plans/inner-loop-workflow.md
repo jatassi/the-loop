@@ -136,6 +136,17 @@ the whole design never crosses the edge.
   the skeleton. Keep it lean — the file must stay inside the 350-line lint budget
   after t13; compact schemas, no speculative branches.
 
+## Fold-back — validation `5166bd78` (2026-07-03)
+
+The first validation parked the feature on two contract-breaking findings at the
+validate-park seam: a validate deviation verdict reaches `parked` as a bare
+`{feature}` (the verdict return never carried `deviation`/`menu`), and a
+feature-shaped validate readiness block matches no arm of the script's verdict
+handling and vanishes from the BoundaryResult (full record:
+`docs/validations/inner-loop-workflow.md`). Human resolution: **fix-in-place** —
+t15 covers both findings; its footprint overlaps t8 (the validator surface) and
+t10–t13 (the script and park tests), ordered via `depends_on`.
+
 ## Tasks
 
 ```yaml
@@ -500,4 +511,17 @@ tasks:
       deviations:
         - No test file — commands/*.md are prose surfaces with no test harness (same convention as agents/*.md); verification was a criterion-by-criterion re-read plus a full-suite regression run.
       summary: "commands/the-loop.md gained '### The launch leg', entered by both the advance-frontier proposal and the explicit plan/build/validate jumps — one shared procedure. Six steps: clean-tree gate (checkout target, git status; dirty stops everything, unattributed, nothing launches); scope confirmation (the handshake — the human's accept-or-override becomes scope); mechanical args assembly one command per field (target from the design binding, index via spine index, slices via spine resolve per scoped feature, plans via spine plan parse reduced to task summaries for planned/building features, probe = the recorded runtime-probe binding excerpt); plugin-agent resolution check with mkdir+symlink fallback into .claude/agents/; Workflow launch via scriptPath + args; BoundaryResult relay stating completed, parked (menus verbatim), stalled, and halted. Frontmatter allowed-tools gained Bash(git *), Bash(ln *), Bash(mkdir *), and Workflow. Grepped for ADR refs (none); re-read end-to-end for self-containment. Full suite (104 tests), spine check, eslint pass; one commit (bf141fd) on loop/inner-loop-workflow, rebased onto main's tip."
+  - id: t15
+    title: Fix the validate-park seam — deviation menus + feature-shaped readiness blocks
+    status: pending
+    covers: [1, 2]
+    acceptance:
+      - agents/validate.md's deviation-verdict return carries deviation and menu fields whenever the verdict booked a park, and the dedup and crash-healed minimal shapes are unchanged
+      - workflows/inner-loop.js's parkEntry sources deviation and menu from a validate deviation return, producing the pinned { feature, deviation, menu } parked entry, proven by a shim test watched red against the current code then green
+      - a validate return of result blocked with kind feature adds the feature to parked (carrying the return's detail and menu) and the run drains on, while kind environment still halts, proven by a shim test watched red then green
+    injects: [boundary-result, validator-verdict]
+    standards: [docs/standards/loop-surfaces.md]
+    footprint: [agents/validate.md, workflows/inner-loop.js, test/inner-loop-park.test.js]
+    size: s
+    depends_on: [t8, t13]
 ```

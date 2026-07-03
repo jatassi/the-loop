@@ -128,7 +128,7 @@ features:
 
   - id: inner-loop-workflow
     title: The Workflow orchestration (Plan→Build→Validate, park-and-drain, BoundaryResult)
-    status: parked
+    status: building
     depends_on: [plan, build, validate]
     interfaces: [boundary-result, escalation-record]
     notes:
