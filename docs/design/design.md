@@ -65,7 +65,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
-design_version: 4
+design_version: 5
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -156,14 +156,34 @@ features:
     title: Model selection framework — per-role model/effort bindings at every spawn surface
     status: designed
     depends_on: [inner-loop-workflow]
+    interfaces: [model-binding]
     notes:
-      - intake 2026-07-03, from the first self-hosted runs — every workflow spawn inherited the session model (Fable); the "everything else inherits session model/effort" v1 posture becomes the visible fallback, not the policy, once this is built
-      - shape — a per-role binding table (role → model + effort; roles at least plan, build, derive, validate, plus surface-declared roles like plan's fresh-context audit and design's reader test), defaults shipped in the plugin, overridable per project in harness-native config; the workflow script has no filesystem, so the launch leg assembles the resolved bindings into the args snapshot and every agent() spawn passes model/effort from them; agent-definition model frontmatter is an available mechanism, spawn-time opts override it
-      - observed dogfood tiers to seed defaults from (2026-07-03 hand-runs) — build and validate on sonnet, derive on opus at low effort, plan on the session model; the shipped default table is this feature's design detail — capture the observations, don't guess the table
+      - intake 2026-07-03, from the first self-hosted runs — every workflow spawn inherited the session model (Fable); designed same day by grilling (ADR-0030); ADR-0029's "everything else inherits session model/effort" posture becomes the visible fallback, not the policy
+      - shape per ADR-0030 — an open registry of dotted spawn roles (plan · plan.audit · build.rote · build.standard · build.complex · drive · derive · validate · design.reader · design.alternative; any surface may declare more); binding value per the model-binding contract, with 'session' an explicit bindable model (deliberate inherit, distinct in provenance from the unbound fallback) and via the executor discriminator (agent default; grok-cli routes to executor-delegation)
+      - config layers — defaults ship in the plugin at config/model-bindings.json; per-project overrides under the namespaced "the-loop".modelBindings key in .claude/settings.json, personal ones in .claude/settings.local.json; a new spine models command merges defaults < project < local (whole-entry replacement per role) and prints the resolved table with per-role provenance (default|project|local|fallback); that resolver is the single source for every surface — the launch leg rides its output into args.models, and Bash-holding agents (plan's audit) or session-side skills (design) invoke it themselves
+      - build stratifies by decision-density, not size — Plan stamps tier (rote|standard|complex; how much the task leaves to decide) on every task contract; rote additionally requires correctness fully captured by the task's tests + lint (the delegation-eligibility rubric, provisional and calibration-adjacent); the workflow routes build.<tier>; task summaries and args.plans entries carry tier; a plan cut before this feature defaults to standard with fallback provenance; spine plan check validates the field
+      - workflow plumbing — every spawn passes model/effort opts from args.models[role]; an unbound role omits the opts and log()s a "model-selection — role <x> unbound, session-model fallback" line relayed at the run boundary (visible, never silent); spawn labels carry the resolved model ("[sonnet] build ..."); derive's hardcoded effort low moves into the table
+      - session-side limitation, recorded — the Agent tool takes model only (no per-spawn effort), so session-side roles honor effort only where an agent definition file carries it in frontmatter; spawn-opts-over-frontmatter precedence for workflow agent() opts is a documented gap — empirically confirmed as a first build probe (the ADR-0029 probe pattern)
+      - shipped default table (observed 2026-07-03 hand-runs; unobserved rows flagged in ADR-0030) — plan session · plan.audit opus · build.rote sonnet · build.standard sonnet · build.complex opus · drive sonnet · derive opus at low effort · validate sonnet · design.reader sonnet (misreads the way a build agent would) · design.alternative opus
     acceptance:
-      - a binding table resolves every spawn role to a model and effort, shipped with plugin defaults and overridable per project in harness-native config
-      - every workflow spawn passes the resolved model and effort from the bindings riding args
-      - every agent or skill surface that spawns a subagent selects from the same bindings, and an unbound role's session-model fallback is visible, never silent
+      - spine models resolves every registered role to model, effort, and executor by merging plugin defaults with project and local settings overrides, printing per-role provenance
+      - every workflow spawn passes the model and effort resolved from the bindings riding args, and spawn labels carry the resolved model
+      - an unbound role falls back to the session model with a logged, run-boundary-visible fallback line — never silently
+      - Plan stamps tier on every task, spine plan check validates it, and the workflow routes build tasks through their build.<tier> bindings
+
+  - id: executor-delegation
+    title: Delegated executor — rote tasks driven through the grok CLI by a Claude driver
+    status: designed
+    depends_on: [model-selection]
+    notes:
+      - designed 2026-07-03 by grilling (ADR-0031), seeded from AlphaMind's grok-cli dogfood; off by default — a project opts in by rebinding build.rote to a grok model with via grok-cli; the binding table stays the single routing surface, no separate delegation switch
+      - the driver (agents/drive.md, a Claude agent bound by the drive role) is the spawned unit — the CLI never replaces an agent; the workflow can only spawn Claude agents, and grok self-reports success even when truncated, so a Claude verifier is mandatory; the branch-protocol/booking/crash-healing prose shared with build extracts from agents/build.md into one protocol doc both agents reference (placement settled at Plan — whether agents/ subdirectories are scanned as definitions is unverified)
+      - drive choreography — assemble the prompt file from the task-contract slice plus constitution and selected standards; run grok headless in a grok-native worktree cut at the feature-branch tip (--worktree with --worktree-ref, --always-approve, --no-subagents, --max-turns 500, --output-format plain; effort unsupported, none passed); verify inside the worktree — per-criterion tests present and green, lint clean, diff reviewed for unintended files and deleted behavioral tests, footprint against contract, commit actually exists; fold the commit onto the feature branch, dispose the worktree, book the completion report as any build agent would
+      - failure typing — the launch leg pre-flights the CLI (which grok plus an auth smoke test; grok models misreports auth) whenever an in-scope binding says via grok-cli; drive-time CLI/auth/rate-limit failure is environment-shaped (halts, ADR-0029); truncation (uncommitted worktree, verification never reached) gets one retry in a fresh worktree, then a feature-shaped park whose menu offers rebind-to-Claude or re-spec; v1's sequential runs satisfy the ≤2-concurrent grok rate-limit constraint for free — recorded for worktree-parallelism
+    acceptance:
+      - a rote task whose binding says via grok-cli executes through the driver and the grok CLI in an isolated worktree, folds onto the feature branch, and books a completion report like any build task
+      - the driver's verification gate rejects a truncated or defective CLI run — one retry in a fresh worktree, then a feature-shaped park carrying a rebind-or-respec menu
+      - a missing or unauthenticated CLI surfaces at the launch-leg pre-flight when a grok binding is in scope, and a drive-time environment failure halts the run
 
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
@@ -296,6 +316,10 @@ contracts:
                   standards: [path],               # project-standards files selected for the task (optional; ADR-0027)
                   footprint: [path],               # expected files created/modified
                   size: xs|s|m,                    # m = comfort ceiling, justified in narrative
+                  tier: rote|standard|complex,     # decision-density, stamped at Plan; selects
+                                                   #   the build.<tier> model binding (ADR-0030);
+                                                   #   rote = nothing left to decide AND correctness
+                                                   #   fully captured by the task's tests + lint
                   depends_on: [task-id],           # ordering; overlapping footprints chained
                   report: completion-report }] }   # folded in by Build
 
@@ -330,6 +354,16 @@ contracts:
         exercise: [step],            # executed probe steps + captured observations — the pack-pin source
         spec_ambiguities: [note],    # blind-derivation divergences, folded back to Design
         waivers: [{ obligation, reason, approver, expiry? }] }  # human resolutions — never a verdict value
+
+  - id: model-binding
+    body: |
+      # config/model-bindings.json (plugin defaults) ⊕ settings "the-loop".modelBindings
+      # (project, then local — whole-entry replacement per role), resolved by `spine models`
+      # into args.models; the role registry is open (dotted ids, ADR-0030)
+      { <role>: { model,      # claude alias | full model id | 'session' (explicit inherit)
+                  effort?,    # low|medium|high|xhigh|max — absent inherits session effort
+                  via? } }    # agent (default) | grok-cli — routes to the delegated executor
+      # resolved form adds per-role provenance: default | project | local | fallback(session)
 
   - id: escalation-record
     body: |

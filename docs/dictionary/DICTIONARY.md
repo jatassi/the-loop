@@ -134,6 +134,21 @@ The project-configured [[port]] for bringing the system up and exercising it ("h
 The ambient "what is my loop doing" visibility + escalation-notification surface — *composed*, not built: the `/workflows` progress tree + `log()` narrator lines (live, mid-run), the [[Project Ledger]] (resting, between runs), and the notification-channel [[port]] (push at a [[run boundary]], default: only when something needs you). Meta-observability of the loop's own execution rides the same pieces plus git history. Distinct from debugging introspection.
 *See:* ADR-0019
 
+### model binding table
+**aliases:** model bindings, binding table · **status:** active
+The per-role table mapping each [[spawn role]] to a model, optional effort, and executor (`via`). Ships as plugin defaults, overridable per project and per user in harness-native settings; resolved with per-role provenance (default | project | local | fallback) by the spine resolver, which is the single source for every spawn surface. An unbound role falls back to the session model — visibly, never silently.
+*See:* ADR-0030
+
+### spawn role
+**aliases:** role · **status:** active
+The typed identity a spawn surface declares when it launches a subagent — bare phase names for the workflow roles (`plan`, `derive`, `validate`), dotted ids elsewhere (`plan.audit`, `build.rote`, `design.reader`, `drive`, …). The registry is open: any surface may declare one; the [[model binding table]] binds the known ones and the rest ride the visible session-model fallback.
+*See:* ADR-0030
+
+### delegated executor
+**aliases:** — · **status:** active
+A non-Claude headless coding CLI that a rote-tier task's binding may route to (`via: grok-cli`), always operated and verified by the [[driver]] — its self-reported success is never trusted. A [[port]] (`delegate-executor`, optional tier); the grok CLI is the default adapter. Off unless a project rebinds `build.rote`.
+*See:* ADR-0031
+
 ---
 
 ## Primitive
@@ -181,9 +196,14 @@ The fresh-context, adversarial agent that runs [[Validate]] with no stake in the
 *See:* ADR-0028
 
 ### orchestrator
-**aliases:** the driver · **status:** active
-The actor that drives the autonomous [[inner loop]] — sequencing Plan→Build→Validate, enforcing the [[circuit breaker]], and surfacing at gates. Concretely a **Claude Code Workflow script** (deterministic JS orchestration); the human/autonomous boundary is the workflow edge.
+**aliases:** — · **status:** active
+The actor that drives the autonomous [[inner loop]] — sequencing Plan→Build→Validate, enforcing the [[circuit breaker]], and surfacing at gates. Concretely a **Claude Code Workflow script** (deterministic JS orchestration); the human/autonomous boundary is the workflow edge. (Formerly aliased "the driver"; that name now belongs to the [[driver]] actor, ADR-0031.)
 *See:* ADR-0001
+
+### driver
+**aliases:** drive agent · **status:** active
+The Claude agent that executes a rote-tier [[task]] through a [[delegated executor]]: it assembles the prompt from the [[task contract]] plus the craft baseline, runs the CLI in an isolated worktree, verifies the result itself (per-criterion tests, lint, diff review, commit presence — the executor's self-report is never trusted), folds the commit onto the [[feature branch]], and books like any build agent. Spawned by the `drive` [[spawn role]] when a task's binding says `via: grok-cli`.
+*See:* ADR-0031
 
 ---
 
@@ -291,13 +311,18 @@ The atomic unit of agent execution: fits within ≤50% of a 256k context window,
 
 ### task contract
 **aliases:** — · **status:** active
-The Plan → Build handoff shape carried per [[task]] in the [[plan artifact]]: id, title, status, `covers` (which feature acceptance criteria it claims), its own acceptance criteria (one or more, each observable and binary — written for a build agent weaker than the planner), `injects` (contract slices the build agent gets), expected file `footprint`, `size` (xs|s|m — m is the comfort ceiling, justified in the narrative), and `depends_on` ordering (overlapping footprints must be chained). Carries no implementation code; Build folds a [[completion report]] into it.
-*See:* ADR-0025
+The Plan → Build handoff shape carried per [[task]] in the [[plan artifact]]: id, title, status, `covers` (which feature acceptance criteria it claims), its own acceptance criteria (one or more, each observable and binary — written for a build agent weaker than the planner), `injects` (contract slices the build agent gets), expected file `footprint`, `size` (xs|s|m — m is the comfort ceiling, justified in the narrative), `tier` (the [[decision-density tier]]), and `depends_on` ordering (overlapping footprints must be chained). Carries no implementation code; Build folds a [[completion report]] into it.
+*See:* ADR-0025 / ADR-0030
 
 ### completion report
 **aliases:** — · **status:** active
 Build's return value per [[task]], folded into its [[task contract]]: result, actual footprint (checkpoint diff), actual diff size, deviations, and a summary. [[Validate]] reads the deviations; [[Calibration Memory]] mines estimate-vs-actual; an actual footprint far beyond the expected one is a re-plan/re-slice signal.
 *See:* ADR-0025
+
+### decision-density tier
+**aliases:** tier · **status:** active
+[[Plan]]'s per-task judgment of *how much the task leaves to decide* — `rote` (nothing left to decide, and correctness fully captured by the task's own tests + lint), `standard`, or `complex` — stamped in the [[task contract]] and selecting the `build.<tier>` entry of the [[model binding table]]. Deliberately not the footprint-proxy `size`: tier exists for the decision-dense-small and rote-large corners size mislabels. Rote is the stratum a project may rebind to a [[delegated executor]]; its eligibility clause is provisional, to be recalibrated from observed outcomes.
+*See:* ADR-0030
 
 ---
 
