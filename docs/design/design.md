@@ -142,6 +142,16 @@ features:
       - a deviation parks its slice and the run drains the remaining frontier
       - an environment-shaped block or budget exhaustion halts the run with halted set
 
+  - id: ledger-title-preservation
+    title: Ledger renderer preserves pre-heading content (the title line)
+    status: designed
+    depends_on: [inner-loop-workflow]
+    notes:
+      - bug intake from the 2026-07-03 validation's post-verdict note (validations e9efcf74) — the first live spine ledger render dropped docs/ledger/ledger.md's leading title line; renderLedger's section slicing never captures content before the first "## " heading and no test fixture models it; intended as the first self-hosted feature through the real workflow
+    acceptance:
+      - renderLedger preserves all priorText content preceding the first "## " heading byte-identically, and seeds the standard title line when priorText has none
+      - after a spine ledger render on this repo, docs/ledger/ledger.md carries its title line again
+
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
     status: designed
@@ -241,11 +251,14 @@ contracts:
 
   - id: boundary-result
     body: |
-      { completed: [feature-id],
+      { completed: [feature-id],   # each booked validated on the graph — the terminal status of a completed feature
         parked:    [{ feature-id, deviation, recommendation-menu }],
         stalled:   [{ feature-id, phase, note }],   # agent died; nothing booked; next pass re-runs
         halted?:   { reason: budget-exhausted | environment-blocked, detail },
         budget:    { spent, remaining } }
+      # budget unit is tokens; the cap channel is the opt-in harness budget
+      # directive at launch (never an args field) — absent a cap, exhaustion
+      # cannot occur and halted: budget-exhausted never fires
 
   - id: injection-resolver
     body: |
