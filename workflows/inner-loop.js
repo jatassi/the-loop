@@ -8,6 +8,11 @@
 // applies its own async-body transform to this text.
 export const meta = { name: 'inner-loop', description: 'One autonomous pass over the feature graph: Plan → Build → Validate per in-scope feature, park-and-drain, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the args orientation snapshot — never invoked bare' };
 
+// Some callers deliver args as a JSON-encoded string rather than the parsed snapshot;
+// normalize into a local before anything reads it — the launch leg cannot control the
+// delivery shape, and the harness global itself is read-only.
+const snapshot = typeof args === 'string' ? JSON.parse(args) : args;
+
 // A dependency is satisfied once its feature has shipped its validated result; these are
 // the only statuses the engine may still advance without a human decision (ADR-0029).
 const DONE_STATUSES = new Set(['validated', 'shipped']);
@@ -21,11 +26,11 @@ const BUILD_SCHEMA = { results: ['built', 'blocked'], required: ['result', 'task
 const DERIVE_SCHEMA = { results: ['derived', 'blocked'], required: ['result', 'feature'] };
 const VALIDATE_SCHEMA = { results: ['perfect', 'deviation', 'remediation-pending', 'blocked'], required: ['result', 'feature'] };
 
-// In-memory status view, seeded from args.index and updated as agents return — the
+// In-memory status view, seeded from the snapshot's index and updated as agents return — the
 // frontier below is computed against this, not the on-disk snapshot, so a dependency
 // validated earlier in this same run unblocks its dependents without a re-read.
-const statusById = new Map(args.index.features.map((f) => [f.id, f.status]));
-const nodeById = new Map(args.index.features.map((f) => [f.id, f]));
+const statusById = new Map(snapshot.index.features.map((f) => [f.id, f.status]));
+const nodeById = new Map(snapshot.index.features.map((f) => [f.id, f]));
 
 function dependenciesSatisfied(featureId) {
   const node = nodeById.get(featureId);
@@ -157,10 +162,10 @@ async function runRemediation(featureId, remediationTask, sheet) {
 }
 
 // Runs Plan when the feature enters `designed`; otherwise resumes from the task list
-// already on record for it (`args.plans`). Returns `{tasks}` to proceed into Build, the
+// already on record for it (`snapshot.plans`). Returns `{tasks}` to proceed into Build, the
 // bounce return itself for the caller to park, or a halted/stalled signal.
 async function runPlan(featureId) {
-  if (statusById.get(featureId) !== 'designed') { return { tasks: args.plans[featureId] }; }
+  if (statusById.get(featureId) !== 'designed') { return { tasks: snapshot.plans[featureId] }; }
   const planned = await spawn(`feature: ${featureId}`, {
     agentType: 'plan', label: `plan:${featureId}`, phase: featureId, schema: PLAN_SCHEMA,
   }, featureId);
@@ -173,7 +178,7 @@ async function runPlan(featureId) {
 // verdict (perfect/deviation/blocked) or a halted/stalled signal.
 async function runValidationCycle(featureId) {
   const derived = await spawn(
-    `feature: ${featureId}\nslice: ${JSON.stringify(args.slices[featureId])}\nprobe: ${JSON.stringify(args.probe)}`,
+    `feature: ${featureId}\nslice: ${JSON.stringify(snapshot.slices[featureId])}\nprobe: ${JSON.stringify(snapshot.probe)}`,
     { agentType: 'derive', label: `derive:${featureId}`, phase: featureId, schema: DERIVE_SCHEMA, effort: 'low' },
     featureId,
   );
@@ -244,7 +249,7 @@ function recordVerdict(featureId, verdict) {
   return false;
 }
 
-for (const featureId of args.scope) {
+for (const featureId of snapshot.scope) {
   if (!isRunnable(featureId)) {
     log(`inner-loop: skipping ${featureId} — not runnable`);
     continue;
