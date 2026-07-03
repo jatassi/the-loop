@@ -315,7 +315,7 @@ tasks:
       summary: "workflows/inner-loop.js now resolves every spawn's pinned role against args.models through one inline lookup (roleBinding — the script never imports src/models.js, so the resolved-table shape is reimplemented directly): plan resolves role 'plan', build resolves 'build.<tier>' from the task summary's stamped tier (logging the pinned untiered-task line and defaulting to 'standard' when absent), derive resolves 'derive' (its hardcoded effort: 'low' opt is gone — the binding's own effort rides instead), and validate resolves 'validate'. A role missing from args.models — including when args.models itself is absent entirely — logs the pinned 'model-selection — role <role> unbound, session-model fallback' line and falls back to the session model; a bound role explicit to the literal 'session' model passes no model opt and logs nothing. Every spawn's opts gain model (omitted when the bound model is 'session') and effort (exactly when the binding carries one) via a shared modelOpts helper, and every spawn's label gains the '[<resolved-model>] ' prefix via a shared modelLabel helper. TASK_SUMMARY's schema now describes a 'tier' string property alongside id/status/size, so a plan return's stamped tier is never the field the harness's schema-as-template behavior would silently drop. All four inner-loop shim test files pass green (test/inner-loop-halt.test.js needed no changes): inner-loop-happy.test.js gained a models fixture on its main scenario (plan bound explicitly to session — asserting no model opt and no fallback log — and derive bound to opus/low, asserting both opts land), updated its build-label assertions for the new prefix, extended its args-absent scenario (the 'building feature skips Plan' test) with assertions that the run still completes while logging both the untiered-task and unbound-role fallback lines, and gained one new dedicated test proving build.<tier> routing (a complex-tier task spawning through build.complex's bound model, an untiered task through build.standard's) together with the bound-build/unbound-plan label prefixes and the TASK_SUMMARY schema's tier property; inner-loop-park.test.js and inner-loop-remediation.test.js each got their one build-spawn label assertion updated for the new session-fallback prefix. Every new/changed assertion was watched red against the pre-change script (via git stash) before going green after. npm run check (spine plan/design check + eslint over the whole tree) is clean, and workflows/inner-loop.js sits at 333 lines, inside its 350-line lint budget."
   - id: t6
     title: Launch leg — assemble args.models, carry tier in args.plans, relay fallback lines at the boundary
-    status: pending
+    status: built
     covers: [2, 3]
     acceptance:
       - commands/the-loop.md step 3 assembles a models field from node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" models verbatim, and its plans reduction becomes { id, status, depends_on, size, tier }
@@ -327,6 +327,16 @@ tasks:
     size: s
     tier: standard
     depends_on: [t3]
+    report:
+      result: built
+      footprint_actual:
+        - commands/the-loop.md
+      diff_actual:
+        files: 1
+        insertions: 9
+        deletions: 3
+      deviations: []
+      summary: "commands/the-loop.md's launch leg now assembles a `models` field in step 3 via `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" models` verbatim (placed alongside the other global, non-per-feature command, `index`), and the `plans` bullet's per-task reduction is now `{ id, status, depends_on, size, tier }`, carrying the tier the plan agent stamps through to the workflow. Step 6 (Relay the result) now instructs scanning the run's log output (the workflow's live output, surfaced in the /workflows view and returned by the Workflow tool) for lines prefixed `model-selection —` and stating them to the human verbatim alongside the BoundaryResult, so an unbound-role or untiered-task fallback stays visible at the run boundary; no BoundaryResult field was added, matching the design's unchanged-boundary-contract note. The file remains self-contained: `grep -n \"ADR\" commands/the-loop.md` yields no hits (exit 1), verified after the edit. No test suite covers commands/*.md (confirmed by grep across test/ for `commands/` references, zero hits) and the task's own footprint carries no test file, so verification is the three criteria checked directly: the assembled fields, the relay instruction's presence and wording, and the ADR grep. `npm run check` (spine plan/design check + eslint over the whole tree) is green."
   - id: t7
     title: Plan agent surface — stamp tier on every task, resolve the audit spawn's model
     status: pending
