@@ -60,7 +60,7 @@ test('a designed, dependency-linked pair runs Plan→Build→Derive→Validate p
   assert.ok(spawns[3].prompt.includes(JSON.stringify(args.probe)), 'derive prompt carries the probe binding');
   assert.ok(spawns[3].prompt.includes(JSON.stringify(args.slices.alpha)), 'derive prompt carries the feature slice');
   assert.ok(spawns[4].prompt.includes('alpha does the thing'), 'validate prompt carries the expectation sheet');
-  assert.ok(Array.isArray(spawns[4].opts.schema.results) && spawns[4].opts.schema.results.includes('perfect'), 'validate schema encodes its result enum');
+  assert.ok(Array.isArray(spawns[4].opts.schema.properties.result.enum) && spawns[4].opts.schema.properties.result.enum.includes('perfect'), 'validate schema encodes its result enum as JSON Schema');
 
   assert.deepEqual(result, {
     completed: ['alpha', 'beta'],

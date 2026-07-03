@@ -18,13 +18,18 @@ const snapshot = typeof args === 'string' ? JSON.parse(args) : args;
 const DONE_STATUSES = new Set(['validated', 'shipped']);
 const RUNNABLE_STATUSES = new Set(['designed', 'planned', 'building']);
 
-// Spawn schemas (the harness validates each return against these): compact encodings of
-// the pinned per-phase return-shape deltas — the result enum plus the keys every shape in
-// that enum always carries, never the full per-result field lists.
-const PLAN_SCHEMA = { results: ['planned', 'bounce', 'blocked'], required: ['result', 'feature'] };
-const BUILD_SCHEMA = { results: ['built', 'blocked'], required: ['result', 'task'] };
-const DERIVE_SCHEMA = { results: ['derived', 'blocked'], required: ['result', 'feature'] };
-const VALIDATE_SCHEMA = { results: ['perfect', 'deviation', 'remediation-pending', 'blocked'], required: ['result', 'feature'] };
+// Spawn schemas (the harness validates each return against these, in strict JSON Schema
+// mode — no invented keywords): the pinned per-phase result enum plus the keys every
+// shape in that enum always carries, never the full per-result field lists.
+const phaseSchema = (results, ...keys) => ({
+  type: 'object',
+  properties: Object.fromEntries([['result', { enum: results }], ...keys.map((k) => [k, { type: 'string' }])]),
+  required: ['result', ...keys],
+});
+const PLAN_SCHEMA = phaseSchema(['planned', 'bounce', 'blocked'], 'feature');
+const BUILD_SCHEMA = phaseSchema(['built', 'blocked'], 'task');
+const DERIVE_SCHEMA = phaseSchema(['derived', 'blocked'], 'feature');
+const VALIDATE_SCHEMA = phaseSchema(['perfect', 'deviation', 'remediation-pending', 'blocked'], 'feature');
 
 // In-memory status view, seeded from the snapshot's index and updated as agents return — the
 // frontier below is computed against this, not the on-disk snapshot, so a dependency
