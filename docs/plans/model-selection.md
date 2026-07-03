@@ -180,7 +180,7 @@ design_version: 5
 tasks:
   - id: t1
     title: Probe — do workflow agent() spawn opts beat agent-definition frontmatter for model?
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - a probe record exists at docs/research/2026-07-03-workflow-spawn-opts-precedence.md stating the question (workflow agent() opts vs agent frontmatter model precedence), every channel attempted with the exact commands run, and either the observed winner with captured evidence or the concrete reason no channel in this environment can observe it — never a guess presented as an observation
@@ -191,6 +191,16 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - docs/research/2026-07-03-workflow-spawn-opts-precedence.md
+      diff_actual:
+        files: 1
+        insertions: 178
+        deletions: 0
+      deviations: []
+      summary: "docs/research/2026-07-03-workflow-spawn-opts-precedence.md exists, stating the precedence question (workflow agent() opts vs agent-definition frontmatter model), the tension in ADR-0030 that motivates it, and seven channels attempted with exact commands: this repo's own ADR/design record, the workflow harness's own source and test shim, a full-history grep confirming no plugin agent file has ever carried model frontmatter, the local Claude Code changelog cache, a live fetch of code.claude.com/docs (workflows, agent-sdk/typescript, sub-agents, llms-full.txt) turning up a generic (not workflow-agent()-scoped) subagent model-resolution order and confirming the docs never publish a field reference for the in-script agent() opts object, this Build agent's own tools: frontmatter (no Workflow/Agent tool, so it cannot itself spawn the conflicting pair the question needs), and live introspection of this very task's own workflow spawn transcript (no model opt sent, no frontmatter present, resolved to the launching session's model). The conclusion states plainly that no channel available in this environment can produce a workflow-agent()-specific empirical observation, names the concrete structural reason (the Build agent tool boundary), and cites the doc language found as a signal only, never as the answer. The standing-consequence section states both pinned facts: spawn opts are passed regardless of the unresolved precedence (the plumbing's contribution is supplying the opt, not adjudicating a conflict), and grep -n \"model\" agents/*.md returns no model: frontmatter anywhere today (only two unrelated prose hits in agents/plan.md), so the gap is real but currently inert."
   - id: t2
     title: Model-binding resolver core (src/models.js) + shipped default table (config/model-bindings.json)
     status: pending
