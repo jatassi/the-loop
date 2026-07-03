@@ -100,7 +100,9 @@ one procedure, so neither route improvises its own version.
    is guaranteed: `mkdir -p .claude/agents` then
    `ln -s "$CLAUDE_PLUGIN_ROOT/agents/<name>.md" ".claude/agents/<name>.md"`. The
    link tracks the plugin, so once it exists it never goes stale and never needs
-   redoing.
+   redoing — but agent registration is read once, at session start: links created
+   mid-session don't resolve until a fresh session, so tell the human to restart
+   and relaunch rather than launching into certain stalls.
 5. **Launch.** Call the Workflow: `scriptPath` =
    `$CLAUDE_PLUGIN_ROOT/workflows/inner-loop.js`, `args` = the step-3 snapshot.
 6. **Relay the result.** State the returned `BoundaryResult` to the human plainly:
