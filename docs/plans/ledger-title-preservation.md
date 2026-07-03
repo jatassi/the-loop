@@ -54,7 +54,7 @@ design_version: 4
 tasks:
   - id: t1
     title: renderLedger preamble — preserve pre-heading content, seed the standard title line
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - for a priorText with content before its first "## " heading, renderLedger's output up to its own first "## " heading is byte-identical to priorText up to its first "## " heading — proven by a new test whose priorText fixture carries a title line ("# Ledger — …") followed by a blank line
@@ -66,6 +66,19 @@ tasks:
     footprint: [src/ledger.js, test/ledger.test.js]
     size: s
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/ledger.js
+        - test/ledger.test.js
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 3
+        insertions: 35
+        deletions: 4
+      deviations:
+        - 'test/spine-cli.test.js touched outside the expected footprint: its ledger-render wiring test anchored on output beginning at "## What this is", which the seeded title line now precedes; updated that single assertion prefix to the pinned title constant so the full suite passes per criterion 4'
+      summary: 'renderLedger now emits a preamble before its five sections: everything in priorText before the first "## " heading is carried byte-identically (criterion 1, proven by a new fixture whose priorText opens with a "# Ledger — …" title line and blank line), and when priorText has nothing there — fresh render or empty string — it seeds the pinned constant "# Ledger — projected from design.md (feature graph)" plus one blank line (criterion 2, proven for the empty case by a new test and for the heading-first case by the updated main fixture test). The function remains pure and deterministic — the existing double-render test asserts byte-identity against the full expected document, which also pins all five sections in their existing order after the preamble (criterion 3). Pre-existing ledger tests were updated to expect the seeded title; full suite (108 tests) and npm run check pass (criterion 4).'
 
   - id: t2
     title: Restore this repo's Ledger title line and prove a live render preserves it

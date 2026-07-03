@@ -5,8 +5,8 @@ the-loop: an owned, composable agentic dev loop built from native Claude Code pr
 Total: 22 (design_version 4)
 
 - designed: 12
-- planned: 1
-- building: 3
+- planned: 0
+- building: 4
 - validated: 6
 - shipped: 0
 - parked: 0

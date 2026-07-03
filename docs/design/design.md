@@ -144,7 +144,7 @@ features:
 
   - id: ledger-title-preservation
     title: Ledger renderer preserves pre-heading content (the title line)
-    status: planned
+    status: building
     depends_on: [inner-loop-workflow]
     notes:
       - bug intake from the 2026-07-03 validation's post-verdict note (validations e9efcf74) — the first live spine ledger render dropped docs/ledger/ledger.md's leading title line; renderLedger's section slicing never captures content before the first "## " heading and no test fixture models it; intended as the first self-hosted feature through the real workflow
