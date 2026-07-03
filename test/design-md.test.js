@@ -14,7 +14,7 @@ const TEXT = readFileSync('docs/design/design.md', 'utf8');
 test('the real design.md parses to the full feature graph', () => {
   const m = parse(TEXT);
   assert.equal(m.designVersion, 5); // bumped by ADR-0030 (task-contract gains tier; model-binding contract added)
-  assert.equal(m.features.length, 24); // +executor-delegation (2026-07-03, split from model-selection at design)
+  assert.equal(m.features.length, 25); // +workflow-phase-grouping (2026-07-03 mid-run intake)
   assert.ok(m.contracts.length >= 6);
 });
 

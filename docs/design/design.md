@@ -186,6 +186,17 @@ features:
       - the driver's verification gate rejects a truncated or defective executor run — one retry in a fresh worktree, then a feature-shaped park carrying a rebind-or-respec menu
       - a binding naming an unregistered executor, or a registered executor failing its playbook's availability or auth checks, surfaces at the launch-leg pre-flight; a drive-time environment failure halts the run
 
+  - id: workflow-phase-grouping
+    title: Workflow progress groups by SDLC phase (Plan | Build | Validate), not by feature
+    status: designed
+    depends_on: [inner-loop-workflow]
+    notes:
+      - intake 2026-07-03, mid-run improvement request during wf_f1c42418 — the /workflows tree groups spawns per feature (opts.phase carries the feature id, the ADR-0029 choice), leaving the SDLC phases invisible as structure
+      - shape — opts.phase becomes the phase name (Plan | Build | Validate; derive spawns group under Validate as its opening leg; the remediation round's re-spawns reuse Build and Validate); the feature id (and the resolved model, per model-selection) stays on the label; meta gains the matching phases declaration while staying on the single line the shim and eslint processor pin; in multi-feature scopes the phase boxes pool across features and labels disambiguate — the accepted trade of the phase-first view
+    acceptance:
+      - every workflow spawn's phase opt names its SDLC phase (Plan, Build, or Validate — derive under Validate), with the feature id and resolved model riding the label
+      - meta declares the three phases on its single line, and the shim harness asserts the spawn sequence's phase strings
+
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
     status: designed
