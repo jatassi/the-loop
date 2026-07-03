@@ -315,7 +315,7 @@ tasks:
 
   - id: t8
     title: agents/validate.md — post-verdict booking, remediation-pending, typed readiness blocks
-    status: pending
+    status: built
     covers: [1, 2, 3]
     acceptance:
       - the verdict composition gains remediation-pending exactly as contracted — all legs would-PASS and readiness clean and standards findings exist (advisory-only included) and no remediation-marked task in the plan — with the merge withheld, the round-marker appended via spine plan remediate, and the task named in the return as remediation_task
@@ -330,6 +330,16 @@ tasks:
     footprint: [agents/validate.md]
     size: m
     depends_on: [t2, t5]
+    report:
+      result: built
+      footprint_actual:
+        - agents/validate.md
+      diff_actual:
+        files: 1
+        insertions: 200
+        deletions: 39
+      deviations: []
+      summary: "agents/validate.md gained the four ADR-0029 deltas over the existing four-leg protocol. Readiness (step 1) now types every BLOCK: a dirty tree or a failed precondition is environment-shaped (books nothing); a semantic rebase conflict is feature-shaped and books the park (escalation record phase validate, spine set-status parked, spine ledger render, one 'book parked at validate' commit) before returning BLOCKED with kind. A new crash-healing check (step 1 item 2) runs first: it searches the target's log for a landed '<feature-id>: validated at design_version <n>' commit newer than the feature's last docs/validations entry while the graph is still short of validated, and if found skips the legs entirely, recomputes patch_id from the squash commit's own diff against its parent, and completes the booking with a validations entry carrying reconstruction: <squash-commit-sha> in place of the lost readiness/legs/exercise. Step 6 (Verdict) gained the three-way ADR-0029 composition: perfect unchanged; remediation-pending iff every leg would satisfy the perfect bar once the conformance leg's standards-axis findings are set aside, that axis carries at least one finding of either severity, and the plan carries no remediation-marked task yet; deviation is everything else, with a plan already carrying the round-marker routing surviving standards findings by severity into plain perfect|deviation, never a second remediation-pending. A new step 7 'Book on the integration target' implements post-verdict booking for all three results plus the feature-shaped readiness block: every result first appends a patch_id-keyed entry to docs/validations/<feature-id>.md; perfect additionally pins the executed exercise into docs/probes/<feature-id>.md, flips the graph to validated, re-renders the Ledger, and commits 'book validated' after the squash-merge commit; remediation-pending feeds the surviving standards findings to spine plan remediate (stdin), re-renders the Ledger, and commits 'book task remediation' (reusing the pinned task <task-id> convention) with the graph status left unchanged; deviation authors a menu, writes the escalation record, flips the graph to parked, re-renders the Ledger, and commits 'book parked at validate'. The intro's 'Flags, not fixes' rule is rescoped: the tree-edit ban now binds only the judged tree through the four legs, with step 7's booking named as the sanctioned, separate, post-verdict write on the target. Step 8 (Return) adds the previously-undocumented 'blocked' shape (kind: feature|environment, menu on feature-kind only) and adds remediation_task and reconstruction to the verdict shape, each scoped to when they apply. Grepped the finished file for 'ADR' (no hits) and re-read it end-to-end for self-containment, per the same convention t6/t7 documented; no test file — agents/*.md are prose surfaces with no test harness. Full suite (89 tests), eslint, and npm run check all pass; one commit (47c31a9) on loop/inner-loop-workflow, rebased cleanly onto main's tip before building."
 
   - id: t9
     title: Workflow shim harness — execute the real script under node:test
