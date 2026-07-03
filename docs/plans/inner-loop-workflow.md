@@ -513,7 +513,7 @@ tasks:
       summary: "commands/the-loop.md gained '### The launch leg', entered by both the advance-frontier proposal and the explicit plan/build/validate jumps — one shared procedure. Six steps: clean-tree gate (checkout target, git status; dirty stops everything, unattributed, nothing launches); scope confirmation (the handshake — the human's accept-or-override becomes scope); mechanical args assembly one command per field (target from the design binding, index via spine index, slices via spine resolve per scoped feature, plans via spine plan parse reduced to task summaries for planned/building features, probe = the recorded runtime-probe binding excerpt); plugin-agent resolution check with mkdir+symlink fallback into .claude/agents/; Workflow launch via scriptPath + args; BoundaryResult relay stating completed, parked (menus verbatim), stalled, and halted. Frontmatter allowed-tools gained Bash(git *), Bash(ln *), Bash(mkdir *), and Workflow. Grepped for ADR refs (none); re-read end-to-end for self-containment. Full suite (104 tests), spine check, eslint pass; one commit (bf141fd) on loop/inner-loop-workflow, rebased onto main's tip."
   - id: t15
     title: Fix the validate-park seam — deviation menus + feature-shaped readiness blocks
-    status: pending
+    status: built
     covers: [1, 2]
     acceptance:
       - agents/validate.md's deviation-verdict return carries deviation and menu fields whenever the verdict booked a park, and the dedup and crash-healed minimal shapes are unchanged
@@ -524,4 +524,17 @@ tasks:
     footprint: [agents/validate.md, workflows/inner-loop.js, test/inner-loop-park.test.js]
     size: s
     depends_on: [t8, t13]
+    report:
+      result: built
+      footprint_actual:
+        - agents/validate.md
+        - workflows/inner-loop.js
+        - test/inner-loop-park.test.js
+      diff_actual:
+        files: 3
+        insertions: 104
+        deletions: 20
+      deviations:
+        - "The complexity budget (10) forced a refactor beyond the two acceptance-criteria edits: added recordVerdict(featureId, verdict), extracting the outer loop's verdict branching out of the loop body — the extra blocked/feature branch pushed it from 10 to 11; tests stayed green throughout."
+      summary: agents/validate.md's step-8 return shape gains deviation and menu fields, populated whenever result is deviation (the verdict that always books a park) — mirroring the escalation record's findings paragraph and menu verbatim; the dedup and crash-healed minimal shapes untouched; documented absent on perfect/remediation-pending. workflows/inner-loop.js's parkEntry gained an r.detail fallback so validate's feature-shaped blocked return parks with real content, and the outer loop's verdict handling gained the result blocked + kind feature arm (previously vanished from the BoundaryResult), extracted with the existing handling into recordVerdict to stay under the complexity budget. Criterion 2's shim test watched red against a mock modeling the pre-fix validate.md contract (no deviation/menu), green once the contract fix is modeled; criterion 3's test watched red against the unmodified switch (feature-kind block empirically vanished while an independent feature completed) and green after the arm, also asserting kind environment still halts. Full suite (105 tests), eslint, npm run check pass; one commit (6e7083e) on loop/inner-loop-workflow, rebased onto main's tip.
 ```
