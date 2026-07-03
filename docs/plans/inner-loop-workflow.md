@@ -290,7 +290,7 @@ tasks:
 
   - id: t7
     title: agents/build.md — per-task fold-in booking, typed blocks, crash healing
-    status: pending
+    status: built
     covers: [1, 2, 3]
     acceptance:
       - after the one branch commit, the surface instructs the agent to book on the integration target — spine plan report folds its completion report, the feature's first task also flips planned→building via spine set-status, spine ledger render on any flip, one booking commit, HEAD left on the target — replacing the old never-write-docs/plans ban with this mechanical protocol
@@ -302,6 +302,16 @@ tasks:
     footprint: [agents/build.md]
     size: s
     depends_on: [t5]
+    report:
+      result: built
+      footprint_actual:
+        - agents/build.md
+      diff_actual:
+        files: 1
+        insertions: 111
+        deletions: 31
+      deviations: []
+      summary: "agents/build.md gained a mechanical self-booking protocol mirroring t6's agents/plan.md: a new step 5 'Book on the integration target' that switches to the target after the branch commit and, on Built, folds the completion report via spine plan report, flips the feature planned→building via spine set-status only when this is the feature's first task (checked via spine resolve), re-renders the Ledger only on that flip, and commits plan.md (plus design.md/ledger.md when flipped) as one 'book task <task-id>' commit. Blocked returns are now typed: feature-shaped (a contradictory/untestable contract from step 1/3, or a rebase conflict from step 2) authors a menu and books the park — escalation record under the pinned '## Escalation' heading (phase build, branch loop/<feature-id>), spine set-status parked, spine ledger render, one 'book parked at build' commit, leaving the task itself pending in the plan for a later retry; environment-shaped (dirty tree, mis-sequencing) books nothing. Step 4's old absolute 'never write to docs/plans/ or docs/design/' ban is replaced with a pointer to the new mechanical step 5 as the one sanctioned place those files change. Crash healing is documented in step 2: before building fresh, search the feature branch's commits since it diverged from the target for one matching this task's own commit pattern; a match (code already committed, plan still pending) skips straight to deriving the report from that commit, with 'deviations' noting the reconstruction explicitly — the original run's deviation prose is lost, but footprint_actual/diff_actual are not, since git recomputes both exactly. Return shapes in step 6 now carry kind (feature|environment) and menu (feature-shaped only) alongside the unchanged built shape. Grepped the finished file for 'ADR' (no hits) and re-read it end-to-end for self-containment; no test file — agents/*.md are prose surfaces with no test harness, per the same convention t6 documented. Full suite (89 tests), eslint, and npm run check all pass; one commit (0b6fd9f) on loop/inner-loop-workflow, rebased cleanly onto main's tip before building."
 
   - id: t8
     title: agents/validate.md — post-verdict booking, remediation-pending, typed readiness blocks
