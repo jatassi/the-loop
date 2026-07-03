@@ -427,7 +427,7 @@ tasks:
 
   - id: t12
     title: inner-loop.js halts and stalls — environment blocks, budget, agent death
-    status: pending
+    status: built
     covers: [3]
     acceptance:
       - an environment-kind return from any phase (plan blocked, build blocked, validate readiness, derive blocked) stops all further spawning and sets halted { reason environment-blocked, detail }, preserving completed and parked booked so far
@@ -438,6 +438,17 @@ tasks:
     footprint: [workflows/inner-loop.js, test/inner-loop-halt.test.js]
     size: s
     depends_on: [t11]
+    report:
+      result: built
+      footprint_actual:
+        - workflows/inner-loop.js
+        - test/inner-loop-halt.test.js
+      diff_actual:
+        files: 2
+        insertions: 251
+        deletions: 15
+      deviations: []
+      summary: "workflows/inner-loop.js gains one spawn choke point, spawn(prompt, opts, featureId), that every phase call funnels through: it classifies a caught throw via isBudgetExhausted(error) (matches only error.name/error.code against /budget/i, never message text) into a run-level halted budget-exhausted signal; degrades any other throw or a null return to a feature-level stalled {feature, phase, note} signal; and via isEnvironmentBlock turns an environment-kind blocked return from any phase into the halted environment-blocked signal (derive's kind-less blocked is unconditionally environment-shaped per the pin). VALIDATE_SCHEMA gained blocked in its results enum. runBuild/runFeature propagate signals untouched; the outer loop alone acts — halted breaks the loop preserving accrued completed/parked, stalled pushes and continues. budget stays unconditional on every return path. Five tests, each watched genuinely red against pre-t12 code with failure reasons confirmed: environment build block halts mid-feature preserving prior completed+parked; derive kind-less blocked halts; name-matched BudgetExceededError halts budget-exhausted; an ordinary Error merely saying 'ran out of budget' stalls, not halts — message text is never the signal; null return and ordinary throw each stall only their feature while the run drains on. Full suite (101 tests), eslint, npm run check pass. One commit (9ae8cad) on loop/inner-loop-workflow, rebased onto main's tip."
 
   - id: t13
     title: inner-loop.js remediation round — one bounded pass, sheet reuse
