@@ -78,7 +78,11 @@ refused.
   `remediation_task` (remediation-pending only), `menu: [option]` when it booked a
   park, and top-level `kind: "feature" | "environment"` when a readiness block ended
   the feature's run-participation (semantic conflict → feature; dirty tree or
-  precondition down → environment, nothing booked).
+  precondition down → environment, nothing booked). Two minimal short-circuit
+  shapes exist — dedup `{ feature, patch_id, result, merged: false, dedup: true }`
+  and crash-healed `{ feature, design_version, patch_id, result: "perfect",
+  merged: true, reconstruction: <sha> }` — so the spawn schema requires only
+  `feature` + `result` and leaves the rest optional.
 - **derive** — unchanged; the script maps its `blocked` to an environment halt
   (an args-construction defect).
 
