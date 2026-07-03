@@ -105,13 +105,13 @@ features:
 
   - id: build
     title: Build (task agents; sequential within a feature for v1)
-    status: building
+    status: validated
     depends_on: [artifact-spine, plan]
     acceptance: a feature's tasks produce a single merged diff
 
   - id: craft-baseline
     title: Craft bundle (craft-baseline port + build constitution + per-task standards)
-    status: building
+    status: validated
     depends_on: [plan, build]
     notes:
       - mechanics per ADR-0027 — two layers (plugin pack + docs/standards/, repo wins); constitution always-injected; Plan selects standards per task via the task contract's standards field; Design seeds/mines the project layer; Validate consumes via the standards axis (2026-07-02)
@@ -119,7 +119,7 @@ features:
 
   - id: validate
     title: Independent validator (readiness + four legs)
-    status: building
+    status: validated
     depends_on: [build]
     interfaces: [validator-verdict, runtime-probe]
     notes:
