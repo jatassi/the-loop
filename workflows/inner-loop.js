@@ -19,17 +19,39 @@ const DONE_STATUSES = new Set(['validated', 'shipped']);
 const RUNNABLE_STATUSES = new Set(['designed', 'planned', 'building']);
 
 // Spawn schemas (the harness validates each return against these, in strict JSON Schema
-// mode — no invented keywords): the pinned per-phase result enum plus the keys every
-// shape in that enum always carries, never the full per-result field lists.
-const phaseSchema = (results, ...keys) => ({
+// mode — no invented keywords). The schema doubles as the agent's return TEMPLATE: a
+// field left undescribed gets silently dropped from the structured return (first-run
+// finding), so every pinned per-result field is described in properties even though
+// only the always-present keys are required.
+const strings = (...names) => Object.fromEntries(names.map((n) => [n, { type: 'string' }]));
+const stringArray = { type: 'array', items: { type: 'string' } };
+const phaseSchema = (results, required, extras) => ({
   type: 'object',
-  properties: Object.fromEntries([['result', { enum: results }], ...keys.map((k) => [k, { type: 'string' }])]),
-  required: ['result', ...keys],
+  properties: { result: { enum: results }, ...strings(...required), ...extras },
+  required: ['result', ...required],
 });
-const PLAN_SCHEMA = phaseSchema(['planned', 'bounce', 'blocked'], 'feature');
-const BUILD_SCHEMA = phaseSchema(['built', 'blocked'], 'task');
-const DERIVE_SCHEMA = phaseSchema(['derived', 'blocked'], 'feature');
-const VALIDATE_SCHEMA = phaseSchema(['perfect', 'deviation', 'remediation-pending', 'blocked'], 'feature');
+const TASK_SUMMARY = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: { ...strings('id', 'status', 'size'), depends_on: stringArray },
+    required: ['id'],
+  },
+};
+const PLAN_SCHEMA = phaseSchema(['planned', 'bounce', 'blocked'], ['feature'], {
+  tasks: TASK_SUMMARY, ...strings('plan', 'notes', 'kind', 'deviation', 'detail'), menu: stringArray,
+});
+const BUILD_SCHEMA = phaseSchema(['built', 'blocked'], ['task'], {
+  ...strings('kind', 'summary'), deviations: stringArray, menu: stringArray,
+  footprint_actual: stringArray, diff_actual: { type: 'object' },
+});
+const DERIVE_SCHEMA = phaseSchema(['derived', 'blocked'], ['feature'], {
+  expectations: { type: 'array', items: { type: 'object' } }, ambiguities: stringArray, missing: stringArray,
+});
+const VALIDATE_SCHEMA = phaseSchema(['perfect', 'deviation', 'remediation-pending', 'blocked'], ['feature'], {
+  ...strings('kind', 'deviation', 'detail', 'remediation_task', 'patch_id', 'reconstruction'),
+  menu: stringArray, merged: { type: 'boolean' }, dedup: { type: 'boolean' },
+});
 
 // In-memory status view, seeded from the snapshot's index and updated as agents return — the
 // frontier below is computed against this, not the on-disk snapshot, so a dependency
@@ -114,8 +136,13 @@ async function spawn(prompt, opts, featureId) {
 // Runs the feature's pending tasks in depends_on order; returns the first feature-kind
 // blocked return (build.md's "first block parks" contract), or a halted/stalled signal
 // from `spawn` — either way the caller stops there. Undefined once every task has built
-// cleanly.
+// cleanly. A missing task list (a planned return or args.plans entry that carried no
+// summaries) stalls the feature rather than crashing the run — the plan itself is
+// already booked durable, so the next pass re-enters Build with a corrected snapshot.
 async function runBuild(featureId, tasks) {
+  if (!Array.isArray(tasks)) {
+    return { stalled: { feature: featureId, phase: 'plan', note: 'no task summaries reached the script (planned return or args.plans entry empty) — plan artifact is booked; re-run with a corrected snapshot' } };
+  }
   const pending = orderTasks(tasks).filter((task) => task.status !== 'built');
   for (const task of pending) {
     const built = await spawn(`feature: ${featureId}\ntask: ${task.id}`, {

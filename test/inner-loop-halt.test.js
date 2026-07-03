@@ -179,3 +179,31 @@ test('a null return or any other thrown error stalls just that feature, and the 
   assert.deepEqual(result.completed, ['gamma']);
   assert.equal(result.halted, undefined);
 });
+
+// ── a planned return that carries no task summaries stalls the feature instead of
+// crashing the run (first-live-run finding: a minimal spawn schema elicited a minimal
+// return; the plan itself is booked durable, so the next pass re-enters Build) ──
+test('a planned return without task summaries stalls the feature and the run continues', async () => {
+  const args = {
+    target: 'main',
+    scope: ['alpha', 'gamma'],
+    index: { designVersion: 1, features: [featureNode('alpha'), featureNode('gamma')] },
+    slices: { alpha: slice('alpha'), gamma: slice('gamma') },
+    plans: {},
+    probe: {},
+  };
+  const budget = { spent: 0, remaining: 10 };
+  const agentReplies = [
+    { returns: { result: 'planned', feature: 'alpha' } }, // no tasks field
+    ...perfectRun('gamma'),
+  ];
+
+  const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+
+  assert.equal(result.stalled.length, 1);
+  assert.equal(result.stalled[0].feature, 'alpha');
+  assert.equal(result.stalled[0].phase, 'plan');
+  assert.ok(result.stalled[0].note.includes('no task summaries'), 'note names the gap');
+  assert.deepEqual(result.completed, ['gamma']);
+  assert.equal(result.halted, undefined);
+});
