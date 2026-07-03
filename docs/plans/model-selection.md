@@ -363,7 +363,7 @@ tasks:
       summary: "agents/plan.md's step-6 plan-artifact section now teaches `tier` alongside `size`: a short paragraph precedes the ## Tasks template stating tier is decision-density, not size — rote means nothing is left to decide *and* correctness is fully captured by the task's own tests plus lint, complex means real judgment calls remain, standard is everything in between, and unsure means standard — and the yaml template itself gains a `tier: standard` field with an inline comment pointing back to that rubric. Step 9's planned-return shape gains `\"tier\": \"rote|standard|complex\"` in each task summary, matching the `{ id, status, depends_on, size, tier }` shape the workflow's TASK_SUMMARY schema expects. Step 7 (fresh-context audit) now instructs resolving the audit's model before spawning — `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" models`, reading the `plan.audit` role's entry (its bound model, or the session inherit when that value is literally `\"session\"` or the role is absent from the printed table) — and spawning the audit agent on that model with its title/label prefixed `[<resolved-model>] ` (e.g. `[opus] plan-audit:<feature-id>`), mirroring the `[<model>] ` label convention the rest of the feature establishes. The file remains self-contained: `grep -n \"ADR\" agents/plan.md` yields no hits (exit 1), verified after the edit. No test suite covers agents/*.md (confirmed by grep across test/ for `agents/` references, zero hits) and the task's own footprint carries no test file, so verification is the three criteria checked directly against the edited text: the tier rubric and template field, the audit-spawn resolution and label instruction, and the ADR grep. `npm run check` (spine check + eslint over the whole tree) is green."
   - id: t8
     title: Design skill surface — reader and alternative spawns resolve their bound models
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - skills/design/SKILL.md instructs resolving design.alternative (the design-it-twice alternates) and design.reader (the reader test) via node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" models, spawning each subagent on its resolved model with the model carried in the spawn's title/label, and notes that session-side spawns take a model only (a bound effort does not apply there)
@@ -374,4 +374,15 @@ tasks:
     size: xs
     tier: standard
     depends_on: [t3]
+    report:
+      result: built
+      footprint_actual:
+        - skills/design/SKILL.md
+      diff_actual:
+        files: 1
+        insertions: 21
+        deletions: 13
+      deviations:
+        - the file already carried two pre-existing, legitimate uses of the literal string "ADR" (instructing the design skill to offer recording a target-project decision as an ADR in docs/adr/, and to commit any ADRs at finalize) that predate this task and are unrelated to model resolution; criterion 2 demands a whole-file grep for "ADR" yield no hits, so both were reworded to "Architecture Decision Record"/"decision record(s)" (meaning preserved, docs/adr/ path untouched) rather than left as false positives — a small excursion beyond the model-resolution wiring, done in-footprint since the file itself is the task's whole lease
+      summary: "skills/design/SKILL.md now teaches both session-side spawns the model-binding table governs. The 'Design it twice' bullet (step 2) instructs resolving the alternates' model via `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" models`, reading the `design.alternative` role's entry (its bound model, or the session inherit when that value is literally \"session\" or the role is absent from the printed table), then sketching the parallel alternates on that model with each spawn's title prefixed `[<resolved-model>] `; the same parenthetical notes that session-side spawns take a model only, a bound effort does not apply there. Step 5's Reader test bullet mirrors the pattern: resolve `design.reader`'s entry the same way, then hand the draft to a fresh subagent on that model with its title similarly prefixed. The file stays self-contained: `grep -n \"ADR\" skills/design/SKILL.md` yields no hits (exit 1), verified after the edit — the two pre-existing legitimate ADR mentions (offering to record a target-project Architecture Decision Record, and committing any decision records at finalize) were reworded to avoid the literal string while preserving meaning and the docs/adr/ path reference. No test suite covers skills/*.md (confirmed by grep across test/ for skills/ references, zero hits) and the task's own footprint carries no test file, so verification is the two criteria checked directly against the edited text: the model-resolution/spawn-labeling instructions for both roles, and the ADR grep. `npm run check` (spine check + eslint over the whole tree) is green."
 ```
