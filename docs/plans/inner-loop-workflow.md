@@ -264,7 +264,7 @@ tasks:
 
   - id: t6
     title: agents/plan.md — self-booking, typed blocks, task-summary return
-    status: pending
+    status: built
     covers: [1, 2]
     acceptance:
       - the surface instructs the plan agent to book on the integration target after plan check passes — commit the plan artifact, spine set-status designed→planned, spine ledger render, one booking commit per the pinned message convention, HEAD left on the target
@@ -277,6 +277,16 @@ tasks:
     footprint: [agents/plan.md]
     size: s
     depends_on: [t5]
+    report:
+      result: built
+      footprint_actual:
+        - agents/plan.md
+      diff_actual:
+        files: 1
+        insertions: 85
+        deletions: 29
+      deviations: []
+      summary: "agents/plan.md gained: a Readiness step returning { result: blocked, kind: environment, detail } on a dirty tree (booking nothing); a bounce path that authors the 2-3-option menu and books the park (escalation record with the pinned '## Escalation' block, phase plan, branch null; spine set-status parked; spine ledger render; one 'book parked at plan' commit; HEAD on the target) with the bounce return carrying kind feature + menu; a Book-the-plan step after plan check is clean (plan-artifact commit, then set-status planned + ledger render as one 'book planned' commit); and the planned return's tasks as [{id, status, depends_on, size}] per the pinned shape. Cross-references renumbered; grepped for ADR refs (none); re-read end-to-end for self-containment. No test file — agents/*.md are prose surfaces with no test harness (none carry one); verification was a criterion-by-criterion re-read plus a full-suite regression run (89 tests, eslint, spine check). One commit (329b0ed) on loop/inner-loop-workflow, rebased onto main's tip."
 
   - id: t7
     title: agents/build.md — per-task fold-in booking, typed blocks, crash healing
