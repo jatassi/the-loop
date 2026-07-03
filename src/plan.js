@@ -81,6 +81,7 @@ function normalizeTask(t) {
     size: t.size,
     depends_on: t.depends_on || [],
     ...((t.report != null) && { report: t.report }),
+    ...((t.remediation != null) && { remediation: t.remediation }),
   };
 }
 
@@ -180,8 +181,10 @@ function checkTaskFields(t, { err, warn }) {
 }
 
 // Per-task coverage claims: each `covers` index lands inside the feature's criteria.
+// The remediation round-marker is exempt both ways (ADR-0027/0029): it covers no
+// criterion by design, and its empty `covers` never satisfies one either.
 function checkTaskCovers(t, { err, criteria, covered }) {
-  if (t.covers.length === 0) { err('task-covers-nothing', 'task claims no feature acceptance criterion', t.id); }
+  if (t.covers.length === 0 && !t.remediation) { err('task-covers-nothing', 'task claims no feature acceptance criterion', t.id); }
   for (const k of t.covers) {
     if (Number.isSafeInteger(k) && k >= 1 && k <= criteria.length) { covered.add(k); }
     else { err('bad-covers-ref', `covers references criterion #${k} but the feature has ${criteria.length}`, t.id); }
@@ -291,6 +294,49 @@ export function foldReport(plan, taskId, report) {
   const doc = plan._blocks.tasks.doc;
   doc.setIn(['tasks', idx, 'status'], report.result);
   doc.setIn(['tasks', idx, 'report'], body);
+}
+
+/**
+ * Append the remediation round-marker (ADR-0027/0029): the durable, one-shot task
+ * carrying a bounded pass over standards findings that survived validation. Its
+ * presence is the round-marker itself, so a second append is refused, and a findings
+ * set citing no file:line location is refused too — the plan on disk must never gain
+ * a footprint-less task.
+ * @param {PlanModel} plan
+ * @param {Array<{location: string, observation: string}>} findings  from the validator's leg reports
+ */
+export function appendRemediation(plan, findings) {
+  if ((plan.tasks || []).some((t) => t.remediation)) {
+    throw new Error(`plan ${plan.feature} already carries a remediation round-marker`);
+  }
+  const footprint = [...new Set((findings || []).map((f) => fileOfFinding(f)).filter(Boolean))];
+  if (footprint.length === 0) {
+    throw new Error('findings carry no file:line location — nothing to remediate');
+  }
+  if (!plan._blocks.tasks) {throw new Error('plan has no tasks block to append into');}
+
+  const task = {
+    id: 'remediation',
+    title: 'Remediation round — standards findings addressed or rebutted',
+    status: 'pending',
+    remediation: true,
+    covers: [],
+    acceptance: findings.map((f) => `${f.location}: ${f.observation} — addressed, or rebutted with evidence`),
+    injects: [],
+    standards: [],
+    footprint,
+    size: 's',
+    depends_on: plan.tasks.map((t) => t.id),
+  };
+  plan.tasks.push(task);
+  plan._blocks.tasks.doc.setIn(['tasks', plan.tasks.length - 1], task);
+}
+
+// A finding's file, when its location is shaped "path:line"; null for the free-text
+// probe observations a finding may carry instead, which name no file to remediate.
+function fileOfFinding(finding) {
+  const m = /^(.+):(\d+)$/.exec((finding && finding.location) || '');
+  return m ? m[1] : null;
 }
 
 function hasAcceptance(a) {

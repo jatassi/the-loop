@@ -7,25 +7,39 @@
 //   spine index  [design.md]        the compact workflow-args index (no contract bodies)
 //   spine resolve <id> [design.md]  a feature node + the contracts it references
 //   spine check  [design.md]        validate + round-trip; report; exit 1 on failure
+//   spine set-status <feature-id> <status>  flip one feature's status in design.md; prints
+//                                            the updated node as JSON; exit 1, unwritten, on
+//                                            an unknown id or an out-of-enum status
+//   spine ledger render             regenerate docs/ledger/ledger.md from design.md +
+//                                    docs/escalations/*.md (absent dir = none); idempotent
 //   spine plan parse <feature-id> [plan.md]             the parsed plan model
 //   spine plan check <feature-id> [plan.md] [design.md] validate against the design + round-trip
 //   spine plan task <feature-id> <task-id> [plan.md] [design.md]        a build agent's task slice
 //   spine plan report <feature-id> <task-id> [report.json|-] [plan.md]  fold a completion report in
+//   spine plan remediate <feature-id> [findings.json|-]  append the remediation round-marker task;
+//                                                        exit 1, unwritten, on a second round or a
+//                                                        findings set with no file:line locations
 //   spine validate scan <feature-id> [target] [branch]  forensics tripwires + patch-id dedup over
 //                                                       the feature branch's diff (target: main,
 //                                                       branch: loop/<feature-id> by default)
 
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
+import { parseEscalation } from '../src/escalation.js';
+import { renderLedger } from '../src/ledger.js';
 import { parse } from '../src/parse.js';
-import { foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
+import { appendRemediation, foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
 import { extractIndex, resolveIn } from '../src/resolve.js';
 import { validate } from '../src/schema.js';
+import { setStatus } from '../src/status.js';
 import { latestPatchId, parseUnifiedDiff, scan } from '../src/validate.js';
 
 const DEFAULT = 'docs/design/design.md';
+const LEDGER = 'docs/ledger/ledger.md';
+const ESCALATIONS_DIR = 'docs/escalations';
 const read = (file) => readFileSync(file || DEFAULT, 'utf8');
 const out = (obj) => process.stdout.write(`${JSON.stringify(obj, null, 2)}\n`);
 const clean = ({ _blocks, ...rest }) => rest; // drop the yaml Documents from JSON output
@@ -55,6 +69,14 @@ try {
       process.exit(check(rest[0]));
       break;
     }
+    case 'set-status': {
+      setStatusCommand(rest);
+      break;
+    }
+    case 'ledger': {
+      ledgerCommand(rest);
+      break;
+    }
     case 'plan': {
       planCommand(rest);
       break;
@@ -64,7 +86,7 @@ try {
       break;
     }
     default: {
-      process.stdout.write('usage: spine <parse|index|resolve <id>|check|plan <parse|check|task|report> <id>|validate scan <id>> [file…]\n');
+      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|ledger render|plan <parse|check|task|report|remediate> <id>|validate scan <id>> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }
@@ -72,11 +94,39 @@ try {
   fail(error.message);
 }
 
-// The plan subcommands: parse | check | task | report.
+// spine set-status <feature-id> <status> — flip one feature's status in design.md.
+function setStatusCommand([featureId, status]) {
+  if (!featureId || !status) { fail('usage: spine set-status <feature-id> <status>'); }
+  const text = read();
+  const model = parse(text);
+  setStatus(model, featureId, status);
+  writeFileSync(DEFAULT, render(text, model));
+  out(model.features.find((f) => f.id === featureId));
+}
+
+// spine ledger render — regenerate docs/ledger/ledger.md from design.md + open escalations.
+function ledgerCommand([sub]) {
+  if (sub !== 'render') { fail('usage: spine ledger render'); }
+  const model = parse(read());
+  const priorText = existsSync(LEDGER) ? readFileSync(LEDGER, 'utf8') : '';
+  writeFileSync(LEDGER, renderLedger(model, readEscalations(), priorText));
+  out({ written: LEDGER });
+}
+
+// docs/escalations/*.md → open EscalationRecords; an absent directory means none.
+function readEscalations() {
+  if (!existsSync(ESCALATIONS_DIR)) { return []; }
+  return readdirSync(ESCALATIONS_DIR)
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => parseEscalation(readFileSync(path.join(ESCALATIONS_DIR, f), 'utf8')))
+    .filter(Boolean);
+}
+
+// The plan subcommands: parse | check | task | report | remediate.
 function planCommand(argv) {
   const [sub, featureId, ...args] = argv;
-  if (!featureId || !['parse', 'check', 'task', 'report'].includes(sub)) {
-    fail('usage: spine plan <parse|check|task|report> <feature-id> …');
+  if (!featureId || !['parse', 'check', 'task', 'report', 'remediate'].includes(sub)) {
+    fail('usage: spine plan <parse|check|task|report|remediate> <feature-id> …');
   }
   switch (sub) {
     case 'parse': {
@@ -90,6 +140,10 @@ function planCommand(argv) {
     }
     case 'task': {
       taskCommand(featureId, args);
+      break;
+    }
+    case 'remediate': {
+      remediateCommand(featureId, args);
       break;
     }
     default: {
@@ -115,6 +169,16 @@ function reportCommand(featureId, [taskId, reportFile, planFile]) {
   foldReport(plan, taskId, report);
   writeFileSync(file, render(text, plan));
   out(plan.tasks.find((t) => t.id === taskId));
+}
+
+// spine plan remediate <feature-id> [findings.json|-] — append the round-marker + write back.
+function remediateCommand(featureId, [findingsFile]) {
+  const source = findingsFile && findingsFile !== '-' ? findingsFile : 0; // 0 = stdin
+  const findings = JSON.parse(readFileSync(source, 'utf8'));
+  const { file, text, plan } = loadPlan(featureId);
+  appendRemediation(plan, findings);
+  writeFileSync(file, render(text, plan));
+  out(plan.tasks.find((t) => t.remediation));
 }
 
 // spine validate scan <feature-id> [target] [branch] — the forensics scanner (leg 1).

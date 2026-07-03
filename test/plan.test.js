@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { parse } from '../src/parse.js';
-import { foldReport, parsePlan, planPath, REPORT_RESULTS, resolveTask, TASK_SIZES, validatePlan } from '../src/plan.js';
+import { appendRemediation, foldReport, parsePlan, planPath, REPORT_RESULTS, resolveTask, TASK_SIZES, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
 
 const DESIGN = parse(`## Feature graph
@@ -246,4 +246,54 @@ test('foldReport refuses a malformed result and a double fold', () => {
   assert.equal(m.tasks[0].status, 'blocked');
   assert.throws(() => foldReport(m, 't1', { result: 'built', summary: 'retry' }), /already carries a report/);
   assert.deepEqual(REPORT_RESULTS, ['built', 'blocked']);
+});
+
+const FINDINGS = [
+  { severity: 'advisory', location: 'src/render.js:12', observation: 'render() exceeds the complexity budget' },
+  { severity: 'advisory', location: 'src/render.js:40', observation: 'duplicate branch logic' }, // same file as above
+  { severity: 'advisory', location: 'src/save.js:5', observation: 'magic number' },
+];
+
+test('appendRemediation appends the round-marker to the model and the retained doc, and it survives render() round-trip', () => {
+  const m = model();
+  appendRemediation(m, FINDINGS);
+
+  const task = m.tasks[2];
+  assert.equal(task.id, 'remediation');
+  assert.equal(task.remediation, true);
+  assert.equal(task.status, 'pending');
+  assert.deepEqual(task.covers, []);
+  assert.deepEqual(task.footprint, ['src/render.js', 'src/save.js']); // deduplicated
+  assert.equal(task.acceptance.length, FINDINGS.length);
+  assert.equal(task.size, 's');
+  assert.deepEqual(task.depends_on, ['t1', 't2']);
+
+  const text = render(PLAN, m);
+  const re = parsePlan(text);
+  assert.deepEqual(re.tasks[2].footprint, ['src/render.js', 'src/save.js']);
+  assert.equal(re.tasks[2].remediation, true);
+  assert.equal(render(text, re), text); // the appended artifact still round-trips
+});
+
+test('appendRemediation refuses a second marker and a findings set with no file:line locations, leaving the plan untouched', () => {
+  const m = model();
+  appendRemediation(m, FINDINGS);
+  assert.throws(() => appendRemediation(m, FINDINGS), /already carries a remediation round-marker/);
+
+  const fresh = model();
+  const noFilePaths = [{ severity: 'advisory', location: 'npm test exit code 1', observation: 'suite failed' }];
+  assert.throws(() => appendRemediation(fresh, noFilePaths), /no file:line location/);
+  assert.equal(fresh.tasks.length, 2); // untouched
+});
+
+test('validatePlan allows empty covers on a remediation task, and parsePlan preserves the remediation flag', () => {
+  const m = model();
+  appendRemediation(m, FINDINGS);
+  const r = validatePlan(m, DESIGN);
+  assert.ok(r.ok);
+  assert.deepEqual(r.errors, []);
+
+  const re = parsePlan(render(PLAN, m));
+  assert.equal(re.tasks[2].remediation, true);
+  assert.ok(!('remediation' in re.tasks[0])); // non-remediation tasks stay unflagged
 });

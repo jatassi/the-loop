@@ -1,7 +1,7 @@
 ---
 description: "the-loop's front door — states where the project stands and proposes the next action; /the-loop <phase> jumps straight to a phase"
 argument-hint: "[phase]"
-allowed-tools: Bash(node *), Read
+allowed-tools: Bash(node *), Bash(git *), Bash(ln *), Bash(mkdir *), Read, Workflow
 ---
 
 ## Context
@@ -50,7 +50,7 @@ this / where are we / what needs you / what's next), then report:
 - **What needs the human** — every id in `parked`, each with its recommendation, first.
 - **The proposal** — the default next action. If `frontier` is non-empty alongside
   parked items, offer both: decisions unblock parks; the frontier can advance
-  meanwhile.
+  meanwhile. Accepting `advance-frontier` enters the launch leg below.
 
 **`partial`** — a half-configured project. Name exactly what `missing` lists, propose
 a repair (finish the interrupted Design, or restore the file from git history), and do
@@ -59,8 +59,59 @@ not guess forward.
 ### Explicit jumps — `/the-loop <phase>`
 
 Orient and state position first, then route: `frame` → the `frame` skill · `design` →
-the `design` skill · `plan` / `build` / `validate` → the inner-loop Workflow · `ship` →
-Ship · `config` → `/loop-config`.
+the `design` skill · `plan` / `build` / `validate` → the launch leg below, scoped to
+the dependency-ready frontier exactly as `advance-frontier` is · `ship` → Ship ·
+`config` → `/loop-config`.
+
+### The launch leg
+
+`advance-frontier` and the explicit `plan`/`build`/`validate` jumps both enter here —
+one procedure, so neither route improvises its own version.
+
+1. **Clean-tree gate.** Check out the integration target (`main`, unless the design
+   narrative in `docs/design/design.md` names another ref) and run `git status`. A
+   dirty tree stops everything right here: tell the human the tree isn't clean and
+   nothing ran — never say whose change it is, and never stash, reset, or commit
+   anything to make it clean.
+2. **Confirm the scope.** State the candidate feature-id list — the dependency-ready
+   frontier — and get the human's accept-or-override of it (rule 2 above). Their
+   answer is the run's `scope`.
+3. **Assemble `args`, mechanically — no field is invented, each comes from one
+   command:**
+   - `target` — `main`, unless the design narrative names another ref.
+   - `scope` — the confirmed list from step 2.
+   - `index` — `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" index`.
+   - `slices` — for every feature-id in `scope`,
+     `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" resolve <feature-id>`, keyed by id.
+   - `plans` — for every feature-id in `scope` that already has a plan (status
+     `planned` or `building`), `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" plan parse
+     <feature-id>`, its tasks reduced to `{ id, status, depends_on, size }` each,
+     keyed by id. A `designed` feature has no plan yet — omit it.
+   - `probe` — the project's runtime-probe **binding** as recorded at Design: the
+     bring-up / exercise / teardown instructions from the design narrative's
+     Lifecycle section, or from the project's ports inventory where one exists
+     (`docs/ports/ports.md`, its runtime-probe binding entry). Excerpt them
+     verbatim — one excerpt, independent of scope. Never pass the abstract
+     `runtime-probe` contract shape in its place, and never invent a binding: if
+     none is recorded, pass the recorded opt-out note instead.
+4. **Check plugin-agent resolution.** The Workflow spawns by `agentType` — `plan`,
+   `build`, `derive`, `validate`. Confirm each of the four resolves as an agent type
+   for the session; for any that doesn't, symlink it from the plugin so resolution
+   is guaranteed: `mkdir -p .claude/agents` then
+   `ln -s "$CLAUDE_PLUGIN_ROOT/agents/<name>.md" ".claude/agents/<name>.md"`. The
+   link tracks the plugin, so once it exists it never goes stale and never needs
+   redoing.
+5. **Launch.** Call the Workflow: `scriptPath` =
+   `$CLAUDE_PLUGIN_ROOT/workflows/inner-loop.js`, `args` = the step-3 snapshot.
+6. **Relay the result.** State the returned `BoundaryResult` to the human plainly:
+   - `completed` — which features finished.
+   - `parked` — each with its `deviation` and `menu`, verbatim; these need a
+     decision.
+   - `stalled` — each with its `feature`/`phase`/`note`; nothing was booked for it,
+     and the phase re-runs on the next pass.
+   - `halted`, if present — its `reason` (`budget-exhausted` or
+     `environment-blocked`) and `detail`, alongside whatever `completed`/`parked`
+     landed before the halt.
 
 ### Proposal kinds
 

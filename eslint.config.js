@@ -96,4 +96,45 @@ export default defineConfig([
       'max-nested-callbacks': ['error', 3],
     },
   },
+  {
+    // Workflow scripts run inside a Claude Code Workflow (ADR-0029): no imports, no
+    // filesystem — agent/parallel/pipeline/log/args/budget arrive as harness globals —
+    // and the file's only export, `meta`, sits above a bare top-level `return`. Neither
+    // shape parses on its own terms: a top-level `await` needs module scope, a top-level
+    // `return` needs script/commonjs scope with `globalReturn`, and no sourceType grants
+    // both at once (checked directly against espree — there is no parserOptions
+    // combination that does). The harness resolves this by running the file's body as an
+    // async function; test/workflow-shim.js mirrors that at runtime, and this processor
+    // mirrors it at parse time only, so every other rule below still runs against the
+    // real code, just shifted one function deeper (postprocess below un-shifts line
+    // numbers by the one line the wrapper adds).
+    files: ['workflows/**/*.js'],
+    processor: {
+      preprocess: (text) => [
+        // `void meta` gives the neutralized binding a use, so the harness-mandated
+        // export doesn't read as a dead local under this file's own lint pass.
+        `(async () => {\n${text.replace(/^(\s*)export const meta\b(.*)$/m, '$1const meta$2 void meta;')}\n})();\n`,
+      ],
+      postprocess: (messagesList) => messagesList.flat().map((m) => ({
+        ...m,
+        line: m.line - 1,
+        ...(m.endLine != null && { endLine: m.endLine - 1 }),
+      })),
+    },
+    languageOptions: {
+      globals: {
+        agent: 'readonly', parallel: 'readonly', pipeline: 'readonly',
+        log: 'readonly', args: 'readonly', budget: 'readonly',
+      },
+    },
+    rules: {
+      // The processor's wrapping makes the whole file look like one function's body to
+      // this rule; the file's real budget is `max-lines` (350, from the shared block,
+      // unchanged), and every genuine nested function below is still checked on its own.
+      'max-lines-per-function': 'off',
+      // The wrapper itself is an async IIFE by construction (see the processor above) —
+      // this rule would ask us to "prefer" the very shape we can't parse without it.
+      'unicorn/prefer-top-level-await': 'off',
+    },
+  },
 ]);
