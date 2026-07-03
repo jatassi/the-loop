@@ -82,7 +82,7 @@ tasks:
 
   - id: t2
     title: Restore this repo's Ledger title line and prove a live render preserves it
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - docs/ledger/ledger.md begins again with the exact pre-drop content — byte-identical to the first two lines (title line, then blank line) of "git show 705eed7:docs/ledger/ledger.md", the line reading "# Ledger — the-loop   ·   projected from design.md (feature graph) · established at Design finalize, 2026-06-29"
@@ -92,4 +92,14 @@ tasks:
     footprint: [docs/ledger/ledger.md]
     size: xs
     depends_on: [t1]
+    report:
+      result: built
+      footprint_actual:
+        - docs/ledger/ledger.md
+      diff_actual:
+        files: 1
+        insertions: 2
+        deletions: 0
+      deviations: []
+      summary: "docs/ledger/ledger.md opens again with the exact pre-drop title line — the restoration prepended the first two lines of git show 705eed7:docs/ledger/ledger.md and cmp confirmed byte-identity both before and after the render (criterion 1). A real node bin/spine.js ledger render was then executed on the feature branch (which carries t1's preamble-preservation fix): it reported {\"written\": \"docs/ledger/ledger.md\"}, the title line survived it byte-identically, and the committed file is the verbatim on-disk render output — the diff against the branch tip is exactly the 2 restored lines, meaning the five regenerated sections were reproduced in sync with the feature graph as of that run (building: 4 includes this feature, matching spine resolve) (criterion 2). npm run check passes."
 ```
