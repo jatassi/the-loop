@@ -213,7 +213,7 @@ tasks:
 
   - id: t4
     title: renderLedger — deterministic Ledger projection from graph + escalations
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - renderLedger(model, escalations, priorText) returns a full Ledger document that preserves the "## What this is" and "## Run history" sections byte-identically from priorText and regenerates "## Where we are" (counts by status, total, design_version), "## What needs you" (one entry per escalation with feature, phase, deviation summary, menu, branch; an explicit nothing-parked line when empty), and "## What's next" (the dependency-ready frontier ids)
@@ -224,6 +224,17 @@ tasks:
     footprint: [src/ledger.js, test/ledger.test.js]
     size: s
     depends_on: [t3]
+    report:
+      result: built
+      footprint_actual:
+        - src/ledger.js
+        - test/ledger.test.js
+      diff_actual:
+        files: 2
+        insertions: 156
+        deletions: 0
+      deviations: []
+      summary: "src/ledger.js exports renderLedger(model, escalations, priorText): a five-section document — priorText's '## What this is' and '## Run history' sliced out verbatim, interleaved with three regenerated sections: '## Where we are' (Total + design_version, then a count per STATUS enum value in enum order), '## What needs you' (one bullet per escalation record: feature, phase, deviation, menu, branch; explicit 'Nothing parked' when empty), '## What's next' (reuses frontier(model) from src/entry.js rather than reimplementing; 'Nothing dependency-ready.' when empty). Pure — no fs/clock/process — so determinism falls out for free. The missing-preserved-section path was watched fail against real code before the seeded-placeholder fallback was added. Three criteria, one test each: byte-equality against a hand-built fixture, same-inputs-twice equality, heading-omitted render. Full suite (85 tests), eslint, npm run check pass; one commit (b7f7f64) on loop/inner-loop-workflow, rebased onto main's tip."
 
   - id: t5
     title: CLI wiring — spine set-status, spine ledger render, spine plan remediate
