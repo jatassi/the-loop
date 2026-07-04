@@ -56,3 +56,19 @@ test('a non-integer top-level design_version is an error', () => {
   const v = validate(model('design_version: nope\nfeatures:\n  - id: a\n    title: A\n    status: designed\n    acceptance: x'));
   assert.ok(codes(v.errors).includes('bad-doc-design-version'));
 });
+
+test('a feature or contract id outside the lowercase-slug charset is a malformed-id error', () => {
+  // An id carrying shell metacharacters — the shape a hostile graph would use to reach
+  // a git ref or file path downstream. It must be rejected as a contract violation.
+  const evil = validate(model(
+    'design_version: 1\nfeatures:\n  - id: "evil; touch PWNED #"\n    title: E\n    status: designed\n    acceptance: x',
+    'contracts:\n  - id: ../escape\n    body: |\n      { }',
+  ));
+  assert.ok(codes(evil.errors).includes('malformed-id'));
+  assert.ok(codes(evil.errors).includes('malformed-contract-id'));
+  assert.equal(evil.ok, false);
+
+  // The real slug forms — lowercase, digits, internal hyphens — stay clean.
+  const ok = validate(model('design_version: 1\nfeatures:\n  - id: inner-loop-workflow2\n    title: T\n    status: designed\n    acceptance: x'));
+  assert.equal(codes(ok.errors).includes('malformed-id'), false);
+});

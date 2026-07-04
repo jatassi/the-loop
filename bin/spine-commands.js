@@ -1,7 +1,7 @@
 // Command implementations for the spine CLI. Split out of bin/spine.js (its sibling
 // and sole caller) to keep that file's job to argv dispatch alone; this module holds
 // the actual command bodies and the small I/O helpers (read/out/clean/fail) they share.
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -234,13 +234,13 @@ export function validateCommand(argv) {
 function scanCommand(featureId, args) {
   const target = args[0] || 'main';
   const branch = args[1] || `loop/${featureId}`;
-  const base = gitOut(`git merge-base ${target} ${branch}`).trim();
-  const patchId = gitOut(`git diff ${base} ${branch} | git patch-id --stable`).split(' ', 1)[0] || null;
+  const base = git(['merge-base', target, branch]).trim();
+  const patchId = gitPatchId(base, branch);
   const planFile = planPath(featureId);
   const plan = existsSync(planFile) ? parsePlan(readFileSync(planFile, 'utf8')) : null;
   const validationsFile = `docs/validations/${featureId}.md`;
   const latest = existsSync(validationsFile) ? latestEntry(readFileSync(validationsFile, 'utf8')) : null;
-  const diff = parseUnifiedDiff(gitOut(`git diff --unified=0 ${base} ${branch}`));
+  const diff = parseUnifiedDiff(git(['diff', '--unified=0', base, branch]));
   out({
     feature: featureId, target, branch, base,
     patch_id: patchId,
@@ -329,8 +329,20 @@ function stampValidations(featureId, reason) {
   return mark;
 }
 
-function gitOut(cmd) {
-  return execSync(cmd, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+// git with argv handed straight to the binary — never a shell. A ref built from an
+// untrusted graph's feature id (branch = `loop/<id>`) therefore reaches git as one
+// literal argument: shell metacharacters in it cannot start a command, they just make
+// an unresolvable ref that fails cleanly.
+function git(args) {
+  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+// `git diff <base> <branch> | git patch-id --stable`, piped in-process so no shell
+// parses either ref. Returns patch-id's leading field, or null on an empty diff.
+function gitPatchId(base, branch) {
+  const diff = execFileSync('git', ['diff', base, branch], { maxBuffer: 64 * 1024 * 1024 });
+  const out = execFileSync('git', ['patch-id', '--stable'], { input: diff, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  return out.split(' ', 1)[0] || null;
 }
 
 // Read + parse a plan artifact, guarding the feature-id match.

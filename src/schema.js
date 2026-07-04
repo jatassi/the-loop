@@ -6,6 +6,14 @@
 export const STATUS = ['designed', 'planned', 'building', 'validated', 'shipped', 'parked', 'drifted'];
 
 /**
+ * Ids become git refs (`loop/<id>`) and file paths (`docs/validations/<id>.md`)
+ * downstream, so they must be a lowercase slug — no path separators, no shell
+ * metacharacters, no leading hyphen. Rejecting a malformed id here stops a hostile
+ * graph from an untrusted repo before its id can reach any ref or path construction.
+ */
+export const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+/**
  * @typedef {Object} Issue
  * @property {string} code
  * @property {string} message
@@ -30,10 +38,12 @@ export function validate(model) {
   const ids = collectIds(features, err, {
     missing: ['missing-id', 'feature is missing a string id'],
     duplicate: ['duplicate-id', 'duplicate feature id'],
+    malformed: ['malformed-id', 'feature id must be a lowercase slug matching ^[a-z0-9][a-z0-9-]*$'],
   });
   const contractIds = collectIds(contracts, err, {
     missing: ['missing-contract-id', 'contract is missing a string id'],
     duplicate: ['duplicate-contract-id', 'duplicate contract id'],
+    malformed: ['malformed-contract-id', 'contract id must be a lowercase slug matching ^[a-z0-9][a-z0-9-]*$'],
   });
 
   const referenced = new Set();
@@ -67,6 +77,7 @@ function collectIds(items, err, codes) {
   const ids = new Set();
   for (const item of items) {
     if (!item.id || typeof item.id !== 'string') { err(...codes.missing, item.title); continue; }
+    if (!ID_PATTERN.test(item.id)) { err(...codes.malformed, item.id); }
     if (ids.has(item.id)) { err(...codes.duplicate, item.id); }
     ids.add(item.id);
   }
