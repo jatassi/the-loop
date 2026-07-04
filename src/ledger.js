@@ -115,3 +115,33 @@ function runBullet({ date, run, completed = [], parked = [], stalled = [], halte
   if (budget) { fields.push(`budget: ${budget.spent}/${budget.remaining}`); }
   return `- ${fields.join(' | ')}`;
 }
+
+/**
+ * Insert one newest-first ship-history bullet as the first content after the
+ * "## Run history" heading in a Ledger's prior text. Same insertion semantics as
+ * appendRun: pure (the date arrives as an argument; no clock or filesystem read),
+ * throws with priorText untouched when the heading is absent.
+ * @param {string} priorText
+ * @param {{date: string, ship: number, outcome: string, features?: string[],
+ *   rollback_verified?: boolean}} entry
+ * @returns {string}
+ */
+export function appendShip(priorText, entry) {
+  const { date, ship, outcome } = entry || {};
+  if (!date || ship == null || !outcome) {
+    throw new Error('ship entry requires date, ship, and outcome');
+  }
+  const headingRe = /^## Run history\s*$/m;
+  const m = headingRe.exec(priorText);
+  if (!m) { throw new Error('Ledger has no "## Run history" heading'); }
+  const at = m.index + m[0].length;
+  return `${priorText.slice(0, at)}\n${shipBullet(entry)}${priorText.slice(at)}`;
+}
+
+// One deterministic line: date, ship-N, outcome, features, then rollback_verified
+// exactly when entry.rollback_verified is defined — in that fixed order.
+function shipBullet({ date, ship, outcome, features = [], rollback_verified }) {
+  const fields = [date, `ship-${ship}`, outcome, `features: ${features.join(', ')}`];
+  if (rollback_verified !== undefined) { fields.push(`rollback_verified: ${rollback_verified}`); }
+  return `- ${fields.join(' | ')}`;
+}

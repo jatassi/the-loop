@@ -1,0 +1,13 @@
+{
+  "name": "the-loop",
+  "owner": {
+    "name": "Jackson Atassi",
+    "email": "jackson.atassi@outlook.com"
+  },
+  "plugins": [
+    {
+      "name": "the-loop",
+      "source": "./"
+    }
+  ]
+}

@@ -47,6 +47,11 @@
 //   spine models [defaults.json]    resolved role table: plugin defaults <
 //                                    project (.claude/settings.json) < local
 //                                    (.claude/settings.local.json), "the-loop".modelBindings
+//   spine ship status                docs/ships/ship-*.md's count, next N, previous
+//                                    ship_sha, and the latest record's projection
+//                                    ({ship, ship_sha, outcome, interrupted}) — the
+//                                    healing + pin helper; exit 1, naming the file, on a
+//                                    record with no "## Ship record" block
 
 import { execSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -64,6 +69,7 @@ import { extractIndex, resolveIn } from '../src/resolve.js';
 import { validate } from '../src/schema.js';
 import { setStatus } from '../src/status.js';
 import { appendWaiver, isDeduped, latestEntry, parseUnifiedDiff, scan, stampRetried } from '../src/validate.js';
+import { shipCommand } from './ship.js';
 
 const DEFAULT = 'docs/design/design.md';
 const LEDGER = 'docs/ledger/ledger.md';
@@ -127,8 +133,9 @@ try {
       modelsCommand(rest);
       break;
     }
+    case 'ship': { shipCommand(rest); break; }
     default: {
-      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|note <id> <text>|ledger render|plan <parse|check|task|report|remediate|fix> <id>|validate <scan|waive> <id>|escalation resolve <id> <kind>|models [defaults.json]> [file…]\n');
+      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|note <id> <text>|ledger render|plan <parse|check|task|report|remediate|fix> <id>|validate <scan|waive> <id>|escalation resolve <id> <kind>|models [defaults.json]|ship status> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }
@@ -196,28 +203,26 @@ function readEscalations() {
 // project (.claude/settings.json) < local (.claude/settings.local.json), both under
 // the "the-loop".modelBindings key, both read from cwd (agents run at the target
 // repo's root). The optional trailing arg overrides the defaults-file path.
+// The plugin-defaults file is read and parsed right here (not a separate readDefaults
+// helper — this file's shared eslint max-lines budget has no room for the wrapper): a
+// read or parse failure names the file.
 function modelsCommand([defaultsFile]) {
   const defaultsPath = defaultsFile || path.join(PLUGIN_ROOT, 'config/model-bindings.json');
-  const defaults = readDefaults(defaultsPath);
+  let text;
+  try {
+    text = readFileSync(defaultsPath, 'utf8');
+  } catch (error) {
+    throw new Error(`could not read defaults file ${defaultsPath}: ${error.message}`, { cause: error });
+  }
+  let defaults;
+  try {
+    defaults = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`unparseable JSON in ${defaultsPath}: ${error.message}`, { cause: error });
+  }
   const project = readSettingsLayer('.claude/settings.json');
   const local = readSettingsLayer('.claude/settings.local.json');
   out(resolveModels({ defaults, project, local }));
-}
-
-// The plugin-defaults file: expected to exist and parse — a read or parse failure
-// names the file.
-function readDefaults(file) {
-  let text;
-  try {
-    text = readFileSync(file, 'utf8');
-  } catch (error) {
-    throw new Error(`could not read defaults file ${file}: ${error.message}`, { cause: error });
-  }
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error });
-  }
 }
 
 // A settings layer (project or local): a missing file, or a present file missing the

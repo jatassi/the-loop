@@ -52,7 +52,7 @@ this / where are we / what needs you / what's next), then report:
   parked items, offer both: decisions unblock parks; the frontier can advance
   meanwhile. Accepting `resolve-parked` routes to the `adjust` skill — the re-entry
   route its own description names; accepting `advance-frontier` enters the launch
-  leg below.
+  leg below; accepting `ship` routes to the `ship` skill.
 
 **`partial`** — a half-configured project. Name exactly what `missing` lists, propose
 a repair (finish the interrupted Design, or restore the file from git history), and do
@@ -62,8 +62,8 @@ not guess forward.
 
 Orient and state position first, then route: `frame` → the `frame` skill · `design` →
 the `design` skill · `plan` / `build` / `validate` → the launch leg below, scoped to
-the dependency-ready frontier exactly as `advance-frontier` is · `ship` → Ship ·
-`config` → `/loop-config`.
+the dependency-ready frontier exactly as `advance-frontier` is · `ship` → the `ship`
+skill · `config` → `/loop-config`.
 
 ### The launch leg
 

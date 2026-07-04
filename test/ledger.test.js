@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { appendRun, renderLedger } from '../src/ledger.js';
+import { appendRun, appendShip, renderLedger } from '../src/ledger.js';
 
 const MODEL = {
   designVersion: 3,
@@ -155,4 +155,47 @@ test('appendRun throws, nothing to insert, when date or run is missing from the 
 
 test('appendRun throws when priorText has no "## Run history" heading', () => {
   assert.throws(() => appendRun('## What this is\nNo run history here.\n', { date: '2026-07-04', run: 'wf_1' }));
+});
+
+test('appendShip inserts one bullet as the first content after "## Run history" in the pinned format, appending rollback_verified only when entry.rollback_verified is defined, and preserves every other byte', () => {
+  const deployed = appendShip(RUN_HISTORY_PRIOR, {
+    date: '2026-07-04',
+    ship: 3,
+    outcome: 'deployed',
+    features: ['alpha', 'beta'],
+  });
+  assert.equal(deployed, `## What this is
+Fixture for appendRun.
+
+## Run history
+- 2026-07-04 | ship-3 | deployed | features: alpha, beta
+2026-07-01: first hand-render.
+`);
+
+  const rolledBack = appendShip(RUN_HISTORY_PRIOR, {
+    date: '2026-07-04',
+    ship: 3,
+    outcome: 'rolled-back',
+    features: ['alpha'],
+    rollback_verified: false,
+  });
+  assert.equal(rolledBack, `## What this is
+Fixture for appendRun.
+
+## Run history
+- 2026-07-04 | ship-3 | rolled-back | features: alpha | rollback_verified: false
+2026-07-01: first hand-render.
+`);
+});
+
+test('appendShip throws, nothing to insert, when date, ship, or outcome is missing from the entry', () => {
+  assert.throws(() => appendShip(RUN_HISTORY_PRIOR, { ship: 3, outcome: 'deployed' }));
+  assert.throws(() => appendShip(RUN_HISTORY_PRIOR, { date: '2026-07-04', outcome: 'deployed' }));
+  assert.throws(() => appendShip(RUN_HISTORY_PRIOR, { date: '2026-07-04', ship: 3 }));
+});
+
+test('appendShip throws when priorText has no "## Run history" heading, priorText unmodified', () => {
+  const noHeading = '## What this is\nNo run history here.\n';
+  assert.throws(() => appendShip(noHeading, { date: '2026-07-04', ship: 1, outcome: 'deployed' }));
+  assert.equal(noHeading, '## What this is\nNo run history here.\n');
 });
