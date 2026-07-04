@@ -519,7 +519,7 @@ tasks:
       summary: "docs/research/2026-07-03-grok-native-worktree.md records a live, reproduced probe of grok's --worktree/--worktree-ref flags run four times against two throwaway git repos outside this checkout, in the exact headless/single-turn/--always-approve/--no-subagents invocation shape the shipped playbook uses: every run committed directly onto the passed-in checkout's own main branch, with git worktree list and grok's own worktree list never gaining a new entry and a --debug run showing zero worktree-related log lines, so the flags are observed to be no-ops in this invocation shape rather than guessed at from --help text (criterion 1). The record's closing section states the standing consequence either way: executors/grok.md's shipped worktree: driver-made stays as-is (this observation confirms rather than changes it), and flipping to native mode remains a follow-up playbook amendment gated on a future clean observation that contradicts today's negative result (criterion 2)."
   - id: fix-1
     title: Fix via-fixture regression and cross-stream line budget
-    status: pending
+    status: built
     fix: true
     covers: []
     acceptance:
@@ -543,4 +543,16 @@ tasks:
       - t7
       - t8
       - t9
+    report:
+      result: built
+      footprint_actual:
+        - bin/spine-commands.js
+        - bin/spine.js
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 3
+        insertions: 397
+        deletions: 391
+      deviations: []
+      summary: "test/spine-cli.test.js's via pass-through fixture (CUSTOM_DEFAULTS) now binds drive.via to \"grok\" (the shipped, registered executor from t3) with model \"grok-build\" (a member of grok's own models list) instead of the unregistered \"my-executor\", so spine models' registry validation (added by t2/t4) no longer hard-fails; the test's assertions were updated to the same value and still assert the via field rides through the settings-layer merge untouched by the build-role override, exactly as before — full suite (187 tests) is green, watched red (unregistered-executor error) before the fixture edit and green after. bin/spine.js's command bodies (set-status, note, ledger, models + its private helpers, plan + its subcommands, validate + its subcommands, escalation resolve + its helpers, check/planCheck/printIssue(s), and the shared read/out/clean/fail/PLUGIN_ROOT helpers) moved verbatim into a new sibling bin/spine-commands.js; bin/spine.js now holds only the shebang, usage comment, and the argv switch, importing what it dispatches to from spine-commands.js (no import cycle: spine-commands.js exports the shared helpers, spine.js is the only one that imports across the pair). Two now-inaccurate comments explaining why gitOut/printIssue had to be function declarations \"so the CLI dispatch above can reach it\" were dropped, since that dispatch no longer lives in the same file as those functions (ES module evaluation order makes the hoisting concern moot for cross-module calls) — leaving them would have been a stale, misleading comment. npx eslint . reports no issues (bin/spine.js is now 129 raw lines, well under the 350-line budget; bin/spine-commands.js holds the rest and is itself clean); no rule was suppressed and eslint.config.js is untouched (confirmed via git diff)."
 ```
