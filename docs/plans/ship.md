@@ -216,7 +216,7 @@ tasks:
 
   - id: t6
     title: spine ship corridor + the scripted fixture deploy target
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "node bin/spine.js ship corridor [corridor.json|-] reads {deploy, rollback, smoke?} shell-command strings (file, dash, or omitted arg = stdin), executes the corridor at the bin edge by driving src/corridor.js one yielded step at a time (exit 0 = step ok), and prints JSON {outcome, rollback_verified?, health_signal, steps: [{step, command, ok}]} matching the core's conclusion; it exits 0 whenever an outcome concluded (deployed, rolled-back, and deploy-failed alike) and exits 1 running nothing when deploy or rollback is missing from the input"
@@ -229,6 +229,20 @@ tasks:
     size: s
     tier: standard
     depends_on: [t2, t5]
+    report:
+      result: built
+      footprint_actual:
+        - bin/ship.js
+        - test/corridor-cli.test.js
+        - test/fixtures/deploy-target.js
+      diff_actual:
+        files: 3
+        insertions: 214
+        deletions: 1
+      deviations:
+        - "Footprint excursion: the task's declared footprint was [bin/spine.js, test/fixtures/deploy-target.js, test/corridor-cli.test.js], but bin/spine.js was untouched (its 'ship' case already delegates every subcommand to shipCommand(rest), unchanged since t3) and bin/ship.js was touched instead (undeclared) to hold the new 'corridor' branch's logic — bin/spine.js sits exactly at its 350-line eslint max-lines ceiling, the same recurring planning signal t3's and t5's own completion reports already flagged, so any code addition there was infeasible without removing an equal number of existing lines. bin/ship.js (t3's own analogous excursion) is the natural extension point and had ample room."
+        - "test/fixtures/deploy-target.js could not use process.exit() (unicorn/no-process-exit and n/no-process-exit fire on any .js file outside bin/**, and this fixture lives under test/): it sets process.exitCode instead, structured so no code runs after the assignment — behaviorally identical (0 = step ok, 1 = fail) but a deviation from the most obvious first draft, worth naming since it's a pattern not yet used elsewhere in the fixture-script family (bin/probe-fixture.js is itself under bin/, where process.exit is the sanctioned idiom)."
+      summary: "bin/ship.js gains a 'corridor' branch in shipCommand's dispatch: `node bin/spine.js ship corridor [corridor.json|-]` reads a {deploy, rollback, smoke?} JSON (file, '-', or stdin), guards that deploy and rollback are both present before running anything (exit 1, nothing executed, otherwise), then drives src/corridor.js's nextCorridorStep one yielded step at a time — running each step's shell command via execSync (stdio ignored; a zero exit is 'ok', any other exit or a throw is not) and feeding the {step, ok} result back in — until the core returns a conclusion, at which point it prints {outcome, rollback_verified?, health_signal, steps: [{step, command, ok}]} and exits 0 (the process's natural exit code) on every concluded outcome alike. test/fixtures/deploy-target.js is the scripted deploy-target fixture the corridor's shell-command strings all point to: every invocation appends its step name (argv[2]) to JOURNAL_FILE (env var) before resolving its own pass/fail from CONTROL_FILE (env var, optional JSON keyed by step name — a bare boolean covers every invocation of that step, an array is indexed by invocation count so smoke's two runs, pre-rollback check and post-rollback verify, can be told apart and made to disagree); no CONTROL_FILE, or a step missing from it, defaults to ok. Because node --test sweeps every .js file under test/ recursively (verified directly: an experimental canary file placed at test/fixtures/ was picked up and its exit code counted as a test result), the fixture's no-argv case is a deliberate no-op (mirrors test/workflow-shim.js's own 'bare discovery is a no-op pass' shape) rather than a usage error, so it never breaks npm test on its own. Neither the fixture nor the corridor CLI test invokes any claude command anywhere. Six subprocess CLI tests in test/corridor-cli.test.js (execFileSync against bin/spine.js, journal + control-file fixtures torn down per test) prove, with journal order asserted via deepEqual every time: all green concludes deployed (journal [deploy, smoke]); smoke fail + rollback ok + verify ok concludes rolled-back with rollback_verified true (journal [deploy, smoke, rollback, smoke]); smoke fail + rollback ok + verify fail concludes rolled-back with rollback_verified false present in the JSON (same journal shape); deploy fail (no smoke in the binding) shows rollback still invoked and concludes deploy-failed (journal [deploy, rollback]); a binding without smoke concludes deployed with health_signal false (journal [deploy] only); and a binding missing deploy or rollback exits 1 with the journal left empty (nothing run). Each deepEqual against the exact expected journal array proves deploy and rollback appear at most once. I confirmed the tests' teeth by temporarily forcing rollback_verified to true unconditionally in bin/ship.js's output and watching the verify-fail test go red before reverting. Full suite (197 tests, up from 190 — 6 new CLI tests plus the fixture's own bare-sweep pass entry) and npm run check (25 features, 12 contracts, 0 errors/warnings; eslint scoped to bin/ship.js, test/corridor-cli.test.js, and test/fixtures/deploy-target.js is clean) both pass."
 
   - id: t7
     title: Marketplace manifest — the static marketplace-on-main seed
