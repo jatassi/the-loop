@@ -188,7 +188,7 @@ tasks:
 
   - id: t5
     title: spine ship book — guarded commit-2 mechanics (record outcome, flips, Ledger)
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "node bin/spine.js ship book <N> [outcome.json|-] reads {outcome, rollback_verified?} JSON (file, dash, or omitted arg = stdin; unknown extra fields ignored so ship corridor output pipes in unchanged) and writes commit-2 file state: the outcome lands in docs/ships/ship-<N>.md via parse, applyOutcome, render (narrative bytes outside the block untouched); on deployed it additionally flips every feature listed in the record from validated to shipped in docs/design/design.md and re-renders docs/ledger/ledger.md from the flipped graph; on every outcome it inserts one appendShip bullet (date = today UTC, supplied at the bin edge) as the newest Run-history line — proven by subprocess CLI tests on fixtures carrying a design.md with validated features and a Ledger with a Run history section, for a deployed booking (record + flips + render + bullet), a rolled-back booking with rollback_verified false (record + bullet, statuses untouched), and a deploy-failed booking"
@@ -200,6 +200,19 @@ tasks:
     size: s
     tier: standard
     depends_on: [t1, t3, t4]
+    report:
+      result: built
+      footprint_actual:
+        - bin/ship.js
+        - test/ship-cli.test.js
+      diff_actual:
+        files: 2
+        insertions: 344
+        deletions: 9
+      deviations:
+        - "Footprint excursion: the task's declared footprint was [bin/spine.js, test/ship-cli.test.js], but bin/spine.js was untouched (t3 already wired its 'ship' dispatch case to shipCommand(rest), so no change to it was needed for 'book') and bin/ship.js was touched instead (undeclared) to hold the new command's logic — bin/spine.js sits exactly at its 350-line eslint max-lines ceiling (confirmed before starting: 350/350 significant lines), the same recurring planning signal t3's own completion report already flagged, so any code addition there was infeasible without removing an equal number of existing lines. bin/ship.js already exists (t3's own analogous excursion) and is the natural extension point."
+        - The task footprint declared test/ship-cli.test.js only; that file itself grew to 359 significant lines against the same 350-line ceiling (applies file-wide, including test/**). Rather than split ship-book tests into a new file, the five guard tests were refactored to share two small helpers (snapshot/assertUnchanged) that assert byte-unchanged files, bringing the file back under budget without moving any test out of its declared file.
+      summary: "bin/ship.js gains a 'book' branch in shipCommand's dispatch: `node bin/spine.js ship book <N> [outcome.json|-]` reads the ship-<N>.md record and an {outcome, rollback_verified?} JSON (file, '-', or stdin; unknown extra fields like a corridor's health_signal/steps are simply never destructured), and writes commit-2 file state. Every guard runs before any write — no record for N, a record without approval, a record already carrying an outcome, an outcome outside deployed|rolled-back|deploy-failed, and (deployed only) any listed feature unknown to the graph or not currently validated — each refusal exits 1 via the existing fail() helper (or a thrown Error from src/ship.js's applyOutcome, caught by bin/spine.js's top-level catch) with docs/ships/ship-<N>.md, docs/design/design.md, and docs/ledger/ledger.md all byte-unchanged, proven by five CLI tests snapshotting all three files before and asserting them unchanged after. On success, the outcome lands in the record via parseShipRecord -> applyOutcome -> render (narrative bytes outside the '## Ship record' block untouched); on 'deployed' it additionally flips every listed feature from validated to shipped in design.md via setStatus and re-renders docs/ledger/ledger.md from the flipped graph via renderLedger; every outcome (deployed, rolled-back, deploy-failed alike) inserts exactly one appendShip bullet as the newest Run-history line, with today's UTC date computed at the bin edge and rollback_verified included only when the input supplied it. Three CLI tests prove the three outcome legs on fixtures carrying a validated-features design.md and a Run-history Ledger: deployed (record + both feature flips + Ledger re-render, including the sibling 'gamma' feature's status: building left untouched, + bullet + the printed JSON record), rolled-back with rollback_verified: false (record + bullet, design.md byte-identical), and deploy-failed (record + bullet with no rollback_verified field). The command imports no node:child_process and calls no git anywhere. Full suite (190 tests, up from 182) and npm run check (25 features, 12 contracts, 0 errors/warnings; eslint clean including test/ship-cli.test.js's now-359-then-recompacted line count) both pass."
 
   - id: t6
     title: spine ship corridor + the scripted fixture deploy target
