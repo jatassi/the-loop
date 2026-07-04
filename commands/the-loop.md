@@ -89,7 +89,9 @@ one procedure, so neither route improvises its own version.
    - `plans` — for every feature-id in `scope` that already has a plan (status
      `planned` or `building`), `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" plan parse
      <feature-id>`, its tasks reduced to `{ id, status, depends_on, size, tier }`
-     each, keyed by id. A `designed` feature has no plan yet — omit it.
+     each. Each entry's value is that **bare task array** — no `{feature, tasks}`
+     wrapper — keyed by feature-id: `plans: { <feature-id>: [ {task}, … ] }`.
+     A `designed` feature has no plan yet — omit it.
    - `probe` — the project's runtime-probe **binding** as recorded at Design: the
      bring-up / exercise / teardown instructions from the design narrative's
      Lifecycle section, or from the project's ports inventory where one exists
