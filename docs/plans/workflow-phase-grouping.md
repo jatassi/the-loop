@@ -105,7 +105,7 @@ tasks:
       summary: "workflows/inner-loop.js's four stalled literals now carry `agent` in place of `phase` with values unchanged: spawn()'s thrown-non-budget-error site and its null-return site each carry `agent: opts.agentType`, runBuild's missing-task-list stall carries `agent: 'plan'`, and runRemediation's second-remediation-pending stall carries `agent: 'validate'` — grep confirms no stalled record in the file still carries a `phase` key. The five matching test expectations flipped alongside: test/inner-loop-halt.test.js's impostor-budget stall, its null-return + ordinary-throw pair, and its missing-task-summaries stall (including the `result.stalled[0].phase` read, now `.agent`), plus test/inner-loop-remediation.test.js's protocol-violation stall, each now assert `agent: 'plan'` or `agent: 'validate'` where they asserted `phase` before. The spawn opts' own `phase` field (the feature id) was left untouched, verified by grep and by the still-passing opts.phase assertions. Each rename was proven test-driven: the test file was flipped first (watched red against the still-phase-keyed source), then the corresponding script literal was renamed (watched green). npm test passes except one pre-existing, out-of-footprint failure (test/design-md.test.js's design_version pin), and npx eslint . is clean."
   - id: t2
     title: Spawn phase opts carry coarse SDLC names, meta declares phases, phase assertions flip to the coarse sequences
-    status: pending
+    status: built
     covers: [1, 2]
     acceptance:
       - "every spawn site's `phase` opt names its SDLC phase and nothing else: the plan spawn carries 'Plan'; the ordinary build spawn and the drive spawn carry 'Build'; the derive spawn and the validate spawn carry 'Validate'; no spawn's `phase` opt carries a feature id, and every spawn's label, prompt, schema, agentType, and model/effort opts are unchanged from before this task"
@@ -118,6 +118,21 @@ tasks:
     size: s
     tier: standard
     depends_on: [t1]
+    report:
+      result: built
+      footprint_actual:
+        - workflows/inner-loop.js
+        - test/inner-loop-happy.test.js
+        - test/inner-loop-halt.test.js
+        - test/inner-loop-park.test.js
+        - test/inner-loop-drive.test.js
+      diff_actual:
+        files: 5
+        insertions: 13
+        deletions: 13
+      deviations:
+        - pre-existing, unrelated failure in test/design-md.test.js (design_version 8 vs pinned 7) reproduces identically with this task's changes stashed out — not touched by this footprint, left red per protocol
+      summary: "workflows/inner-loop.js's five spawn sites now carry coarse SDLC phase names in place of the feature id: runPlan's plan spawn carries 'Plan'; runBuild's ordinary build spawn and spawnDrive's drive spawn each carry 'Build'; runValidationCycle's derive spawn and runValidate's validate spawn each carry 'Validate' — grep confirms no spawn site still reads phase: featureId, and every spawn's label, prompt, schema, agentType, and model/effort opts are byte-identical to before this task. The meta object gained phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] appended to its existing keys, with the export const meta = { ... }; declaration still one physical line ending in ;, verified by grep. The seven opts.phase assertions across the four test files flipped from per-feature strings to the coarse mapping (plan→'Plan', build→'Build', drive→'Build', derive→'Validate', validate→'Validate') applied to each fixture's own spawn order: the one map deepEqual in test/inner-loop-happy.test.js, the two in test/inner-loop-halt.test.js, the three in test/inner-loop-park.test.js, and test/inner-loop-drive.test.js's single phase equality (now 'Build'). Each flip was watched red first (the test files were edited before the source, confirmed failing against the still-per-feature-id script), then the five source literals were changed and the suite watched green. npm test passes 231/232 (the one failure is the pre-existing, out-of-footprint design_version pin noted in t1's own report, reproducing identically), and npx eslint . is clean."
   - id: t3
     title: Label-map assertions carry the feature-attribution proofs the per-feature phase maps used to hold
     status: pending
