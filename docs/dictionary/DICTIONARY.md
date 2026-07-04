@@ -146,7 +146,12 @@ The typed identity a spawn surface declares when it launches a subagent — bare
 
 ### delegated executor
 **aliases:** executor · **status:** active
-A non-Claude headless coding CLI that a rote-tier task's binding may route to (`via` naming its registered executor id), always operated and verified by the [[driver]] — its self-reported success is never trusted. Registered by an **executor playbook** (`executors/<id>.md`: a machine block for the resolver and pre-flight, operational lore for the driver) behind the `delegate-executor` [[port]], which binds its adapters concurrently, keyed by executor id. The grok CLI ships first; codex- or gemini-style CLIs register the same way. Off unless a project rebinds `build.rote`.
+A non-Claude headless coding CLI that a rote-tier task's binding may route to (`via` naming its registered executor id), always operated and verified by the [[driver]] — its self-reported success is never trusted. Registered by an [[executor playbook]] behind the `delegate-executor` [[port]], which binds its adapters concurrently, keyed by executor id. The grok CLI ships first; codex- or gemini-style CLIs register the same way. Off unless a project rebinds `build.rote`.
+*See:* ADR-0031
+
+### executor playbook
+**aliases:** playbook · **status:** active
+The registration file of a [[delegated executor]]: `executors/<id>.md` in the plugin — narrative operational lore (truncation signatures, rate limits, gotchas the [[driver]] can actually use) around one fenced YAML machine block under the exact `## Machine block` heading (id, command, executor model ids, worktree mode, headless invocation template, availability check, auth smoke test, concurrency, optional effort flag). Registration is the file's presence; `spine executors` prints the parsed registry and `spine models` validates bindings against it. Deliberately plugin-internal config, not a design contract.
 *See:* ADR-0031
 
 ---
@@ -202,7 +207,7 @@ The actor that drives the autonomous [[inner loop]] — sequencing Plan→Build�
 
 ### driver
 **aliases:** drive agent · **status:** active
-The one Claude agent that executes rote-tier [[task]]s through any [[delegated executor]], parameterized by the executor's playbook: it assembles the prompt from the [[task contract]] plus the craft baseline, runs the CLI in an isolated worktree per the playbook's invocation template, verifies the result itself (per-criterion tests, lint, diff review, commit presence — the executor's self-report is never trusted), folds the commit onto the [[feature branch]], and books like any build agent. Spawned by the `drive` [[spawn role]] when a task's binding routes `via` a registered executor.
+The one Claude agent that executes rote-tier [[task]]s through any [[delegated executor]], parameterized by the [[executor playbook]]: it assembles the prompt from the [[task contract]] plus the craft baseline, runs the CLI in an isolated worktree per the playbook's invocation template, verifies the result itself (per-criterion tests, lint, diff review, commit presence — the executor's self-report is never trusted), squash-folds the worktree HEAD onto the [[feature branch]] under a driver-authored standard message, and books like any build agent. Failures split on the integrity-violation line: truncation and mechanical defects share one retry in a fresh worktree; a judgment defect (a diff violating a constitution integrity rule) parks immediately. Spawned by the `drive` [[spawn role]] when a task's binding routes `via` a registered executor.
 *See:* ADR-0031
 
 ---
