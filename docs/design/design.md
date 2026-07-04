@@ -193,7 +193,7 @@ features:
 
   - id: workflow-phase-grouping
     title: Workflow progress groups by SDLC phase (Plan | Build | Validate), not by feature
-    status: validated
+    status: shipped
     depends_on: [inner-loop-workflow]
     interfaces: [boundary-result]
     notes:

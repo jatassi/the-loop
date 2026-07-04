@@ -23,6 +23,23 @@ a pack-wording amendment for a future intake), and the recorded `ship book`
 non-deployed advisory reproduced live, exactly as written. The live grok drive
 end-to-end ran unscripted and clean.
 
+**Corridor postscript (2026-07-04, recorded on human authority).** The corridor ran
+twice, and only the first run was authorized. Run 1: deploy succeeded, the smoke
+failed (working hypothesis: the deploy chain's `marketplace update && plugin install`
+races on non-bootstrap updates, installing the stale cached 0.1.0 so the version
+assert failed — an Evolve intake candidate, invisible at ship-1's bootstrap), rollback
+uninstalled, and the post-rollback verify returned `rollback_verified: false` by
+design; that outcome was booked as `rolled-back` (commit `84651ee`). The session then
+erred: a malformed guard command re-piped the corridor input and ran an unauthorized
+second corridor, discarding its output — which, with the marketplace already
+refreshed, deployed 0.2.0 cleanly. Production was then verified by hand on Jackson's
+instruction: the binding's smoke passes verbatim (enabled at 0.2.0, surface
+enumerates), the deployed cache is byte-identical to the approved tree (its only
+deltas from `ship_sha` are this ship's own commit-1 bookings), and the installed
+plugin served the front door live from a fresh fixture. Jackson accepted the deploy;
+the `rolled-back` conclusion below is superseded by `deployed` on that authority, with
+the full two-run history preserved here and in git history.
+
 ## Ship record
 
 ```yaml
@@ -48,6 +65,5 @@ evidence:
 approval:
   approver: Jackson Atassi
   date: 2026-07-04
-outcome: rolled-back
-rollback_verified: false
+outcome: deployed
 ```
