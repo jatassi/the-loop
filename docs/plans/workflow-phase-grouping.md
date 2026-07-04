@@ -186,7 +186,7 @@ tasks:
       summary: "Added test/inner-loop-meta.test.js, which reads workflows/inner-loop.js's source text, matches the `export const meta = { ... };` declaration with a regex anchored to a single physical line (no `s` flag, so `.` cannot cross a newline, and the match requires a trailing `;` before end-of-line), evaluates only that matched line via `new Function` (stripping the leading `export`), and asserts the resulting object's `phases` deep-equals [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] — pinning both order and title-only shape. Confirmed the extraction's discriminating power directly: temporarily split the meta line across two physical lines in workflows/inner-loop.js (uncommitted), watched the new test go red (no regex match, clear assertion failure), then restored the file and watched it go green again, with git diff on the source file showing no residual change. npm test now runs 233 tests, 232 passing including the new file; the sole failure is the pre-existing, out-of-footprint test/design-md.test.js design_version pin (8 vs 7) already noted in t1/t2/t3's own reports, reproducing identically with this task's change stashed out. npx eslint . is clean."
   - id: t5
     title: The relay and adjust surfaces name the stalled field agent
-    status: pending
+    status: built
     covers: [3]
     acceptance:
       - "commands/the-loop.md's relay bullet for stalled entries names the fields `feature`/`agent`/`note` and no longer names `phase` as a stalled-entry field; the surrounding relay prose (including the append-run reduction of stalled entries to feature ids) and every other bullet are otherwise unchanged"
@@ -198,4 +198,15 @@ tasks:
     size: xs
     tier: standard
     depends_on: [t1]
+    report:
+      result: built
+      footprint_actual:
+        - commands/the-loop.md
+        - skills/adjust/SKILL.md
+      diff_actual:
+        files: 2
+        insertions: 2
+        deletions: 2
+      deviations: []
+      summary: commands/the-loop.md's relay bullet for stalled entries now reads `feature`/`agent`/`note` in place of `feature`/`phase`/`note`, and skills/adjust/SKILL.md's run-boundary docket bullet now reads `feature` / `agent` / `note` in place of `feature` / `phase` / `note` -- both matching the BoundaryResult's renamed stalled field (feature-id, agent, note). Every other bullet in both files, the surrounding relay/docket prose (including the append-run reduction of stalled entries to feature ids, and the 'the phase re-runs on the next pass' clause, which refers to the SDLC phase re-entering, not the renamed field), and every escalation-record `phase` reference elsewhere in adjust's skill (plan | build | validate -- where a park happened) are untouched. `grep -rn stalled commands/ skills/` confirms no remaining stalled-entry field list names `phase`. npm test passes except the one pre-existing, out-of-footprint failure (test/design-md.test.js's design_version pin).
 ```
