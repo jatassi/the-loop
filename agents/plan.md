@@ -95,7 +95,10 @@ A task that cannot get under the ceiling no matter how you cut it means the
 Do not force a bad plan and do not retry indefinitely. Write nothing to
 `docs/plans/`. Author the **menu**: 2–3 suggested ways to re-slice the feature at
 the design level — feature-level slices, no implementation detail, addressed to
-the Design phase, not to a builder. Then book the park before returning (step 9):
+the Design phase, not to a builder. Each option is kind-stamped
+`{resolution, option}`, the recommended option first — `resolution` is one of
+`retry | fix-in-place | re-plan | defer` (`waive` belongs to validate parks only
+and is never offered here). Then book the park before returning (step 9):
 
 1. Write `docs/escalations/<feature-id>.md`: narrative prose explaining why the
    feature is irreducible (the coupling or ambiguity that blocks decomposition),
@@ -107,7 +110,7 @@ the Design phase, not to a builder. Then book the park before returning (step 9)
        phase: plan
        kind: feature
        deviation: <the irreducibility, one paragraph>
-       menu: [<option>, …]
+       menu: [{resolution: retry|fix-in-place|re-plan|defer, option: <text>}, …]  # recommended first
        branch: null
        ```
 
@@ -200,7 +203,7 @@ Bounced — a feature-shaped defect; the park is already booked (step 5):
 
     { "result": "bounce", "kind": "feature", "feature": "<id>",
       "deviation": "<why irreducible, one paragraph>",
-      "menu": ["<option>", "…"] }
+      "menu": [{"resolution": "retry|fix-in-place|re-plan|defer", "option": "<text>"}, "…"] }
 
 Blocked — an environment-shaped defect; nothing was booked (step 1):
 

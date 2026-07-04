@@ -10,8 +10,15 @@
 //   spine set-status <feature-id> <status>  flip one feature's status in design.md; prints
 //                                            the updated node as JSON; exit 1, unwritten, on
 //                                            an unknown id or an out-of-enum status
+//   spine note <feature-id> <text>  append <text> to a feature's notes array in design.md;
+//                                    prints the updated node as JSON; exit 1, unwritten, on
+//                                    an unknown id or empty text
 //   spine ledger render             regenerate docs/ledger/ledger.md from design.md +
 //                                    docs/escalations/*.md (absent dir = none); idempotent
+//   spine ledger append-run [summary.json|-]  insert one newest-first Run-history bullet
+//                                    from a run-summary JSON; exit 1, unwritten, when
+//                                    date/run are missing, the Ledger has no
+//                                    "## Run history" heading, or the Ledger is absent
 //   spine plan parse <feature-id> [plan.md]             the parsed plan model
 //   spine plan check <feature-id> [plan.md] [design.md] validate against the design + round-trip
 //   spine plan task <feature-id> <task-id> [plan.md] [design.md]        a build agent's task slice
@@ -19,28 +26,44 @@
 //   spine plan remediate <feature-id> [findings.json|-]  append the remediation round-marker task;
 //                                                        exit 1, unwritten, on a second round or a
 //                                                        findings set with no file:line locations
+//   spine plan fix <feature-id> [fix.json|-]  append a fix-N task (not one-shot); resets +
+//                                             chains any blocked task behind it; exit 1,
+//                                             unwritten, on empty acceptance/footprint
 //   spine validate scan <feature-id> [target] [branch]  forensics tripwires + patch-id dedup over
 //                                                       the feature branch's diff (target: main,
 //                                                       branch: loop/<feature-id> by default)
+//   spine validate waive <feature-id> [waiver.json|-]  append one waiver to the LAST
+//                                                       "## Validation" entry; exit 1, unwritten,
+//                                                       on a missing required field, a missing
+//                                                       validations file, or a file with no entry
+//   spine escalation resolve <feature-id> <kind> [--reason <text>] [--phase <plan|build|validate>]
+//                                    resolve a parked feature: validate kind against the record's
+//                                    phase, flip the status, run kind-specific extras (re-plan
+//                                    deletes the plan; retry-on-validate stamps the retried mark),
+//                                    delete the record, re-render the Ledger. Never commits — the
+//                                    adjust skill owns the booking commit. --phase is the
+//                                    damaged-park escape hatch (no record). exit 1, unwritten, on
+//                                    any invalid kind/phase/guard
 //   spine models [defaults.json]    resolved role table: plugin defaults <
 //                                    project (.claude/settings.json) < local
 //                                    (.claude/settings.local.json), "the-loop".modelBindings
 
 import { execSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseEscalation } from '../src/escalation.js';
-import { renderLedger } from '../src/ledger.js';
+import { parseEscalation, planResolution } from '../src/escalation.js';
+import { appendRun, renderLedger } from '../src/ledger.js';
 import { resolveModels } from '../src/models.js';
+import { appendNote } from '../src/note.js';
 import { parse } from '../src/parse.js';
-import { appendRemediation, foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
+import { appendFix, appendRemediation, foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
 import { extractIndex, resolveIn } from '../src/resolve.js';
 import { validate } from '../src/schema.js';
 import { setStatus } from '../src/status.js';
-import { latestPatchId, parseUnifiedDiff, scan } from '../src/validate.js';
+import { appendWaiver, isDeduped, latestEntry, parseUnifiedDiff, scan, stampRetried } from '../src/validate.js';
 
 const DEFAULT = 'docs/design/design.md';
 const LEDGER = 'docs/ledger/ledger.md';
@@ -80,6 +103,10 @@ try {
       setStatusCommand(rest);
       break;
     }
+    case 'note': {
+      noteCommand(rest);
+      break;
+    }
     case 'ledger': {
       ledgerCommand(rest);
       break;
@@ -92,12 +119,16 @@ try {
       validateCommand(rest);
       break;
     }
+    case 'escalation': {
+      escalationCommand(rest);
+      break;
+    }
     case 'models': {
       modelsCommand(rest);
       break;
     }
     default: {
-      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|ledger render|plan <parse|check|task|report|remediate> <id>|validate scan <id>|models [defaults.json]> [file…]\n');
+      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|note <id> <text>|ledger render|plan <parse|check|task|report|remediate|fix> <id>|validate <scan|waive> <id>|escalation resolve <id> <kind>|models [defaults.json]> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }
@@ -115,12 +146,40 @@ function setStatusCommand([featureId, status]) {
   out(model.features.find((f) => f.id === featureId));
 }
 
-// spine ledger render — regenerate docs/ledger/ledger.md from design.md + open escalations.
-function ledgerCommand([sub]) {
-  if (sub !== 'render') { fail('usage: spine ledger render'); }
-  const model = parse(read());
-  const priorText = existsSync(LEDGER) ? readFileSync(LEDGER, 'utf8') : '';
-  writeFileSync(LEDGER, renderLedger(model, readEscalations(), priorText));
+// spine note <feature-id> <text> — append a note to one feature node in design.md.
+function noteCommand([featureId, text]) {
+  if (!featureId || !text) { fail('usage: spine note <feature-id> <text>'); }
+  const source = read();
+  const model = parse(source);
+  appendNote(model, featureId, text);
+  writeFileSync(DEFAULT, render(source, model));
+  out(model.features.find((f) => f.id === featureId));
+}
+
+// spine ledger <render|append-run [summary.json|-]>.
+function ledgerCommand([sub, arg]) {
+  if (sub === 'render') {
+    const model = parse(read());
+    const priorText = existsSync(LEDGER) ? readFileSync(LEDGER, 'utf8') : '';
+    writeFileSync(LEDGER, renderLedger(model, readEscalations(), priorText));
+    out({ written: LEDGER });
+    return;
+  }
+  if (sub === 'append-run') {
+    appendRunCommand(arg);
+    return;
+  }
+  fail('usage: spine ledger <render|append-run [summary.json|-]>');
+}
+
+// spine ledger append-run [summary.json|-] — read a run-summary JSON (file arg, "-", or
+// omitted all mean stdin) and insert its bullet into the Ledger. A missing Ledger file
+// throws here, before any write; a summary the pure function refuses throws too.
+function appendRunCommand(summaryFile) {
+  const source = summaryFile && summaryFile !== '-' ? summaryFile : 0; // 0 = stdin
+  const summary = JSON.parse(readFileSync(source, 'utf8'));
+  const priorText = readFileSync(LEDGER, 'utf8');
+  writeFileSync(LEDGER, appendRun(priorText, summary));
   out({ written: LEDGER });
 }
 
@@ -175,11 +234,11 @@ function readSettingsLayer(file) {
   return settings?.['the-loop']?.modelBindings ?? {};
 }
 
-// The plan subcommands: parse | check | task | report | remediate.
+// The plan subcommands: parse | check | task | report | remediate | fix.
 function planCommand(argv) {
   const [sub, featureId, ...args] = argv;
-  if (!featureId || !['parse', 'check', 'task', 'report', 'remediate'].includes(sub)) {
-    fail('usage: spine plan <parse|check|task|report|remediate> <feature-id> …');
+  if (!featureId || !['parse', 'check', 'task', 'report', 'remediate', 'fix'].includes(sub)) {
+    fail('usage: spine plan <parse|check|task|report|remediate|fix> <feature-id> …');
   }
   switch (sub) {
     case 'parse': {
@@ -197,6 +256,10 @@ function planCommand(argv) {
     }
     case 'remediate': {
       remediateCommand(featureId, args);
+      break;
+    }
+    case 'fix': {
+      fixCommand(featureId, args);
       break;
     }
     default: {
@@ -234,11 +297,27 @@ function remediateCommand(featureId, [findingsFile]) {
   out(plan.tasks.find((t) => t.remediation));
 }
 
-// spine validate scan <feature-id> [target] [branch] — the forensics scanner (leg 1).
-// Gathers the git facts here (the bin edge owns effects), scans in the pure core.
+// spine plan fix <feature-id> [fix.json|-] — append a fix-N task + write back.
+function fixCommand(featureId, [fixFile]) {
+  const source = fixFile && fixFile !== '-' ? fixFile : 0; // 0 = stdin
+  const directive = JSON.parse(readFileSync(source, 'utf8'));
+  const { file, text, plan } = loadPlan(featureId);
+  const task = appendFix(plan, directive);
+  writeFileSync(file, render(text, plan));
+  out(task);
+}
+
+// spine validate <scan|waive> <feature-id> …
 function validateCommand(argv) {
   const [sub, featureId, ...args] = argv;
-  if (sub !== 'scan' || !featureId) { fail('usage: spine validate scan <feature-id> [target] [branch]'); }
+  if (sub === 'waive') { waiveCommand(featureId, args); return; }
+  if (sub !== 'scan' || !featureId) { fail('usage: spine validate <scan <feature-id> [target] [branch]|waive <feature-id> [waiver.json|-]>'); }
+  scanCommand(featureId, args);
+}
+
+// spine validate scan <feature-id> [target] [branch] — the forensics scanner (leg 1).
+// Gathers the git facts here (the bin edge owns effects), scans in the pure core.
+function scanCommand(featureId, args) {
   const target = args[0] || 'main';
   const branch = args[1] || `loop/${featureId}`;
   const base = gitOut(`git merge-base ${target} ${branch}`).trim();
@@ -246,14 +325,94 @@ function validateCommand(argv) {
   const planFile = planPath(featureId);
   const plan = existsSync(planFile) ? parsePlan(readFileSync(planFile, 'utf8')) : null;
   const validationsFile = `docs/validations/${featureId}.md`;
-  const prior = existsSync(validationsFile) ? latestPatchId(readFileSync(validationsFile, 'utf8')) : null;
+  const latest = existsSync(validationsFile) ? latestEntry(readFileSync(validationsFile, 'utf8')) : null;
   const diff = parseUnifiedDiff(gitOut(`git diff --unified=0 ${base} ${branch}`));
   out({
     feature: featureId, target, branch, base,
     patch_id: patchId,
-    dedup: patchId != null && patchId === prior,
+    dedup: isDeduped(patchId, latest),
+    retried: latest ? latest.retried : null,
+    latest_result: latest ? latest.result : null,
     hits: scan({ diff, plan }),
   });
+}
+
+// spine validate waive <feature-id> [waiver.json|-] — append one waiver to the entry
+// under the LAST "## Validation" heading; refuses (nothing written) on a missing
+// required field, a missing validations file, or a file with no entry yet.
+function waiveCommand(featureId, [waiverFile]) {
+  if (!featureId) { fail('usage: spine validate waive <feature-id> [waiver.json|-]'); }
+  const source = waiverFile && waiverFile !== '-' ? waiverFile : 0; // 0 = stdin
+  const waiver = JSON.parse(readFileSync(source, 'utf8'));
+  const file = `docs/validations/${featureId}.md`;
+  const updated = appendWaiver(readFileSync(file, 'utf8'), waiver);
+  writeFileSync(file, updated);
+  out(latestEntry(updated));
+}
+
+// spine escalation resolve <feature-id> <kind> [--reason <text>] [--phase <plan|build|validate>].
+// The two flags each take a value; anything else is exit-1.
+function escalationCommand(argv) {
+  const [sub, featureId, kind, ...flags] = argv;
+  if (sub !== 'resolve' || !featureId || !kind) { fail('usage: spine escalation resolve <feature-id> <kind> [--reason <text>] [--phase <plan|build|validate>]'); }
+  const opts = {};
+  for (let i = 0; i < flags.length; i += 2) {
+    const key = { '--reason': 'reason', '--phase': 'phase' }[flags[i]];
+    if (!key || flags[i + 1] === undefined) { fail(`unknown or valueless flag: ${flags[i]}`); }
+    opts[key] = flags[i + 1];
+  }
+  resolveEscalationCommand(featureId, kind, opts);
+}
+
+// Fold a parked feature back in. Every guard runs before the first write, so a refused
+// resolution leaves the target untouched; then the contracted effect order runs: flip
+// status, run kind-specific extras, delete the record, re-render the Ledger (so
+// What-needs-you drops the entry). Never commits — the adjust skill books the commit.
+function resolveEscalationCommand(featureId, kind, { reason, phase: phaseFlag }) {
+  const recordFile = path.join(ESCALATIONS_DIR, `${featureId}.md`);
+  const phase = resolveParkPhase(recordFile, phaseFlag);
+  const text = read();
+  const model = parse(text);
+  const feature = model.features.find((f) => f.id === featureId);
+  if (!feature) { fail(`unknown feature id: ${featureId}`); }
+  if (feature.status !== 'parked') { fail(`feature ${featureId} is ${feature.status}, not parked`); }
+  const { status, deletesPlan, stampsRetried } = planResolution(kind, phase, { reason });
+
+  setStatus(model, featureId, status);
+  writeFileSync(DEFAULT, render(text, model));
+  const deleted = deletesPlan ? removePlan(featureId) : [];
+  const retried = stampsRetried ? stampValidations(featureId, reason) : null;
+  if (!phaseFlag) { unlinkSync(recordFile); deleted.push(recordFile); }
+  const priorLedger = existsSync(LEDGER) ? readFileSync(LEDGER, 'utf8') : '';
+  writeFileSync(LEDGER, renderLedger(model, readEscalations(), priorLedger));
+  out({ feature: featureId, kind, phase, status, deleted, retried });
+}
+
+// The park's phase: from the record normally, or from --phase (the damaged-park escape
+// hatch) when no record exists. A present record and --phase are mutually exclusive —
+// either mismatch is exit-1 before any write.
+function resolveParkPhase(recordFile, phaseFlag) {
+  const record = existsSync(recordFile) ? parseEscalation(readFileSync(recordFile, 'utf8')) : null;
+  if (phaseFlag && record) { fail(`a record exists at ${recordFile}; --phase is for a damaged park with no record`); }
+  if (!phaseFlag && !record) { fail(`no escalation record at ${recordFile}; pass --phase for a damaged park`); }
+  return phaseFlag || record.phase;
+}
+
+// re-plan discards the plan artifact when one exists.
+function removePlan(featureId) {
+  const file = planPath(featureId);
+  if (!existsSync(file)) { return []; }
+  unlinkSync(file);
+  return [file];
+}
+
+// retry-on-a-validate-park stamps the latest validations entry with today's UTC date
+// and the human's reason, so the next scan dedups false and re-runs all four legs.
+function stampValidations(featureId, reason) {
+  const file = `docs/validations/${featureId}.md`;
+  const mark = `${new Date().toISOString().slice(0, 10)} — ${reason}`;
+  writeFileSync(file, stampRetried(readFileSync(file, 'utf8'), mark));
+  return mark;
 }
 
 // A declaration, not a const, so the dispatch above can reach it (see printIssue).

@@ -25,6 +25,19 @@ const RUNNABLE_STATUSES = new Set(['designed', 'planned', 'building']);
 // only the always-present keys are required.
 const strings = (...names) => Object.fromEntries(names.map((n) => [n, { type: 'string' }]));
 const stringArray = { type: 'array', items: { type: 'string' } };
+// A menu item is either a bare string (pre-amendment) or a kind-stamped
+// { resolution, option } object (surfacing feature) — both keys described in
+// properties so the harness's schema-as-template behavior preserves them verbatim.
+// `anyOf` is standard JSON Schema; no invented keywords.
+const menuArray = {
+  type: 'array',
+  items: {
+    anyOf: [
+      { type: 'string' },
+      { type: 'object', properties: { resolution: { type: 'string' }, option: { type: 'string' } }, required: ['option'] },
+    ],
+  },
+};
 const phaseSchema = (results, required, extras) => ({
   type: 'object',
   properties: { result: { enum: results }, ...strings(...required), ...extras },
@@ -39,10 +52,10 @@ const TASK_SUMMARY = {
   },
 };
 const PLAN_SCHEMA = phaseSchema(['planned', 'bounce', 'blocked'], ['feature'], {
-  tasks: TASK_SUMMARY, ...strings('plan', 'notes', 'kind', 'deviation', 'detail'), menu: stringArray,
+  tasks: TASK_SUMMARY, ...strings('plan', 'notes', 'kind', 'deviation', 'detail'), menu: menuArray,
 });
 const BUILD_SCHEMA = phaseSchema(['built', 'blocked'], ['task'], {
-  ...strings('kind', 'summary'), deviations: stringArray, menu: stringArray,
+  ...strings('kind', 'summary'), deviations: stringArray, menu: menuArray,
   footprint_actual: stringArray, diff_actual: { type: 'object' },
 });
 const DERIVE_SCHEMA = phaseSchema(['derived', 'blocked'], ['feature'], {
@@ -50,7 +63,7 @@ const DERIVE_SCHEMA = phaseSchema(['derived', 'blocked'], ['feature'], {
 });
 const VALIDATE_SCHEMA = phaseSchema(['perfect', 'deviation', 'remediation-pending', 'blocked'], ['feature'], {
   ...strings('kind', 'deviation', 'detail', 'remediation_task', 'patch_id', 'reconstruction'),
-  menu: stringArray, merged: { type: 'boolean' }, dedup: { type: 'boolean' },
+  menu: menuArray, merged: { type: 'boolean' }, dedup: { type: 'boolean' },
 });
 
 // `args.models` carries the resolved binding table `{ role: { model, effort?, via?,

@@ -203,3 +203,82 @@ test('a dependent of a parked feature never spawns, while an independent feature
   assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: bounce.deviation, menu: bounce.menu }]);
   assert.deepEqual(result.stalled, []);
 });
+
+// ── t8: kind-stamped { resolution, option } menu items are declared in each phase's
+// own schema and relayed to BoundaryResult.parked verbatim — no menu transformation
+// is added to the script itself ──
+function menuAcceptsKindStamped(schema) {
+  const arms = schema.properties.menu.items.anyOf ?? [];
+  return arms.some((arm) => arm.type === 'object' && arm.required?.includes('option')
+    && arm.properties?.resolution?.type === 'string' && arm.properties?.option?.type === 'string');
+}
+
+test('a plan bounce with a kind-stamped menu parks the feature carrying it verbatim', async () => {
+  const args = {
+    target: 'main',
+    scope: ['alpha'],
+    index: { designVersion: 1, features: [featureNode('alpha')] },
+    slices: { alpha: slice('alpha') },
+    plans: {},
+    probe: {},
+  };
+  const budget = { spent: 0, remaining: 10 };
+  const menu = [{ resolution: 're-plan', option: 're-slice the feature' }, { resolution: 'defer', option: 'revisit the design' }];
+  const bounce = { result: 'bounce', kind: 'feature', feature: 'alpha', deviation: 'the contract contradicts itself', menu };
+
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: [{ returns: bounce }], args, budget });
+
+  assert.ok(menuAcceptsKindStamped(spawns[0].opts.schema), 'the plan schema accepts a kind-stamped menu item');
+  assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: bounce.deviation, menu }]);
+});
+
+test('a feature-kind blocked build return with a kind-stamped menu parks the feature carrying it verbatim', async () => {
+  const args = {
+    target: 'main',
+    scope: ['alpha'],
+    index: { designVersion: 1, features: [featureNode('alpha')] },
+    slices: { alpha: slice('alpha') },
+    plans: {},
+    probe: {},
+  };
+  const budget = { spent: 0, remaining: 10 };
+  const menu = [{ resolution: 'fix-in-place', option: 'fix the contract' }, { resolution: 're-plan', option: 're-plan the task' }];
+  const blocked = { task: 'alpha/t1', result: 'blocked', kind: 'feature', deviations: ['the contract contradicts itself'], menu };
+  const agentReplies = [
+    { returns: { result: 'planned', feature: 'alpha', tasks: [{ id: 't1', status: 'pending', depends_on: [], size: 's' }] } },
+    { returns: blocked },
+  ];
+
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+
+  assert.ok(menuAcceptsKindStamped(spawns[1].opts.schema), 'the build schema accepts a kind-stamped menu item');
+  assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: 'the contract contradicts itself', menu }]);
+});
+
+test('a validate deviation return with a kind-stamped menu parks the feature carrying it verbatim', async () => {
+  const args = {
+    target: 'main',
+    scope: ['alpha'],
+    index: { designVersion: 1, features: [featureNode('alpha')] },
+    slices: { alpha: slice('alpha') },
+    plans: {},
+    probe: {},
+  };
+  const budget = { spent: 0, remaining: 10 };
+  const menu = [{ resolution: 'fix-in-place', option: 'fix and resubmit for validation' }, { resolution: 'waive', option: 'waive the obligation with a human approver' }];
+  const deviation = {
+    result: 'deviation', feature: 'alpha', design_version: 1, patch_id: 'abc', merged: false,
+    deviation: 'the runtime leg found a contract-breaking regression', menu,
+  };
+  const agentReplies = [
+    { returns: { result: 'planned', feature: 'alpha', tasks: [{ id: 't1', status: 'pending', depends_on: [], size: 'xs' }] } },
+    { returns: { result: 'built', task: 'alpha/t1' } },
+    { returns: { result: 'derived', feature: 'alpha', expectations: [], ambiguities: [] } },
+    { returns: deviation },
+  ];
+
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+
+  assert.ok(menuAcceptsKindStamped(spawns[3].opts.schema), 'the validate schema accepts a kind-stamped menu item');
+  assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: deviation.deviation, menu }]);
+});

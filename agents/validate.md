@@ -83,10 +83,32 @@ someone who has seen the diff proves nothing.
 
        node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" validate scan <feature-id>
 
-   If `dedup` is true, this exact diff was already judged: book nothing and
-   return (step 8) only `feature`, `patch_id`, the latest entry's `result` from
-   `docs/validations/<feature-id>.md`, `merged: false`, and `dedup: true` —
-   like the crash-healed shape, this run observed no legs of its own. Stop.
+   The scan also carries `retried` (the latest entry's retry mark, or null)
+   and `latest_result` (that entry's own `result`, or null). A `retried` mark
+   means a human asked for a fresh judgment despite a matching patch-id, so the
+   scanner already reports `dedup: false` for it — every leg below runs fresh,
+   exactly as for a new diff. When you append your own entry at step 7, never
+   carry that mark forward onto it: the mark belongs to the entry it retried,
+   and your fresh entry consumes it by position, not by copying the key.
+
+   If `dedup` is true, this exact diff was already judged:
+   - **`latest_result` is `deviation` and the feature's graph status
+     (`docs/design/design.md`) is short of `parked`** — a prior run computed
+     the deviation but crashed before finishing step 7's booking. Finish it
+     now, reconstruction-style, before returning: author the menu from the
+     latest entry's own recorded findings (the same 2–3-option, kind-stamped
+     shape step 7's Deviation path authors), write
+     `docs/escalations/<feature-id>.md` from those findings and that menu,
+     `set-status <feature-id> parked`, render the Ledger, and commit the three
+     as one `<feature-id>: book parked at validate` commit. Then return
+     (step 8) the dedup shape plus the reconstructed `deviation` and `menu` —
+     the boundary relay needs them here, not a bare entry.
+   - **Otherwise** — book nothing and return (step 8) only `feature`,
+     `patch_id`, the latest entry's `result`, `merged: false`, and
+     `dedup: true` — like the crash-healed shape, this run observed no legs of
+     its own.
+
+   Stop either way — no legs run on a deduped diff.
 
 ## 2 · Leg 1 — integrity forensics
 
@@ -178,6 +200,17 @@ recorded probe opt-out, this leg is `SKIP (sanctioned)` citing where the
 opt-out is recorded — never silently thin.
 
 ## 6 · Verdict — computed, never judged
+
+**Waiver consumption**, run first: check every finding recorded across all
+four legs against every prior entry's `waivers` in
+`docs/validations/<feature-id>.md` (append-only, so every entry ever written,
+not only the latest — a waiver carries no expiry, so it never lapses for this
+feature). A finding whose `cites` matches a waiver's `obligation` is annotated
+in place — `waived: <the waiver's approver>` — and drops out of every check
+below: a leg whose only contract-breaking findings are now waived counts as
+PASS for the checks that follow, so a fully-waived set of contract-breaking
+findings no longer blocks perfect. An advisory finding was never blocking;
+waiving one only adds the annotation.
 
 Checked in this order — no judgment sits at this step, your judgment already
 lives inside the legs:
@@ -288,7 +321,10 @@ verdict the graph should reflect.
 1. Author the menu — 2–3 concrete ways forward (fix the cited findings and
    resubmit for validation, waive the obligation with a human approver,
    re-plan the task that produced the defect) — addressed to a human, not a
-   builder.
+   builder. Each option is kind-stamped `{resolution, option}`, the
+   recommended option first — `resolution` is one of `retry | fix-in-place |
+   re-plan | waive | defer` (a validate park is the only phase that can offer
+   `waive`).
 2. Write `docs/escalations/<feature-id>.md`: narrative prose naming the
    contract-breaking findings, then one fenced `yaml` block under the exact
    heading `## Escalation`:
@@ -299,7 +335,7 @@ verdict the graph should reflect.
        phase: validate
        kind: feature
        deviation: <the findings, one paragraph>
-       menu: [<option>, …]
+       menu: [{resolution: retry|fix-in-place|re-plan|waive|defer, option: <text>}, …]  # recommended first
        branch: loop/<feature-id>
        ```
 
@@ -334,20 +370,21 @@ Perfect, deviation, or remediation-pending (booked in step 7):
         "runtime":     { "verdict": "…", "findings": [<finding>], "evidence": "<…>", "unobserved": "<…>" } },
       "result": "perfect|deviation|remediation-pending",
       "deviation": "<the escalation's findings paragraph — deviation result only>",
-      "menu": ["<option>", …],
+      "menu": [{"resolution": "retry|fix-in-place|re-plan|waive|defer", "option": "<text>"}, "…"],
       "merged": true|false,
       "remediation_task": "<task-id>",
       "reconstruction": "<squash-commit-sha>",
       "exercise": [{ "action": "<step run>", "observed": "<captured>" }],
       "spec_ambiguities": ["<criterion + the two readings>", …],
-      "waivers": [{ "obligation": "<…>", "reason": "<…>", "approver": "<…>", "expiry": "<date|feature-id condition>" }],
+      "waivers": [{ "obligation": "<…>", "reason": "<…>", "approver": "<…>" }],
       "skips": [{ "leg": "<name>", "reason": "<…>", "sanctioned": true|false }] }
 
     <finding> = { "severity": "contract-breaking|advisory",
                   "cites": "<the obligation — mandatory when contract-breaking>",
                   "location": "<file:line or probe observation>",
                   "observation": "<what was seen>",
-                  "reobserve": "<command, when one exists>" }
+                  "reobserve": "<command, when one exists>",
+                  "waived": "<the waiver's approver, when a prior waiver matched this finding>" }
 
 `deviation` and `menu` appear only on `result: "deviation"` — the park that
 result always books (step 7) — and carry the same findings paragraph and menu
@@ -359,15 +396,19 @@ on a crash-healed entry (step 1, item 2), which carries no `readiness` or
 survive its crash — and reports only `feature`, `design_version`, `patch_id`,
 `result: "perfect"`, `merged: true`, and `reconstruction`. A dedup
 short-circuit (step 1, item 6) is the same minimal shape: `feature`,
-`patch_id`, the prior entry's `result`, `merged: false`, `dedup: true`. `exercise` is your
-executed probe steps with their captured observations — the source from which
-this feature's pack entry is pinned if the verdict is perfect.
+`patch_id`, the prior entry's `result`, `merged: false`, `dedup: true` — except
+when that short-circuit just finished a reconstructed park (a deviation entry
+whose booking had crashed), which adds the reconstructed `deviation` and
+`menu` alongside those same fields, so the boundary relay surfaces them rather
+than a bare entry. `exercise` is your executed probe steps with their captured
+observations — the source from which this feature's pack entry is pinned if
+the verdict is perfect.
 
 Blocked (nothing booked, or the park booked per step 7):
 
     { "feature": "<feature-id>", "result": "blocked", "kind": "feature|environment",
       "detail": "<what you saw>",
-      "menu": ["<option>", …] }
+      "menu": [{"resolution": "retry|fix-in-place|re-plan|waive|defer", "option": "<text>"}, "…"] }
 
 `menu` appears only when `kind` is `feature` (the park was booked). Report only
 what you observed: an expectation you never exercised is not "probably fine" —

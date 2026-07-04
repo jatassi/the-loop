@@ -129,6 +129,12 @@ The runtime leg's causality check: the new feature's blind-derived exercise must
 The project-configured [[port]] for bringing the system up and exercising it ("how to run it"), driving the runtime-observable acceptance criteria ("what to observe"). Powers [[Validate]]'s runtime leg and the pre-Ship full-system integration check at larger scope. Greenfield has nothing to infer it from, so [[Design]] **nudges** the user to provide it; its absence is a deliberate, surfaced opt-out, never a silent skip.
 *See:* ADR-0013
 
+### smoke suite
+**aliases:** — · **status:** active
+The user-defined, user-provided post-deploy health exercise — the `smoke` component of the deploy-target binding (`{deploy, rollback, smoke}`), recorded at Design/Configure and excerpted verbatim like the probe binding. May cite [[probe pack]] steps or be something else entirely; the engine treats it as an opaque exercise with expected observations. Its failure is what triggers [[Ship]]'s delegated rollback; **its absence means no mechanical health signal, so auto-rollback is off for that ship** — surfaced, never silent.
+*Not to be confused with:* the [[probe pack]] (pinned validation exercises — a suggested source, not the mechanism).
+*See:* ADR-0033
+
 ### walk-away surface
 **aliases:** — · **status:** active
 The ambient "what is my loop doing" visibility + escalation-notification surface — *composed*, not built: the `/workflows` progress tree + `log()` narrator lines (live, mid-run), the [[Project Ledger]] (resting, between runs), and the notification-channel [[port]] (push at a [[run boundary]], default: only when something needs you). Meta-observability of the loop's own execution rides the same pieces plus git history. Distinct from debugging introspection.
@@ -245,8 +251,8 @@ The human re-entry phase, realized as the **adjust skill** (two routes in: the r
 
 ### Ship
 **aliases:** — · **status:** active
-Human-gated deploy of the [[shippable frontier]], decoupled from build cadence. The human approves an **evidence package** = full-system integration check (the [[runtime probe]] at full scope) + a baseline security review (a port; default adapter the harness `/security-review`) + an auto-derived changelog. Rollback is **health-gated and delegated**: post-deploy, the runtime probe's smoke checks run against prod; failure → the deploy target's native rollback. The one place autonomy is re-granted after the gate.
-*See:* ADR-0014
+Human-gated deploy of the [[shippable frontier]] at a pinned tip (`ship_sha`), decoupled from build cadence and run session-side by the ship skill. The session assembles the **evidence package** against that tree — all-packs [[probe pack]] replay (a red blocks hard, before any approval), security findings verbatim (inform-only), a changelog, live [[waiver]]s — and the human's approval binds to it; tip movement beyond ship's own bookings voids the evidence. Then the **corridor** runs autonomously (the one post-gate re-grant): deploy → user-defined [[smoke suite]] → conclude, or the deploy target's delegated rollback with a verification re-run. Outcomes book into the [[ship record]] between two booking commits; only `deployed` flips the frontier `validated→shipped`.
+*See:* ADR-0014 / ADR-0033
 
 ### Evolve
 **aliases:** — · **status:** active
@@ -400,6 +406,11 @@ Accumulated decomposition and escalation signal (Markdown + frontmatter + index,
 The ephemeral file (`docs/escalations/<feature-id>.md`) holding a parked [[escalation]]'s detail — validator findings, kind-stamped recommendation menu (`{resolution, option}`, recommended first), context. Born when a [[feature]] parks — written by the parking agent's [[booking]] (the plan agent on bounce, the blocked build agent, the validator on deviation); survives across sessions while *open* so [[/the-loop]] can re-surface it; **deleted when the escalation is resolved** — by `spine escalation resolve`, whose commit message (`<feature-id>: escalation resolved — <kind>`) is the durable trace. Git history is its archive — deletion keeps the working tree lean without losing recoverability.
 *Not to be confused with:* [[escalation]] (the decision-moment event) — this is the transient working file that informs it.
 *See:* ADR-0009
+
+### ship record
+**aliases:** — · **status:** active
+The durable artifact of one [[Ship]] — `docs/ships/ship-<N>.md`, narrative + one structured block pinning `ship_sha` (the evidence tree), design_version, the deployed features, the evidence package, the approval (`{approver, date}`, bound to that tree), and the outcome (`deployed` | `rolled-back` | `deploy-failed`). Written in two [[booking]] commits bracketing the corridor: evidence + approval land **before** any prod-touching command; the outcome lands after. Record-as-truth: the `loop/ship/<N>` tag is refs-last convenience on `deployed` outcomes only, and the next ship's diff range starts at this record's `ship_sha`. A record with approval but no outcome is an interrupted corridor — surfaced at re-entry, never auto-resumed.
+*See:* ADR-0033
 
 ---
 
