@@ -1,11 +1,11 @@
 ---
 name: adjust
-description: Walk the docket of parked escalations and fold each human decision back through the resolution toolkit — status flipped, record deleted, Ledger re-rendered, one booking commit per resolution. Use when parked features need decisions; /the-loop routes here at a run boundary that carries parks, and again at re-entry when the proposal is resolve-parked.
+description: Walk the docket of parked escalations and fold each human decision back through the resolution toolkit. Use when parked features need decisions — /the-loop hands off here at a run boundary that carries parks, and again at re-entry when the proposal is resolve-parked.
 ---
 
 # Adjust — parked docket → resolved, folded back
 
-Parked is not a dead end. Each parked feature holds a decision the engine can't make
+Each parked feature holds a decision the engine can't make
 for itself; this session lays them all out, takes one decision at a time recommended-
 answer style, and folds each back through the toolkit so the feature re-enters the loop
 exactly where its resolution kind sends it. Every mutation is mechanical — the tools own
@@ -31,11 +31,11 @@ first), and `branch` (the `loop/<feature-id>` ref, when one exists). Order the r
 where their feature ids appear in the feature graph — `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js"
 index` lists the features in graph order.
 
-Lay the whole docket out before deciding anything, so the human sees the full slate first.
-For each entry state the feature, its phase and kind, the deviation in a line, and its menu
-with the recommended option first.
+Lay the whole docket out before deciding anything. For each entry state the feature, its
+phase and kind, the deviation in a line, and its menu with the recommended option first.
 
-Then state — but do not act on — whatever the run relay carried alongside the parks:
+Arriving from a run boundary, also state — but do not act on — what the relay carried
+alongside the parks:
 
 - **`stalled`** items, each `feature` / `phase` / `note`: nothing was booked, and the phase
   re-runs on the next pass. This session does not decide them.
@@ -123,8 +123,7 @@ breaking finding is left unwaived, this is `fix-in-place` with the waivers as pr
    to step 3, never re-merging.
 2. **Squash-merge the branch, code alone.** `git merge --squash loop/<feature-id>`, then commit:
    `<feature-id>: validated at design_version <n> — waived` (`<n>` is the `designVersion` from
-   `spine index`). The recorded waivers and the pin below are not part of this commit — they ride
-   the booking commit.
+   `spine index`).
 3. **Pin the probe pack, conditionally.** Read the latest entry in
    `docs/validations/<feature-id>.md`; if its runtime leg PASSed, pin that entry's executed
    `exercise` into `docs/probes/<feature-id>.md` (narrative plus the steps as
@@ -145,15 +144,13 @@ Stage exactly those and commit:
 `waive` is the two-commit exception: its merge commit (§4) lands first with the code alone, then
 this booking commit carries the resolve mutations, the recorded waivers, and the probe-pack pin.
 
-HEAD stays on the integration target through every resolution. A `spine` command that errors is
-the environment telling you to stop: discard your own uncommitted edits, book nothing further, and
-tell the human which command failed and what it printed — never hand-edit the graph, the plan, the
-validations record, or the Ledger to paper over it.
+A `spine` command that errors is the environment telling you to stop: discard your own
+uncommitted edits, book nothing further, and tell the human which command failed and what it
+printed — never hand-edit an artifact to paper over it.
 
 ## 6 · Close the docket
 
 When every escalation has been decided — resolved or deliberately deferred — the docket is done.
 Propose the next stateless run: `/the-loop` re-orients on the mutated graph and advances the
-frontier, each resolved feature re-entering at the phase its kind set it to (a `designed` feature
-at Plan, a `building` one at Build, a `validated` one already merged). Deferred features stay on the
-docket for a future session.
+frontier, each resolved feature re-entering where its kind sent it. Deferred features stay on
+the docket for a future session.
