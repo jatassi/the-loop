@@ -137,7 +137,7 @@ tasks:
       summary: "src/note.js exports appendNote(model, featureId, text), a pure function mirroring setStatus's parse-mutate-render shape: it finds the feature node by id (throwing `unknown feature id: <id>` when absent), refuses a non-string or empty text (throwing `note text must be a non-empty string`), then appends text to model.features[idx].notes (creating the array when the key is absent) and mirrors the same array into the retained YAML document via doc.setIn(['features', idx, 'notes'], notes) so render() persists only that feature's notes line. bin/spine.js wires a new `note` command (noteCommand) that does I/O only: read design.md, parse, call appendNote, write back on success, print the updated node as JSON; an unknown id or empty text throws before any write, so nothing is written on refusal. test/note.test.js covers the pure layer (creating the notes key from absent, appending across two calls, round-tripping the rendered text; refusing an unknown id or empty text with the model left untouched) and test/spine-cli.test.js covers the CLI layer end-to-end: a happy-path append that leaves every byte outside the feature-graph block untouched (asserted byte-for-byte against the fixture), the two refusal paths exiting 1 with nothing written, and a follow-up test proving `spine check` still reports OK after the append and `spine resolve <feature-id>` surfaces the new note riding the resolved node. All 4 acceptance criteria were watched red before green (confirmed by deliberately reverting each implementation half and rerunning). npm test (125/125) and npm run check both pass."
   - id: t3
     title: spine ledger append-run — one deterministic newest-first Run-history line
-    status: pending
+    status: built
     covers: [4]
     acceptance:
       - "`spine ledger append-run [summary.json|-]` reads a run-summary JSON ({ date, run, completed: [id], parked: [id], stalled: [id], halted?: {reason, detail}, budget?: {spent, remaining} }; date and run required, exit 1 nothing written when either is missing) and inserts exactly one Markdown bullet as the first content after the `## Run history` heading in docs/ledger/ledger.md"
@@ -150,6 +150,19 @@ tasks:
     size: s
     tier: standard
     depends_on: [t1, t2]
+    report:
+      result: built
+      footprint_actual:
+        - bin/spine.js
+        - src/ledger.js
+        - test/ledger.test.js
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 4
+        insertions: 187
+        deletions: 8
+      deviations: []
+      summary: "src/ledger.js gains appendRun(priorText, summary): a pure function that inserts one deterministic bullet as the first content immediately after the \"## Run history\" heading. It throws (nothing written by any caller) when summary.date or summary.run is missing, and when priorText carries no \"## Run history\" heading at all. The bullet's fields render in fixed order — date, run, then completed/parked/stalled id lists (each omitted when empty), halted's reason and detail (omitted when absent), and budget's spent/remaining (omitted when absent) — pipe-joined for a single deterministic line, e.g. \"- 2026-07-04 | wf_999 | completed: widget | parked: gadget\". bin/spine.js wires spine ledger append-run [summary.json|-] (stdin default, matching the report/remediate commands' convention): it reads the summary JSON, reads the existing Ledger (an absent file throws via readFileSync's own ENOENT, caught by the top-level try/catch, before any write), calls appendRun, and writes the result back. Because \"## Run history\" is one of renderLedger's carried sections, a subsequent spine ledger render preserves the appended bullet byte-identically — proven directly in test/spine-cli.test.js. test/ledger.test.js covers appendRun's fixed field order and empty-segment omission, its determinism across repeat calls with the same summary, and its two throw paths (missing date/run; missing heading) — each watched red (ReferenceError on the unexported name, then the unimplemented-throw path) before green. test/spine-cli.test.js covers the CLI end to end: a happy path via both a file argument and stdin that inserts newest-first above a prior entry while leaving the rest of the Ledger byte-identical; the three refusal paths (missing date, missing run, no \"## Run history\" heading, and an absent Ledger file) all exiting 1 with the Ledger left unchanged; and the render round-trip. npm test (132/132) and npm run check both pass."
   - id: t4
     title: spine plan fix — append fix-N, reset-and-chain a blocked task, plan-check exemptions
     status: pending
