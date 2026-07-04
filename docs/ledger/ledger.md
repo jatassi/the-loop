@@ -8,19 +8,17 @@ Total: 25 (design_version 7)
 
 - designed: 11
 - planned: 0
-- building: 4
+- building: 5
 - validated: 9
 - shipped: 0
-- parked: 1
+- parked: 0
 - drifted: 0
 
 ## What needs you
-- **executor-delegation** (validate): One contract-breaking acceptance-leg finding, propagating identically into the runtime leg's pack replay: t4 wires validateBindings unconditionally into spine models, and test/spine-cli.test.js:224 (model-selection's own acceptance-criterion-1 test) uses a fixture binding drive via the placeholder value "my-executor" — never a registered executor, used only to prove that an arbitrary via value survives settings-layer merges untouched. That via now trips the new unregistered-executor hard error, so spine models exits 1 with no table, breaking the test's every assertion. Confirmed not pre-existing: the identical test passes cleanly (121/121) at the integration target's pre-diff tip (worktree-executor-delegation, commit 8aae8c6); it only fails (152/153) once executor-delegation's diff lands, reproduced consistently across two full-suite runs, not flaky. The same failure also breaks the "full suite green" pinned observation replayed from two existing probe-pack entries (docs/probes/inner-loop-workflow.md and docs/probes/ledger-title-preservation.md), recorded as its own runtime-leg finding since no clause of executor-delegation's own contract supersedes model-selection's via-pass-through behavior. Four completion reports (t4, t5, t6, t7, t8) each characterize the failure as "pre-existing, unrelated" and leave it red under the no-unrelated-fixes rule — the quoted facts are accurate, but "pre-existing" is not: it is this diff's own regression into an already-validated feature's acceptance criterion. All other legs are clean: forensics found zero confirmed hits (one dismissed, prose-only); conformance found zero findings on either axis, with every criterion independently re-exercised live against fresh fixtures, including a real, unscripted end-to-end claude -p --agent drive run against the real grok CLI, reproducing criterion 1's exact shape.
-  - menu: [?] fix-in-place — append a task updating test/spine-cli.test.js:224's fixture to bind drive via either the literal agent (or no via) or a real registered executor id instead of the placeholder "my-executor" (preserving the test's actual point — via rides through merges untouched — without tripping the new hard-validation), build it on the branch, re-validate; [?] waive — merge on human authority, recording the one red model-selection acceptance-criterion-1 regression as an accepted transitional gap until a separate commit updates the stale fixture; [?] re-plan — route t4 back to Plan to scope spine models's new hard-validation (e.g. an explicit opt-in flag, or a documented one-time fixture update alongside the wiring change) so a pre-existing, already-validated feature's test fixture isn't broken by a later feature's unconditional CLI change, then rebuild and re-validate
-  - branch: loop/executor-delegation
+Nothing parked — no open escalations.
 
 ## What's next
-`frame`, `plan`, `workflow-phase-grouping`, `ship`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
+`frame`, `plan`, `executor-delegation`, `workflow-phase-grouping`, `ship`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
 - 2026-07-03 | wf_1c210607-7f2 | halted: environment-blocked — Build entry found the tree dirty — untracked directory 1bddab65-fc91-4f88-8117-969eadb754f6/ (a concurrent session's executor-delegation e2e debris: scratchpad/e2e-target/.claude/worktrees/drive-widget-t1.prompt.md); the build agent stopped before touching branch, plan, or code and cleaned nothing. Ship was planned and booked in-run (1bede8d, 605e3f6) before the halt

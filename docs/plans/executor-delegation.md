@@ -517,4 +517,30 @@ tasks:
       deviations:
         - "No new test file: this task's footprint is a single prose research record with no parser or executable behavior (matching t3/t5/t6's pure-prose precedent already noted in the plan narrative). Each acceptance criterion was verified by live execution instead of an automated test: the question, setup, and exact commands are quoted verbatim from the real shell session; the observed behavior (direct commits landing on the throwaway repo's own main branch, git worktree list and grok worktree list never gaining a new entry, and a zero-hit grep for \"worktree\" in --debug output) was captured across four independent runs in two throwaway repos outside this checkout, confirming grok --version, auth, and the flags themselves are all real and reachable in this environment before drawing any conclusion."
       summary: "docs/research/2026-07-03-grok-native-worktree.md records a live, reproduced probe of grok's --worktree/--worktree-ref flags run four times against two throwaway git repos outside this checkout, in the exact headless/single-turn/--always-approve/--no-subagents invocation shape the shipped playbook uses: every run committed directly onto the passed-in checkout's own main branch, with git worktree list and grok's own worktree list never gaining a new entry and a --debug run showing zero worktree-related log lines, so the flags are observed to be no-ops in this invocation shape rather than guessed at from --help text (criterion 1). The record's closing section states the standing consequence either way: executors/grok.md's shipped worktree: driver-made stays as-is (this observation confirms rather than changes it), and flipping to native mode remains a follow-up playbook amendment gated on a future clean observation that contradicts today's negative result (criterion 2)."
+  - id: fix-1
+    title: Fix via-fixture regression and cross-stream line budget
+    status: pending
+    fix: true
+    covers: []
+    acceptance:
+      - the full test suite is green, including test/spine-cli.test.js's via pass-through test, whose fixture now binds a via value that survives spine models registry validation while the test still asserts the via field arrives untouched through the settings-layer merge
+      - npm run lint is clean with bin/spine.js at or under the max-lines budget, achieved by extracting command helpers to a bin/ sibling module with no rule suppressions and no lint-config edits
+    injects: []
+    standards: []
+    footprint:
+      - test/spine-cli.test.js
+      - bin/spine.js
+      - bin/spine-commands.js
+    size: s
+    tier: standard
+    depends_on:
+      - t1
+      - t2
+      - t3
+      - t4
+      - t5
+      - t6
+      - t7
+      - t8
+      - t9
 ```
