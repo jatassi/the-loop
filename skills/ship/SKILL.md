@@ -9,8 +9,8 @@ Ship is human-gated: it assembles an evidence package pinned to one exact tree,
 presents it, holds a synchronous approval gate, and only then touches production.
 Every evidence leg runs inline in this session — nothing is delegated, and nothing is
 assumed about prior context. Ship deploys the **whole validated frontier** at the
-integration target's tip as a single release; it never ships a subset, and never a
-tree the human did not approve.
+integration target's tip as a single release, and never a tree the human did not
+approve.
 
 ## 1 · Entry protocol — three gates in order, each a hard stop
 
@@ -69,7 +69,10 @@ ship.
 Replay **every pack in `docs/probes/`, oldest-first**, against the `ship_sha` tree,
 through the **runtime-probe binding recorded in `docs/ports/ports.md`** — excerpt that
 binding at run time; never hardcode its commands. Drive it as one lifecycle: a single
-**bring-up**, then **all packs** in order, then a single **teardown**. Each pack masks
+**bring-up**, then **all packs** in order, then a single **teardown** that **sweeps
+clean** — it removes every temp artifact the leg produced, not only the packs' own
+bring-up fixtures but any an interrupted sub-step orphaned (a killed `npm test` strands
+its `mkdtemp` dirs); the leg is not done until the temp area holds none of them. Each pack masks
 its volatile fields (temp-dir paths, exact dates, commit SHAs); replay **re-derives
 them fresh** rather than comparing them literally. A step that fails is **retried
 twice**: three reds in a row is **red**; red-then-green is **flaky-counted-passing** —
@@ -158,9 +161,8 @@ once**:
 
 piping that JSON in. This is the **only prod-touching command anywhere in this skill**. It
 drives deploy → smoke → (on any failure) rollback → smoke-verify to conclusion entirely on its
-own, with **no prompts anywhere between approval (§4) and the concluded outcome** — nothing is
-asked of the human and nothing else runs until it prints `{outcome, rollback_verified?,
-health_signal, steps}`.
+own, with **no prompts anywhere between approval (§4) and the concluded outcome** — nothing
+else runs until it prints `{outcome, rollback_verified?, health_signal, steps}`.
 
 ## 8 · Book commit 2 — the outcome
 
