@@ -17,3 +17,11 @@ design-review session. **Delete an item when it lands**; git history is the arch
   begins.* After the skeleton, hand-building is permitted only as a surfaced escalation
   decision recorded in the ledger/ADR trail — regression away from self-hosting must be
   a visible choice, never quiet. A process policy, not a feature.
+- **Ship's integration check must leave no temp artifacts** — *due: next Ship-skill
+  touch.* The integration leg's teardown covers the probe-fixture lifecycle, but nothing
+  sweeps orphans left when a sub-step (e.g. the `npm test` backbone) is interrupted
+  mid-run, and nothing asserts the temp area is clean before the ship proceeds. A clean
+  run self-cleans; an interrupted one can strand `mkdtemp` dirs (surfaced at ship-1:
+  `spine-cli-*` dirs orphaned by a SIGPIPE-killed piped `npm test`). Add a final
+  defensive sweep + clean-assertion to the ship skill's integration-check teardown so
+  "temp files torn down as part of ship" is guaranteed, not operator-remembered.
