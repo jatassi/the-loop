@@ -308,7 +308,7 @@ tasks:
       summary: "workflows/inner-loop.js gains a menuArray schema fragment (items: anyOf[{type:'string'}, {type:'object', properties:{resolution:{type:'string'}, option:{type:'string'}}, required:['option']}]) — only standard JSON Schema keywords, both object keys named in properties per the schema-as-template rule — and PLAN_SCHEMA, BUILD_SCHEMA, and VALIDATE_SCHEMA's own `menu` field now points at it instead of the old bare stringArray. meta stays on its single pinned line, and parkEntry/the rest of the script are untouched: menus still relay via `menu: r.menu` verbatim, so no transformation was added. test/inner-loop-park.test.js gains three new tests — a plan bounce, a feature-kind build block, and a validate deviation, each scripted with a [{resolution, option}, ...] menu — asserting both that the corresponding spawn's own opts.schema.properties.menu accepts a kind-stamped object (watched red against the pre-change stringArray schema, confirmed green after the schema edit) and that BoundaryResult.parked carries the scripted menu array verbatim; the five pre-existing bare-string-menu tests are untouched and still pass. npm test (155/155, full suite) and npm run check (0 errors, 0 warnings) both pass."
   - id: t9
     title: Plan and build agents author kind-stamped menus
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - "agents/plan.md's escalation-record template and bounce-return shape show menu as [{resolution: <kind>, option: <text>}, …], recommended first, with the resolution kinds named (retry | fix-in-place | re-plan | defer — waive belongs to validate parks only and is never offered here)"
@@ -320,6 +320,17 @@ tasks:
     size: xs
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - agents/build.md
+        - agents/plan.md
+      diff_actual:
+        files: 2
+        insertions: 12
+        deletions: 6
+      deviations: []
+      summary: agents/plan.md's step-5 bounce menu prose and yaml template, and its step-9 bounce-return shape, now show menu as [{resolution, option}, ...] with the recommended option first, and name the valid resolution kinds for a plan park (retry | fix-in-place | re-plan | defer), explicitly excluding waive (validate-only). agents/build.md's step-5 park menu prose and yaml template, and its step-6 blocked-return shape, carry the identical kind-stamped form and the same excluded-waive note for a build park. Neither file gained an ADR or internal-doc reference (grep confirms zero ADR mentions in both). Both files are prose-only agent surfaces with no automated test coverage in the repo; npm test (155/155) and npm run check (spine check + eslint, 0 errors/0 warnings) both pass unchanged, confirming no regression.
   - id: t10
     title: Validator amendments — retried-aware dedup, deviation-crash healing, waiver consumption, kind-stamped menus
     status: pending
