@@ -9,8 +9,8 @@ Total: 25 (design_version 7)
 - designed: 11
 - planned: 0
 - building: 3
-- validated: 11
-- shipped: 0
+- validated: 0
+- shipped: 11
 - parked: 0
 - drifted: 0
 
@@ -21,6 +21,7 @@ Nothing parked — no open escalations.
 `frame`, `plan`, `workflow-phase-grouping`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
+- 2026-07-04 | ship-1 | deployed | features: artifact-spine, the-loop-entry, build, craft-baseline, validate, inner-loop-workflow, ledger-title-preservation, model-selection, executor-delegation, surfacing, ship
 - 2026-07-04 | wf_bcf2df42-2a7 | completed: ship
 - 2026-07-03 | wf_cf833be4-9b0 | stalled: ship
 - 2026-07-04 | wf_74be8a1f-77f | completed: executor-delegation

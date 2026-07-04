@@ -70,14 +70,14 @@ features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
     title: Artifact files, schemas, and the injection resolver (address-by-id)
-    status: validated
+    status: shipped
     depends_on: []
     interfaces: [feature-node, injection-resolver]
     acceptance: a feature node + its contracts resolve by id; design.md round-trips through parse/render
 
   - id: the-loop-entry
     title: /the-loop stateful command + cold-start detection + minimal onboarding
-    status: validated
+    status: shipped
     depends_on: [artifact-spine]
     acceptance: fresh repo routes to onboarding; configured repo reads the Ledger and proposes the next action
 
@@ -105,13 +105,13 @@ features:
 
   - id: build
     title: Build (task agents; sequential within a feature for v1)
-    status: validated
+    status: shipped
     depends_on: [artifact-spine, plan]
     acceptance: a feature's tasks produce a single merged diff
 
   - id: craft-baseline
     title: Craft bundle (craft-baseline port + build constitution + per-task standards)
-    status: validated
+    status: shipped
     depends_on: [plan, build]
     notes:
       - mechanics per ADR-0027 — two layers (plugin pack + docs/standards/, repo wins); constitution always-injected; Plan selects standards per task via the task contract's standards field; Design seeds/mines the project layer; Validate consumes via the standards axis (2026-07-02)
@@ -119,7 +119,7 @@ features:
 
   - id: validate
     title: Independent validator (readiness + four legs)
-    status: validated
+    status: shipped
     depends_on: [build]
     interfaces: [validator-verdict, runtime-probe]
     notes:
@@ -128,7 +128,7 @@ features:
 
   - id: inner-loop-workflow
     title: The Workflow orchestration (Plan→Build→Validate, park-and-drain, BoundaryResult)
-    status: validated
+    status: shipped
     depends_on: [plan, build, validate]
     interfaces: [boundary-result, escalation-record]
     notes:
@@ -144,7 +144,7 @@ features:
 
   - id: ledger-title-preservation
     title: Ledger renderer preserves pre-heading content (the title line)
-    status: validated
+    status: shipped
     depends_on: [inner-loop-workflow]
     notes:
       - bug intake from the 2026-07-03 validation's post-verdict note (validations e9efcf74) — the first live spine ledger render dropped docs/ledger/ledger.md's leading title line; renderLedger's section slicing never captures content before the first "## " heading and no test fixture models it; intended as the first self-hosted feature through the real workflow
@@ -154,7 +154,7 @@ features:
 
   - id: model-selection
     title: Model selection framework — per-role model/effort bindings at every spawn surface
-    status: validated
+    status: shipped
     depends_on: [inner-loop-workflow]
     interfaces: [model-binding]
     notes:
@@ -173,7 +173,7 @@ features:
 
   - id: executor-delegation
     title: Delegated executors — rote tasks driven through registered CLI executors by a Claude driver
-    status: validated
+    status: shipped
     depends_on: [model-selection]
     notes:
       - designed 2026-07-03 by grilling (ADR-0031), seeded from AlphaMind's grok-cli dogfood; sharpened same day by the pre-build grill (ADR-0031 amended in place); off by default — a project opts in by rebinding build.rote to an executor's model with via naming a registered executor; the binding table stays the single routing surface, no separate delegation switch
@@ -204,7 +204,7 @@ features:
 
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
-    status: validated
+    status: shipped
     depends_on: [inner-loop-workflow]
     interfaces: [escalation-record]
     notes:
@@ -222,7 +222,7 @@ features:
 
   - id: ship
     title: Ship (human-gated, evidence package, health-gated delegated rollback)
-    status: validated
+    status: shipped
     depends_on: [validate, surfacing]
     interfaces: [ship-record]
     notes:

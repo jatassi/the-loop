@@ -90,4 +90,5 @@ evidence:
 approval:
   approver: Jackson Atassi
   date: 2026-07-04
+outcome: deployed
 ```
