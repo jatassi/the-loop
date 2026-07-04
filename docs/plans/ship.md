@@ -323,7 +323,7 @@ tasks:
 
   - id: t10
     title: Front door — route the ship proposal and jump to the ship skill by name
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - "commands/the-loop.md's explicit-jumps line routes ship to the ship skill by name, matching how the frame and design jumps name their skills, replacing the bare Ship"
@@ -334,4 +334,14 @@ tasks:
     size: xs
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - commands/the-loop.md
+      diff_actual:
+        files: 1
+        insertions: 3
+        deletions: 3
+      deviations: []
+      summary: "commands/the-loop.md's explicit-jumps line now names ship's route by skill, matching the frame/design style: `ship` -> the `ship` skill (replacing the bare 'Ship'), in the same list as `frame` -> the `frame` skill and `design` -> the `design` skill. The active-mode proposal branch's 'The proposal' bullet gained a matching clause -- 'accepting `ship` routes to the `ship` skill' -- appended right after the existing 'accepting `advance-frontier` enters the launch leg below' clause, mirroring the resolve-parked-to-adjust wording pattern ('Accepting `resolve-parked` routes to the `adjust` skill'). No other line in the file changed: full suite (197 passing) and npm run check (25 features, 12 contracts, 0 errors/warnings) both stay green, confirming no regression."
 ```
