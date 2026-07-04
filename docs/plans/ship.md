@@ -269,7 +269,7 @@ tasks:
 
   - id: t8
     title: Ship skill, first half — entry gates, healing scan, evidence package, approval + freshness
-    status: pending
+    status: built
     covers: [1, 3, 4]
     acceptance:
       - "skills/ship/SKILL.md exists with frontmatter (name: ship; a description naming its triggers: the front door's ship proposal and the /the-loop ship jump) and is self-contained per the loop-surfaces standard — no ADR or internal-doc references and no session context assumed; paths to the repo artifacts it operates on (docs/ships/, docs/probes/, docs/ports/ports.md, docs/validations/, docs/design/design.md) and spine invocations in the plugin-root form (node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" ship …) are the only external references"
@@ -283,6 +283,16 @@ tasks:
     size: s
     tier: complex
     depends_on: [t3]
+    report:
+      result: built
+      footprint_actual:
+        - skills/ship/SKILL.md
+      diff_actual:
+        files: 1
+        insertions: 135
+        deletions: 0
+      deviations: []
+      summary: "skills/ship/SKILL.md now realizes the first half of the Ship skill as a self-contained loop surface: frontmatter (name: ship; a front-loaded description naming both triggers — the front door's ship proposal and the /the-loop ship jump), no ADR or internal-doc references, no session context assumed, and only the allowed external references (the repo artifact paths docs/ships/, docs/probes/, docs/ports/ports.md, docs/validations/, docs/design/design.md, plus spine invocations in plugin-root form). The entry protocol runs three pinned gates in order, each a hard stop: (1) a healing scan that runs `ship status` first and, when latest.interrupted is true, stops before any assembly, presents the ship as interrupted-mid-corridor naming the record, gives verify-production-by-hand instructions, and states the corridor is never auto-resumed; (2) a clean-tree gate on the integration target; (3) a frontier gate over every validated feature in design.md's feature graph, whole-frontier only, with an empty set meaning nothing to ship, stop. Evidence assembly pins ship_sha to the target tip at assembly, takes N and previous_ship_sha from `ship status`, and sets the diff range previous_ship_sha..ship_sha (repo root for ship-1); the four legs run inline — integration check (every pack in docs/probes/ oldest-first via the runtime-probe binding excerpted from ports.md, one bring-up then all packs then one teardown, masked volatile fields re-derived fresh, a failed step retried twice with consistent red = red and red-then-green = flaky-counted-passing plus an advisory), security review (the security-review binding over the diff range, findings verbatim and severity-ranked, inform-only), changelog (the range's squash commits as skeleton with booking/bookkeeping excluded, session prose per frontier feature), and live waivers (verbatim from docs/validations/<id>.md per frontier feature). The red-blocks-hard rule appears as written: a consistently red integration check stops the ship before any approval is solicited — no record, no gate, no in-loop override, remedy is a bug-shaped intake, not a ship. The approval gate presents the full package plus the deploy-target binding excerpted verbatim from ports.md, surfaces a missing smoke suite before approval (no smoke = no mechanical health signal = auto-rollback off for this ship, never silent), and records approval as {approver: git user.name, date} bound to ship_sha; the freshness rule appears as written — immediately before booking, a tip that moved past ship_sha beyond this ship's own bookings voids the evidence, say so and reassemble from the new tip, never a stale deploy. This is a prose surface with no executable behavior to unit-test (the constitution bars testing documentation); each of the five acceptance criteria was verified by reading the written rules against it, and npm test (197 passing) plus npm run check (25 features, 12 contracts, 0 errors/warnings) both stay green with the file added, confirming no regression."
 
   - id: t9
     title: Ship skill, second half — the two bookings, the corridor invocation, failure posture, tag
