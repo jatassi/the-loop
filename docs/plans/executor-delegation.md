@@ -313,7 +313,7 @@ tasks:
       summary: "src/executors.js now exports parseExecutor(text, file) and parseExecutors(entries): parseExecutor locates the fenced yaml block under the exact heading \"## Machine block\" (via blocks.js's yamlBlockAfter), parses it, and returns the machine-block record {id, command, models, worktree, invocation, availability, auth_smoke {run, expect}, concurrency, effort_flag only when present} — proven against a realistic grok-shaped fixture playbook with narrative prose around the block. Every malformed-playbook case throws an Error naming the file and the offending field: missing heading or fenced block, missing/mistyped required field, worktree outside native|driver-made, empty/non-array models, invocation missing {model}/{prompt} or lacking both {worktree} and {ref}, auth_smoke without run/expect, non-positive-integer concurrency, and id not equal to the filename stem — each is its own test in test/executors.test.js (12 tests total), and each was confirmed to actually exercise its check by temporarily disabling the corresponding validation and watching only that test fail. parseExecutors(entries) folds many {file, text} pairs into a registry keyed by id and throws naming both files on a duplicate id. The module stays pure per docs/standards/pure-core-thin-cli.md (no fs, no process); node:path is used only for pure filename-stem extraction. Full repo test suite (133 tests) and eslint both stay green."
   - id: t2
     title: Binding validation — validateBindings hard-fails unregistered via and off-playbook model, warns on the three guard cases
-    status: pending
+    status: built
     covers: [3]
     acceptance:
       - validateBindings(table, registry) returns {errors, warnings} of {code, message, where} issues and never throws — a via naming no registry id yields error unregistered-executor and a registered via with a binding model outside the playbook's models list (the literal session included) yields error model-outside-playbook, each naming the role in where, proven by tests
@@ -325,6 +325,18 @@ tasks:
     size: s
     tier: standard
     depends_on: [t1]
+    report:
+      result: built
+      footprint_actual:
+        - src/executors.js
+        - src/index.js
+        - test/executors.test.js
+      diff_actual:
+        files: 3
+        insertions: 146
+        deletions: 1
+      deviations: []
+      summary: "src/executors.js now exports validateBindings(table, registry), which walks the resolved model table's roles and, for every binding whose via is present and not the literal agent, accumulates issues into { errors, warnings } and never throws. Two hard errors: unregistered-executor when via names no id in the registry, and model-outside-playbook when a registered via's binding model (session included) is absent from that executor's models list — each names the offending role in where, proven by dedicated tests (the second covers both the session case and an arbitrary out-of-playbook model in one test, following the file's established grouping idiom). Three warnings, none of which ever raise an error: no-routing-surface for a via on any role outside the {build.rote, build.standard, build.complex} set, off-rubric-tier for a via specifically on build.standard or build.complex, and ignored-effort for a binding's effort field when its via resolves to a registered executor carrying no effort_flag; a via of agent or an absent via short-circuits before any check runs, proven by a test covering an off-rubric-tier role, an unbound role, and an effort-carrying role simultaneously, asserting zero issues of either kind. Each of the six new tests was confirmed to actually exercise its own check by temporarily disabling that check in isolation and watching only the corresponding test go red, then restoring. src/index.js re-exports parseExecutor, parseExecutors, and validateBindings from src/executors.js (a barrel re-export, left untested per the constitution's list of things never to test). The module stays pure per docs/standards/pure-core-thin-cli.md — no fs, no process. Full repo test suite (139 tests), eslint over the whole tree, and `node bin/spine.js check` (25 features, 11 contracts, 0 errors/warnings) are all green."
   - id: t3
     title: Grok playbook — executors/grok.md with the pinned machine block and the dogfood lore, self-contained
     status: pending
