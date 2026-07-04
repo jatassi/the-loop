@@ -20,7 +20,7 @@
     "check": "node bin/spine.js check && eslint ."
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.11"
   },
   "dependencies": {
     "yaml": "^2.6.0"

@@ -1,92 +1,49 @@
 #!/usr/bin/env node
 // CLI over the artifact spine, for the interactive session and agents. (The Workflow
-// itself has no filesystem — it consumes the index via `args`.) Commands print JSON to
-// stdout; `check` is a lint that sets the exit code (0 ok / 1 on errors or round-trip drift).
+// itself has no filesystem — it consumes the launch snapshot via `args`.) Commands
+// print JSON to stdout; `check` and `plan check` are lints that set the exit code.
 //
-//   spine parse  [design.md]        the full parsed model (minus internals)
-//   spine index  [design.md]        the compact workflow-args index (no contract bodies)
-//   spine resolve <id> [design.md]  a feature node + the contracts it references
-//   spine check  [design.md]        validate + round-trip; report; exit 1 on failure
-//   spine set-status <feature-id> <status>  flip one feature's status in design.md; prints
-//                                            the updated node as JSON; exit 1, unwritten, on
-//                                            an unknown id or an out-of-enum status
-//   spine note <feature-id> <text>  append <text> to a feature's notes array in design.md;
-//                                    prints the updated node as JSON; exit 1, unwritten, on
-//                                    an unknown id or empty text
-//   spine ledger render             regenerate docs/ledger/ledger.md from design.md +
-//                                    docs/escalations/*.md (absent dir = none); idempotent
-//   spine ledger append-run [summary.json|-]  insert one newest-first Run-history bullet
-//                                    from a run-summary JSON; exit 1, unwritten, when
-//                                    date/run are missing, the Ledger has no
-//                                    "## Run history" heading, or the Ledger is absent
-//   spine plan parse <feature-id> [plan.md]             the parsed plan model
-//   spine plan check <feature-id> [plan.md] [design.md] validate against the design + round-trip
-//   spine plan task <feature-id> <task-id> [plan.md] [design.md]        a build agent's task slice
-//   spine plan report <feature-id> <task-id> [report.json|-] [plan.md]  fold a completion report in
-//   spine plan remediate <feature-id> [findings.json|-]  append the remediation round-marker task;
-//                                                        exit 1, unwritten, on a second round or a
-//                                                        findings set with no file:line locations
-//   spine plan fix <feature-id> [fix.json|-]  append a fix-N task (not one-shot); resets +
-//                                             chains any blocked task behind it; exit 1,
-//                                             unwritten, on empty acceptance/footprint
-//   spine validate scan <feature-id> [target] [branch]  forensics tripwires + patch-id dedup over
-//                                                       the feature branch's diff (target: main,
-//                                                       branch: loop/<feature-id> by default)
-//   spine validate waive <feature-id> [waiver.json|-]  append one waiver to the LAST
-//                                                       "## Validation" entry; exit 1, unwritten,
-//                                                       on a missing required field, a missing
-//                                                       validations file, or a file with no entry
-//   spine escalation resolve <feature-id> <kind> [--reason <text>] [--phase <plan|build|validate>]
-//                                    resolve a parked feature: validate kind against the record's
-//                                    phase, flip the status, run kind-specific extras (re-plan
-//                                    deletes the plan; retry-on-validate stamps the retried mark),
-//                                    delete the record, re-render the Ledger. Never commits — the
-//                                    adjust skill owns the booking commit. --phase is the
-//                                    damaged-park escape hatch (no record). exit 1, unwritten, on
-//                                    any invalid kind/phase/guard
-//   spine executors [dir]           the parsed executor-playbook registry as JSON,
-//                                    keyed by id (dir default: <plugin-root>/executors);
-//                                    an absent dir prints {}
-//   spine models [defaults.json] [executors-dir]  resolved role table: plugin defaults <
-//                                    project (.claude/settings.json) < local
-//                                    (.claude/settings.local.json), "the-loop".modelBindings;
-//                                    validated against the executor registry — a hard error
-//                                    exits 1 with no table; the three guard warnings print to
-//                                    stderr but never fail
-//   spine ship status                docs/ships/ship-*.md's count, next N, previous
-//                                    ship_sha, and the latest record's projection
-//                                    ({ship, ship_sha, outcome, interrupted}) — the
-//                                    healing + pin helper; exit 1, naming the file, on a
-//                                    record with no "## Ship record" block
+//   spine graph  [graph.md]         the parsed feature graph (minus internals)
+//   spine check  [graph.md]         validate + round-trip; report; exit 1 on failure
+//   spine set-status <id> <status>  flip one feature's durable status in graph.md
+//                                    (designed|validated|shipped); prints the updated
+//                                    node; exit 1, unwritten, on an unknown id or status
+//   spine ledger [graph.md]         print the status story to stdout; writes nothing
+//   spine launch --scope <id,…> [--target <ref>]
+//                                    the one-shot launch snapshot (ADR-0036/0038):
+//                                    gates the graph, the scope, and the model table,
+//                                    gathers per-feature design docs + plans (from
+//                                    feature branches) + git-derived task state, and
+//                                    prints the workflow's `args`. exit 1, nothing
+//                                    printed, on any gate failure
+//   spine plan parse <id> [plan.md]              the parsed plan model
+//   spine plan check <id> [plan.md] [graph.md]   validate against the graph + round-trip
+//   spine plan task <id> <task-id> [plan.md] [graph.md]  one build task's kernel
+//   spine worktree create <branch> [--from <ref>]  add .claude/worktrees/<branch>,
+//                                    creating the branch from <ref> (default main) when
+//                                    new; links node_modules for node projects; prints
+//                                    {path, branch, created}
+//   spine worktree remove <path>    remove a worktree and prune
+//   spine executors [dir]           the parsed executor-playbook registry as JSON
+//   spine models [defaults.json] [executors-dir]  resolved role table: plugin defaults
+//                                    < project < local (.claude/settings*.json,
+//                                    "the-loop".modelBindings); hard errors exit 1
 
 import path from 'node:path';
 
 import { parse } from '../src/parse.js';
-import { extractIndex, resolveIn } from '../src/resolve.js';
-import { shipCommand } from './ship.js';
 import {
-  check, clean, escalationCommand, fail, ledgerCommand, modelsCommand, noteCommand,
-  out, planCommand, PLUGIN_ROOT, read, readRegistry, setStatusCommand, validateCommand,
+  check, clean, fail, launchCommand, ledgerCommand, modelsCommand, out,
+  planCommand, PLUGIN_ROOT, read, readRegistry, setStatusCommand, worktreeCommand,
 } from './spine-commands.js';
 
 const [cmd, ...rest] = process.argv.slice(2);
 
 try {
   switch (cmd) {
-    case 'parse': {
+    case 'graph': {
       const model = parse(read(rest[0]));
       out(clean(model));
-      break;
-    }
-    case 'index': {
-      const model = parse(read(rest[0]));
-      out(extractIndex(model));
-      break;
-    }
-    case 'resolve': {
-      if (!rest[0]) { fail('usage: spine resolve <feature-id> [design.md]'); }
-      const model = parse(read(rest[1]));
-      out(resolveIn(model, rest[0]));
       break;
     }
     case 'check': {
@@ -97,24 +54,20 @@ try {
       setStatusCommand(rest);
       break;
     }
-    case 'note': {
-      noteCommand(rest);
-      break;
-    }
     case 'ledger': {
       ledgerCommand(rest);
+      break;
+    }
+    case 'launch': {
+      launchCommand(rest);
       break;
     }
     case 'plan': {
       planCommand(rest);
       break;
     }
-    case 'validate': {
-      validateCommand(rest);
-      break;
-    }
-    case 'escalation': {
-      escalationCommand(rest);
+    case 'worktree': {
+      worktreeCommand(rest);
       break;
     }
     case 'executors': {
@@ -125,9 +78,8 @@ try {
       modelsCommand(rest);
       break;
     }
-    case 'ship': { shipCommand(rest); break; }
     default: {
-      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|note <id> <text>|ledger render|plan <parse|check|task|report|remediate|fix> <id>|validate <scan|waive> <id>|escalation resolve <id> <kind>|executors [dir]|models [defaults.json] [executors-dir]|ship status> [file…]\n');
+      process.stdout.write('usage: spine <graph|check|set-status <id> <status>|ledger|launch --scope <id,…>|plan <parse|check|task> <id>|worktree <create|remove>|executors [dir]|models [defaults.json] [executors-dir]> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }

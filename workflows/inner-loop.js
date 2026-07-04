@@ -1,172 +1,72 @@
-// The Workflow orchestration (ADR-0029): script = brain, agents = hands. This file has
-// no filesystem — it consumes the artifact spine only through the `args` snapshot the
-// launch leg assembled, and it never `import`s anything: `agent`, `parallel`, `pipeline`,
-// `log`, `args`, `budget` all arrive as harness globals (declared for eslint in the
-// workflows/ block of eslint.config.js). The completion channel is the pinned shape a
-// workflow script exports: a single `export const meta` line, and a bare top-level
-// `return` of the BoundaryResult once the harness (and test/workflow-shim.js, in tests)
-// applies its own async-body transform to this text.
-export const meta = { name: 'inner-loop', description: 'One autonomous pass over the feature graph: Plan → Build → Validate per in-scope feature, park-and-drain, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the args orientation snapshot — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
+// The inner-loop engine (ADR-0036/0038): script = brain, agents = hands. This file has
+// no filesystem — it consumes the `spine launch` snapshot via `args` and never imports
+// anything: `agent`, `log`, `args`, `budget` arrive as harness globals (declared for
+// eslint in the workflows/ block of eslint.config.js). It pushes each worker's kernel
+// (contract + refs) into the prompt — workers fetch nothing to start — and schedules a
+// ready-set walk over features and tasks, so anything whose dependencies are satisfied
+// runs concurrently in its own worktree. The completion channel is a bare top-level
+// `return` of the BoundaryResult.
+export const meta = { name: 'inner-loop', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the `spine launch` snapshot as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
 
-// Some callers deliver args as a JSON-encoded string rather than the parsed snapshot;
-// normalize into a local before anything reads it — the launch leg cannot control the
-// delivery shape, and the harness global itself is read-only.
+// Some callers deliver args as a JSON-encoded string rather than the parsed snapshot.
 const snapshot = typeof args === 'string' ? JSON.parse(args) : args;
+const SPINE = snapshot.spine || 'node bin/spine.js';
 
-// A dependency is satisfied once its feature has shipped its validated result; these are
-// the only statuses the engine may still advance without a human decision (ADR-0029).
-const DONE_STATUSES = new Set(['validated', 'shipped']);
-const RUNNABLE_STATUSES = new Set(['designed', 'planned', 'building']);
+const asList = (x) => (Array.isArray(x) ? x : [x]);
 
-// Spawn schemas (the harness validates each return against these, in strict JSON Schema
-// mode — no invented keywords). The schema doubles as the agent's return TEMPLATE: a
-// field left undescribed gets silently dropped from the structured return (first-run
-// finding), so every pinned per-result field is described in properties even though
-// only the always-present keys are required.
-const strings = (...names) => Object.fromEntries(names.map((n) => [n, { type: 'string' }]));
-const stringArray = { type: 'array', items: { type: 'string' } };
-// A menu item is either a bare string (pre-amendment) or a kind-stamped
-// { resolution, option } object (surfacing feature) — both keys described in
-// properties so the harness's schema-as-template behavior preserves them verbatim.
-// `anyOf` is standard JSON Schema; no invented keywords.
-const menuArray = {
-  type: 'array',
-  items: {
-    anyOf: [
-      { type: 'string' },
-      { type: 'object', properties: { resolution: { type: 'string' }, option: { type: 'string' } }, required: ['option'] },
-    ],
-  },
-};
-const phaseSchema = (results, required, extras) => ({
-  type: 'object',
-  properties: { result: { enum: results }, ...strings(...required), ...extras },
-  required: ['result', ...required],
-});
-const TASK_SUMMARY = {
-  type: 'array',
-  items: {
-    type: 'object',
-    properties: { ...strings('id', 'status', 'size', 'tier'), depends_on: stringArray },
-    required: ['id'],
-  },
-};
-const PLAN_SCHEMA = phaseSchema(['planned', 'bounce', 'blocked'], ['feature'], {
-  tasks: TASK_SUMMARY, ...strings('plan', 'notes', 'kind', 'deviation', 'detail'), menu: menuArray,
-});
-const BUILD_SCHEMA = phaseSchema(['built', 'blocked'], ['task'], {
-  ...strings('kind', 'summary'), deviations: stringArray, menu: menuArray,
-  footprint_actual: stringArray, diff_actual: { type: 'object' },
-});
-const DERIVE_SCHEMA = phaseSchema(['derived', 'blocked'], ['feature'], {
-  expectations: { type: 'array', items: { type: 'object' } }, ambiguities: stringArray, missing: stringArray,
-});
-const VALIDATE_SCHEMA = phaseSchema(['perfect', 'deviation', 'remediation-pending', 'blocked'], ['feature'], {
-  ...strings('kind', 'deviation', 'detail', 'remediation_task', 'patch_id', 'reconstruction'),
-  menu: menuArray, merged: { type: 'boolean' }, dedup: { type: 'boolean' },
-});
-
-// `args.models` carries the resolved binding table `{ role: { model, effort?, via?,
-// provenance } }` the launch leg assembled (feature: model-selection); the workflow
-// script never imports src/models.js (workflow scripts import nothing), so the lookup
-// is reimplemented inline against this pinned table shape. A role missing from the
-// table — or the table itself absent — falls back to the session model with a logged,
-// run-boundary-visible fallback line; the resolver's job of expressing that fallback is
-// this table lookup's job here.
+// ---- model bindings (ADR-0030): role → {model, effort?, via?}; unbound falls back
+// to the session model with one visible log line.
 const modelTable = snapshot.models || {};
+const hasRole = (role) => Object.prototype.hasOwnProperty.call(modelTable, role);
 function roleBinding(role) {
-  if (Object.prototype.hasOwnProperty.call(modelTable, role)) { return modelTable[role]; }
+  if (hasRole(role)) { return modelTable[role]; }
   log(`model-selection — role ${role} unbound, session-model fallback`);
   return { model: 'session' };
 }
-
-// The pinned spawn-opts rule: a bound non-session model rides as `model`; `effort`
-// rides exactly when the binding carries one; the literal `session` model passes no
-// model opt at all (the deliberate inherit).
 function modelOpts(binding) {
   const opts = {};
   if (binding.model !== 'session') { opts.model = binding.model; }
   if (binding.effort !== undefined) { opts.effort = binding.effort; }
   return opts;
 }
+const modelLabel = (binding) => `[${binding.model}] `;
 
-// Every spawn label carries this prefix: the bound model, or `session` when unbound.
-function modelLabel(binding) {
-  return `[${binding.model}] `;
-}
+// ---- return schemas (the harness validates each agent's structured return; every
+// pinned field must be described or the harness's schema-as-template drops it).
+const strings = (...names) => Object.fromEntries(names.map((n) => [n, { type: 'string' }]));
+const stringArray = { type: 'array', items: { type: 'string' } };
+const TASK_SHAPE = {
+  type: 'object',
+  properties: { ...strings('id', 'title', 'size', 'tier', 'wiring'), covers: { type: 'array', items: { type: 'number' } }, acceptance: stringArray, footprint: stringArray, depends_on: stringArray },
+  required: ['id'],
+};
+const PLAN_SCHEMA = {
+  type: 'object',
+  properties: { result: { enum: ['planned', 'bounce', 'blocked'] }, lane: { enum: ['small', 'standard'] }, tasks: { type: 'array', items: TASK_SHAPE }, ...strings('kind', 'detail'), options: stringArray },
+  required: ['result'],
+};
+const BUILD_SCHEMA = {
+  type: 'object',
+  properties: { result: { enum: ['built', 'blocked'] }, ...strings('task', 'summary', 'kind', 'detail'), deviations: stringArray, options: stringArray },
+  required: ['result', 'task'],
+};
+const VALIDATE_SCHEMA = {
+  type: 'object',
+  properties: { result: { enum: ['validated', 'deviation', 'blocked'] }, ...strings('feature', 'summary', 'kind', 'detail'), findings: stringArray, options: stringArray },
+  required: ['result', 'feature'],
+};
 
-// In-memory status view, seeded from the snapshot's index and updated as agents return — the
-// frontier below is computed against this, not the on-disk snapshot, so a dependency
-// validated earlier in this same run unblocks its dependents without a re-read.
-const statusById = new Map(snapshot.index.features.map((f) => [f.id, f.status]));
-const nodeById = new Map(snapshot.index.features.map((f) => [f.id, f]));
+// ---- run state
+const completed = [];
+const blocked = [];   // needs a human decision at this boundary: {feature, reason, options}
+const stalled = [];   // agent/infra error, nothing recorded — rerun next pass
+let halted;
 
-function dependenciesSatisfied(featureId) {
-  const node = nodeById.get(featureId);
-  return (node?.depends_on || []).every((dep) => DONE_STATUSES.has(statusById.get(dep)));
-}
-
-function isRunnable(featureId) {
-  return RUNNABLE_STATUSES.has(statusById.get(featureId)) && dependenciesSatisfied(featureId);
-}
-
-// Topological order over a task-summary list ({id, depends_on, …}) — depends_on first,
-// stable in input order otherwise; the plan return's array order is not the build order.
-function orderTasks(tasks) {
-  const byId = new Map(tasks.map((t) => [t.id, t]));
-  const ordered = [];
-  const seen = new Set();
-  const visit = (id) => {
-    if (seen.has(id)) { return; }
-    seen.add(id);
-    const task = byId.get(id);
-    if (!task) { return; }
-    const deps = task.depends_on || [];
-    for (const dep of deps) { visit(dep); }
-    ordered.push(task);
-  };
-  for (const task of tasks) { visit(task.id); }
-  return ordered;
-}
-
-// Budget-exhaustion identity (ADR-0029): matched only on `name`/`code`, never message
-// text — the true harness identity is confirmed at the first live run, and this
-// conservative match degrades an unrecognized budget throw to a stall, never a wrong
-// halt.
+// ---- the one spawn choke point: classifies thrown errors and environment blocks
+// into run-level halts / feature-level stalls that every stage reports identically.
 function isBudgetExhausted(error) {
   return /budget/i.test(`${error?.name ?? ''} ${error?.code ?? ''}`);
 }
-
-// Derive's `blocked` carries no `kind` field — any blocked return from it is
-// environment-shaped by convention (an args-construction defect, per the pinned
-// return-shape deltas); plan, build, and validate each type their own blocked return,
-// so only their own `kind` decides for them.
-function isEnvironmentBlock(agentType, r) {
-  return r.result === 'blocked' && (agentType === 'derive' || r.kind === 'environment');
-}
-
-// A signal to bubble straight back up to the outer loop unrecorded — run-shaped
-// (`halted`) or feature-shaped (`stalled`) — as opposed to a park, which callers push
-// to the shared list themselves. Every phase result funnels through `spawn`, so this is
-// the one shape test every caller above it needs.
-function isSignal(r) {
-  return Boolean(r.halted || r.stalled);
-}
-
-// Plan and validate name an environment block's blocker in `detail`; build names it in
-// `deviations` (plural) with `summary` as backing prose and carries no `detail`; derive
-// names it in `missing` and carries neither. This reconciles all four shapes into the
-// single `detail` the pinned run-level halt names, so no environment block halts the run
-// detail-less — the human reads the blocker off the BoundaryResult, not the run journal.
-function haltDetail(r) {
-  return r.detail ?? r.deviations?.join('; ') ?? r.missing?.join('; ') ?? r.summary;
-}
-
-// The one spawn choke point every phase call funnels through: classifies a thrown error
-// or the agent's own return per the pinned exception policy (ADR-0029). Returns either
-// the ordinary agent return, or a run-level `{halted}`/feature-level `{stalled}` signal
-// — every caller up the chain checks for those two keys identically and returns them
-// straight up, so a signal from any phase reaches the outer loop unchanged.
 async function spawn(prompt, opts, featureId) {
   let r;
   try {
@@ -175,206 +75,298 @@ async function spawn(prompt, opts, featureId) {
     if (isBudgetExhausted(error)) { return { halted: { reason: 'budget-exhausted', detail: error.message } }; }
     return { stalled: { feature: featureId, agent: opts.agentType, note: error.message } };
   }
-  if (r == null) {
-    return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } };
-  }
-  if (isEnvironmentBlock(opts.agentType, r)) {
-    return { halted: { reason: 'environment-blocked', detail: haltDetail(r) } };
+  if (r == null) { return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } }; }
+  if (r.result === 'blocked' && r.kind === 'environment') {
+    return { halted: { reason: 'environment-blocked', detail: r.detail } };
   }
   return r;
 }
 
-// The route condition (executor-delegation): a build.<tier> binding carries `via` and
-// it names something other than the ordinary agent default.
-function isViaBound(binding) {
-  return Boolean(binding.via) && binding.via !== 'agent';
+// Record a signal on the shared lists. Returns 'halt' | 'fail' | null — the stage
+// flow-control every caller maps the same way.
+function signalOf(r) {
+  if (r.halted) { halted = r.halted; return 'halt'; }
+  if (r.stalled) { stalled.push(r.stalled); return 'fail'; }
+  return null;
 }
 
-// Routes a via-bound build task to the drive agent instead of the ordinary build agent
-// (executor-delegation): the driver's own binding resolves from a silent `drive.<via>`
-// sub-role lookup first — found means used with no log line ever — otherwise the
-// ordinary `roleBinding('drive')` (whose own unbound fallback logs the existing pinned
-// line). Spawn model/effort opts ride the driver binding alone; the executor model never
-// rides a spawn opt, only the pinned prompt/label/log lines name it.
-function spawnDrive(featureId, task, binding) {
-  const via = binding.via;
-  const driverRole = `drive.${via}`;
-  const driverBinding = Object.prototype.hasOwnProperty.call(modelTable, driverRole) ? modelTable[driverRole] : roleBinding('drive');
-  log(`model-selection — task ${featureId}/${task.id} routed via ${via}/${binding.model}, driver ${driverBinding.model}`);
-  const prompt = `feature: ${featureId}\ntask: ${task.id}\nexecutor: ${via}\nexecutor-model: ${binding.model}`;
-  return spawn(prompt, {
-    agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${featureId}/${task.id} via ${via}/${binding.model}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(driverBinding),
-  }, featureId);
+// ---- kernel assembly (ADR-0036): what each worker gets pushed, and the menu of
+// fetchable context. The per-feature design doc is pushed to plan and validate (their
+// whole-feature judgment needs it) and menu-referenced for build (its kernel is the
+// task contract; the doc is one Read away in its own worktree).
+function menu(f) {
+  return [
+    'Fetch more only if needed:',
+    `- feature design doc: docs/design/features/${f.id}.md`,
+    '- system design (architecture, cross-feature contracts): docs/design/design.md',
+    `- plan (all task contracts): docs/plans/${f.id}.md on ${f.branch}`,
+    `- graph/status: ${SPINE} ledger`,
+  ].join('\n');
 }
 
-// Runs the feature's pending tasks in depends_on order; returns the first feature-kind
-// blocked return (build.md's "first block parks" contract), or a halted/stalled signal
-// from `spawn` — either way the caller stops there. Undefined once every task has built
-// cleanly. A missing task list (a planned return or args.plans entry that carried no
-// summaries) stalls the feature rather than crashing the run — the plan itself is
-// already booked durable, so the next pass re-enters Build with a corrected snapshot.
-async function runBuild(featureId, tasks) {
-  if (!Array.isArray(tasks)) {
-    return { stalled: { feature: featureId, agent: 'plan', note: 'no task summaries reached the script (planned return or args.plans entry empty) — plan artifact is booked; re-run with a corrected snapshot' } };
-  }
-  const pending = orderTasks(tasks).filter((task) => task.status !== 'built');
-  for (const task of pending) {
-    if (task.tier == null) {
-      log(`model-selection — task ${featureId}/${task.id} has no tier, routing build.standard`);
+const criteriaList = (acceptance) => asList(acceptance).map((c, i) => `${i + 1}. ${c}`).join('\n');
+const taskBranch = (f, taskId) => `${f.branch}--${taskId}`;
+
+function planPrompt(f) {
+  return [
+    `feature: ${f.id} — ${f.title}`,
+    `target: ${snapshot.target} · branch: ${f.branch} · plan file: docs/plans/${f.id}.md`,
+    `spine: ${SPINE}`,
+    '',
+    'acceptance criteria:',
+    criteriaList(f.acceptance),
+    ...(f.notes ? ['', `design notes: ${asList(f.notes).join(' · ')}`] : []),
+    '',
+    '--- feature design doc ---',
+    f.designDoc || '(none recorded — read docs/design/design.md for context)',
+  ].join('\n');
+}
+
+function buildPrompt(f, task, { base, mergeBranches }) {
+  const coversCriteria = (task.covers || []).map((k) => f.acceptance[k - 1]).filter(Boolean);
+  return [
+    `feature: ${f.id} · task: ${task.id} — ${task.title}`,
+    `worktree: ${SPINE} worktree create ${taskBranch(f, task.id)} --from ${base}`,
+    ...(mergeBranches.length > 0 ? [`merge these sibling branches first (clean by construction): ${mergeBranches.join(', ')}`] : []),
+    `commit subject: "${f.id}/${task.id}: <what landed>"`,
+    '',
+    'task acceptance (each criterion gets a red-then-green test):',
+    criteriaList(task.acceptance),
+    '',
+    `covers feature criteria: ${coversCriteria.join(' · ') || '(listed in plan)'}`,
+    `footprint (the lease — stay inside it): ${(task.footprint || []).join(', ')}`,
+    ...(task.wiring ? [`wiring: ${task.wiring}`] : []),
+    '',
+    menu(f),
+  ].join('\n');
+}
+
+function smallBuildPrompt(f) {
+  return [
+    `feature: ${f.id} — ${f.title} (small lane: the whole feature is one task)`,
+    `worktree: ${SPINE} worktree create ${f.branch} --from ${snapshot.target}`,
+    `commit subject: "${f.id}/feature: <what landed>"`,
+    '',
+    'feature acceptance (each criterion gets a red-then-green test):',
+    criteriaList(f.acceptance),
+    '',
+    '--- feature design doc ---',
+    f.designDoc || '(none recorded)',
+    '',
+    menu(f),
+  ].join('\n');
+}
+
+function validatePrompt(f, branches) {
+  return [
+    `feature: ${f.id} — ${f.title}`,
+    `target: ${snapshot.target} · integration worktree: ${SPINE} worktree create integrate--${f.id} --from ${snapshot.target}`,
+    `merge, in order: ${branches.join(', ')}`,
+    `spine: ${SPINE}`,
+    '',
+    'acceptance criteria to judge:',
+    criteriaList(f.acceptance),
+    '',
+    'runtime probe binding:',
+    snapshot.probe || '(none recorded — skip the runtime leg and say so)',
+    '',
+    '--- feature design doc ---',
+    f.designDoc || '(none recorded)',
+    '',
+    menu(f),
+  ].join('\n');
+}
+
+// ---- generic ready-set scheduler: run every item whose deps are satisfied, launch
+// newly-ready items as results land. `run` resolves true on success; false stops
+// dependents; 'halt' stops the whole walk.
+async function readySetRun({ ids, depsOf, run, onUnreachable }) {
+  const pending = new Set(ids);
+  const done = new Set();
+  const running = new Map();
+  const start = async (id) => ({ id, ok: await run(id) });
+  let didHalt = false;
+  while (pending.size > 0 || running.size > 0) {
+    // Only a dep that *landed* unblocks its dependents; a failed dep never enters
+    // `done`, so its dependents drain to onUnreachable once nothing is running.
+    const startable = [...pending].filter((id) => depsOf(id).every((d) => done.has(d)));
+    for (const id of startable) {
+      pending.delete(id);
+      running.set(id, start(id));
     }
-    const binding = roleBinding(`build.${task.tier ?? 'standard'}`);
-    const built = isViaBound(binding)
-      ? await spawnDrive(featureId, task, binding)
-      : await spawn(`feature: ${featureId}\ntask: ${task.id}`, {
-        agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding),
-      }, featureId);
-    if (built.halted || built.stalled) { return built; }
-    if (built.result === 'blocked' && built.kind === 'feature') { return built; }
+    if (running.size === 0) { break; }
+    const { id, ok } = await Promise.race(running.values());
+    running.delete(id);
+    if (ok === 'halt') { didHalt = true; break; }
+    if (ok) { done.add(id); }
+  }
+  await Promise.allSettled(running.values());
+  // A halt stops the walk mid-flight — the un-started remainder isn't "unreachable",
+  // the run just ended; the BoundaryResult's `halted` explains them.
+  if (!didHalt) { for (const id of pending) { onUnreachable(id); } }
+}
+
+// Validators write the integration target; serialize them (ADR-0038: merges happen
+// in a dedicated integration worktree, one at a time — a natural mutex).
+let validateTurn = Promise.resolve();
+async function withValidateLock(fn) {
+  const prev = validateTurn;
+  const { promise, resolve } = Promise.withResolvers();
+  validateTurn = promise;
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    resolve();
   }
 }
 
-// Spawns Validate carrying an expectation sheet — factored out because the remediation
-// round (below) re-spawns it a second time against the very same sheet.
-async function runValidate(featureId, sheet) {
-  const binding = roleBinding('validate');
-  return spawn(
-    `feature: ${featureId}\nexpectation-sheet: ${JSON.stringify(sheet)}`,
-    { agentType: 'validate', label: `${modelLabel(binding)}validate:${featureId}`, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding) },
-    featureId,
-  );
-}
-
-// Plan's bounce and validate's deviation verdict return `deviation` for the defect
-// prose; build's blocked return returns it plural as `deviations`; validate's own
-// feature-shaped blocked return (a semantic rebase conflict at readiness) carries
-// neither — its prose lives in `detail` instead. This reconciles all three into the
-// one parked-entry shape the pinned BoundaryResult names: { feature, deviation, menu }.
-function parkEntry(featureId, r) {
-  return { feature: featureId, deviation: r.deviation ?? r.deviations?.join('; ') ?? r.detail, menu: r.menu };
-}
-
-// The one bounded remediation round (ADR-0029): build the named round-marker task —
-// reusing `runBuild`'s own feature-blocked handling for the single task — then
-// re-validate against the pass-1 expectation sheet already in hand. The deriver never
-// respawns; the round-marker's presence in the plan is what makes a second
-// remediation-pending on the same feature a protocol violation rather than a retry, so
-// that case stalls instead of recursing into a second round. A feature-kind block on
-// the round's own build is parked directly here (rather than bubbled as a raw `blocked`
-// verdict) so runFeature's final fallthrough stays exactly what it was pre-remediation.
-async function runRemediation(featureId, remediationTask, sheet) {
-  const blocked = await runBuild(featureId, [{ id: remediationTask, status: 'pending', depends_on: [] }]);
-  if (blocked) {
-    if (isSignal(blocked)) { return blocked; }
-    parked.push(parkEntry(featureId, blocked));
-    return { parked: true };
-  }
-
-  const verdict = await runValidate(featureId, sheet);
-  if (verdict.result !== 'remediation-pending') { return verdict; }
-  return { stalled: { feature: featureId, agent: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' } };
-}
-
-// Runs Plan when the feature enters `designed`; otherwise resumes from the task list
-// already on record for it (`snapshot.plans`). Returns `{tasks}` to proceed into Build, the
-// bounce return itself for the caller to park, or a halted/stalled signal.
-async function runPlan(featureId) {
-  if (statusById.get(featureId) !== 'designed') { return { tasks: snapshot.plans[featureId] }; }
+// ---- phases
+async function runPlan(f) {
+  if (f.plan) { return { lane: 'standard', tasks: f.plan.tasks }; }
   const binding = roleBinding('plan');
-  const planned = await spawn(`feature: ${featureId}`, {
-    agentType: 'plan', label: `${modelLabel(binding)}plan:${featureId}`, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
-  }, featureId);
-  if (isSignal(planned) || planned.result === 'bounce') { return planned; }
-  return { tasks: planned.tasks };
+  const planned = await spawn(planPrompt(f), {
+    agentType: 'plan', label: `${modelLabel(binding)}plan:${f.id}`, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
+  }, f.id);
+  const flow = signalOf(planned);
+  if (flow) { return { flow }; }
+  if (planned.result === 'bounce' || planned.result === 'blocked') {
+    blocked.push({ feature: f.id, reason: planned.detail, options: planned.options });
+    return { flow: 'fail' };
+  }
+  if (planned.lane === 'small') { return { lane: 'small' }; }
+  return { lane: 'standard', tasks: planned.tasks };
 }
 
-// Derive the pass-1 expectation sheet, validate against it, and run the one bounded
-// remediation round when the verdict comes back remediation-pending. Returns the final
-// verdict (perfect/deviation/blocked) or a halted/stalled signal.
-async function runValidationCycle(featureId) {
-  const deriveBinding = roleBinding('derive');
-  const derived = await spawn(
-    `feature: ${featureId}\nslice: ${JSON.stringify(snapshot.slices[featureId])}\nprobe: ${JSON.stringify(snapshot.probe)}`,
-    { agentType: 'derive', label: `${modelLabel(deriveBinding)}derive:${featureId}`, phase: 'Validate', schema: DERIVE_SCHEMA, ...modelOpts(deriveBinding) },
-    featureId,
-  );
-  if (isSignal(derived)) { return derived; }
-  const sheet = { expectations: derived.expectations, ambiguities: derived.ambiguities };
-
-  const verdict = await runValidate(featureId, sheet);
-  if (isSignal(verdict) || verdict.result !== 'remediation-pending') { return verdict; }
-  return runRemediation(featureId, verdict.remediation_task, sheet);
+function buildSpawnOpts(f, task, binding) {
+  return { agentType: 'build', label: `${modelLabel(binding)}build:${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
 }
 
-const completed = [];
-const parked = [];
-const stalled = [];
-let halted;
-
-// One feature, start to (attempted) finish: Plan (unless a plan already exists) → Build
-// the remaining tasks → Derive the pass-1 expectation sheet → Validate against it. A
-// feature-shaped park at any phase stops the rest of this feature's own sequence and
-// records the park directly; a halted/stalled signal from `spawn` propagates straight
-// back up unrecorded — the outer loop is the one place that acts on it. Neither a park
-// nor a stall ever stops a *different* feature's own run — the caller moves on, and the
-// frontier keeps a parked feature's dependents excluded since its status never advances
-// past `designed`/`planned`/`building`.
-async function runFeature(featureId) {
-  const planResult = await runPlan(featureId);
-  if (isSignal(planResult)) { return planResult; }
-  if (planResult.result === 'bounce') {
-    parked.push(parkEntry(featureId, planResult));
-    return;
+async function runTask(f, task, prompt) {
+  if (task.tier == null) { log(`model-selection — task ${f.id}/${task.id} has no tier, routing build.standard`); }
+  const binding = roleBinding(`build.${task.tier ?? 'standard'}`);
+  const opts = buildSpawnOpts(f, task, binding);
+  if (binding.via && binding.via !== 'agent') {
+    const driverBinding = hasRole(`drive.${binding.via}`) ? modelTable[`drive.${binding.via}`] : roleBinding('drive');
+    log(`model-selection — task ${f.id}/${task.id} routed via ${binding.via}/${binding.model}, driver ${driverBinding.model}`);
+    return spawn(`executor: ${binding.via} · executor-model: ${binding.model}\n${prompt}`, {
+      ...opts, agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${f.id}/${task.id} via ${binding.via}`, ...modelOpts(driverBinding),
+    }, f.id);
   }
-
-  const blocked = await runBuild(featureId, planResult.tasks);
-  if (blocked) {
-    if (isSignal(blocked)) { return blocked; }
-    parked.push(parkEntry(featureId, blocked));
-    return;
-  }
-
-  const verdict = await runValidationCycle(featureId);
-  if (isSignal(verdict)) { return verdict; }
-  if (verdict.parked) { return; } // the remediation round parked itself already
-  return verdict;
+  return spawn(prompt, opts, f.id);
 }
 
-// Files a finished feature's verdict into the run's shared result lists — kept out of
-// the outer loop's own scope so its branching doesn't inflate that loop's complexity.
-// Returns true when the verdict halted the run, the caller's signal to stop iterating
-// scope entirely.
-function recordVerdict(featureId, verdict) {
-  if (verdict.halted) {
-    halted = verdict.halted; // run-shaped: stop spawning anything further, for any feature
-    return true;
-  }
-  if (verdict.stalled) {
-    stalled.push(verdict.stalled); // this feature only; the drain continues
+// Map one task result onto the shared lists → the scheduler's tri-state.
+function taskOutcome(f, r) {
+  const flow = signalOf(r);
+  if (flow === 'halt') { return 'halt'; }
+  if (flow === 'fail') { return false; }
+  if (r.result === 'blocked') {
+    blocked.push({ feature: f.id, reason: r.detail, options: r.options });
     return false;
   }
-  if (verdict.result === 'perfect') {
-    statusById.set(featureId, 'validated');
-    completed.push(featureId);
-  } else if (verdict.result === 'deviation' || (verdict.result === 'blocked' && verdict.kind === 'feature')) {
-    // the latter is validate's own feature-shaped readiness block (a semantic rebase
-    // conflict) — it already booked its park and reaches here as an ordinary blocked
-    // return, since only `kind: environment` gets converted to `halted` upstream (spawn).
-    parked.push(parkEntry(featureId, verdict));
+  return true;
+}
+
+// Build every task in dependency order, concurrent where the DAG allows (unordered
+// tasks are footprint-disjoint by plan-check construction, each in its own worktree
+// on its own branch — ADR-0038). Returns true when every task landed.
+async function runBuild(f, tasks) {
+  const tasksById = new Map(tasks.map((t) => [t.id, t]));
+  const already = new Set(f.builtTasks || []);
+  let didAllLand = true;
+  await readySetRun({
+    ids: tasks.map((t) => t.id),
+    depsOf: (id) => tasksById.get(id).depends_on || [],
+    run: async (id) => {
+      if (already.has(id)) { return true; }
+      const task = tasksById.get(id);
+      const deps = task.depends_on || [];
+      const base = deps.length > 0 ? taskBranch(f, deps[0]) : f.branch;
+      const mergeBranches = deps.slice(1).map((d) => taskBranch(f, d));
+      const outcome = taskOutcome(f, await runTask(f, task, buildPrompt(f, task, { base, mergeBranches })));
+      if (outcome !== true) { didAllLand = false; }
+      return outcome;
+    },
+    onUnreachable: () => { didAllLand = false; },
+  });
+  return didAllLand;
+}
+
+async function runSmallBuild(f) {
+  if ((f.branchHead || '').startsWith(`${f.id}/feature: `)) { return true; } // already landed
+  const task = { id: 'feature', title: f.title, acceptance: f.acceptance };
+  return taskOutcome(f, await runTask(f, task, smallBuildPrompt(f))) === true;
+}
+
+// depends_on-respecting topological order over task contracts.
+function topoOrder(tasks) {
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const ordered = [];
+  const seen = new Set();
+  const visit = (id) => {
+    if (seen.has(id) || !byId.get(id)) { return; }
+    seen.add(id);
+    const deps = byId.get(id).depends_on || [];
+    for (const dep of deps) { visit(dep); }
+    ordered.push(byId.get(id));
+  };
+  for (const t of tasks) { visit(t.id); }
+  return ordered;
+}
+
+async function runValidate(f, lane, tasks) {
+  const branches = lane === 'small'
+    ? [f.branch]
+    : [f.branch, ...topoOrder(tasks).map((t) => taskBranch(f, t.id))];
+  const binding = roleBinding('validate');
+  const verdict = await withValidateLock(() => spawn(validatePrompt(f, branches), {
+    agentType: 'validate', label: `${modelLabel(binding)}validate:${f.id}`, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
+  }, f.id));
+  const flow = signalOf(verdict);
+  if (flow) { return flow === 'halt' ? 'halt' : false; }
+  if (verdict.result === 'validated') {
+    completed.push(f.id);
+    return true;
   }
+  blocked.push({ feature: f.id, reason: verdict.detail || (verdict.findings || []).join('; '), options: verdict.options });
   return false;
 }
 
-for (const featureId of snapshot.scope) {
-  if (!isRunnable(featureId)) {
-    log(`inner-loop: skipping ${featureId} — not runnable`);
-    continue;
+// One feature, Plan → Build → Validate. Returns true when it validated (unblocking
+// in-scope dependents), 'halt' to stop the whole run, false otherwise.
+async function runFeature(id) {
+  const f = snapshot.features[id];
+  const plan = await runPlan(f);
+  if (plan.flow) { return plan.flow === 'halt' ? 'halt' : false; }
+
+  if (plan.lane === 'small') {
+    const landed = await runSmallBuild(f);
+    if (landed !== true) { return halted ? 'halt' : false; }
+    return runValidate(f, 'small', []);
   }
-  const verdict = await runFeature(featureId);
-  if (!verdict) { continue; } // already parked (or otherwise recorded) inside runFeature
-  if (recordVerdict(featureId, verdict)) { break; } // halted: no further feature runs
+
+  if (!Array.isArray(plan.tasks) || plan.tasks.length === 0) {
+    stalled.push({ feature: f.id, agent: 'plan', note: 'no task contracts reached the script' });
+    return false;
+  }
+  const landed = await runBuild(f, plan.tasks);
+  if (!landed) { return halted ? 'halt' : false; }
+  return runValidate(f, 'standard', plan.tasks);
 }
 
-const result = { completed, parked, stalled, budget: { spent: budget.spent, remaining: budget.remaining } };
+// ---- the run: ready-set over the scoped subgraph (ADR-0038). Deps outside the scope
+// were gated as already-landed by `spine launch`; deps inside it unblock as they land.
+const inScope = new Set(snapshot.scope);
+const depsWithin = (id) => (snapshot.features[id].depends_on || []).filter((d) => inScope.has(d));
+await readySetRun({
+  ids: snapshot.scope,
+  depsOf: depsWithin,
+  run: runFeature,
+  onUnreachable: (id) => { stalled.push({ feature: id, agent: 'scheduler', note: 'an in-scope dependency did not land this run' }); },
+});
+
+const result = { completed, blocked, stalled, budget: { spent: budget.spent, remaining: budget.remaining } };
 if (halted) { result.halted = halted; }
-log(JSON.stringify(result)); // belt-and-braces echo of the completion channel (ADR-0029)
+log(JSON.stringify(result)); // belt-and-braces echo of the completion channel
 return result;

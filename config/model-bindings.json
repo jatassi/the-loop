@@ -1,12 +1,8 @@
 {
   "plan": { "model": "session" },
-  "plan.audit": { "model": "opus" },
   "build.rote": { "model": "grok-build", "via": "grok" },
   "build.standard": { "model": "sonnet" },
   "build.complex": { "model": "opus" },
   "drive": { "model": "sonnet" },
-  "derive": { "model": "opus", "effort": "low" },
-  "validate": { "model": "sonnet" },
-  "design.reader": { "model": "sonnet" },
-  "design.alternative": { "model": "opus" }
+  "validate": { "model": "sonnet" }
 }

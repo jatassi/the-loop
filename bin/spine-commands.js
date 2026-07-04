@@ -2,97 +2,67 @@
 // and sole caller) to keep that file's job to argv dispatch alone; this module holds
 // the actual command bodies and the small I/O helpers (read/out/clean/fail) they share.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseEscalation, planResolution } from '../src/escalation.js';
+import { sectionAfter } from '../src/blocks.js';
 import { parseExecutors, validateBindings } from '../src/executors.js';
-import { appendRun, renderLedger } from '../src/ledger.js';
+import { assembleSnapshot, checkScope, featureBranch } from '../src/launch.js';
+import { renderLedger } from '../src/ledger.js';
 import { resolveModels } from '../src/models.js';
-import { appendNote } from '../src/note.js';
 import { parse } from '../src/parse.js';
-import { appendFix, appendRemediation, foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
+import { parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
 import { validate } from '../src/schema.js';
 import { setStatus } from '../src/status.js';
-import { appendWaiver, isDeduped, latestEntry, parseUnifiedDiff, scan, stampRetried } from '../src/validate.js';
 
-const DEFAULT = 'docs/design/design.md';
-const LEDGER = 'docs/ledger/ledger.md';
-const ESCALATIONS_DIR = 'docs/escalations';
+const GRAPH = 'docs/design/graph.md';
+const DESIGN = 'docs/design/design.md';
+const FEATURES_DIR = 'docs/design/features';
+const WORKTREES_DIR = '.claude/worktrees';
 // The plugin's own root: this file's parent directory's parent — never cwd.
 export const PLUGIN_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-export const read = (file) => readFileSync(file || DEFAULT, 'utf8');
+export const read = (file) => readFileSync(file || GRAPH, 'utf8');
 export const out = (obj) => process.stdout.write(`${JSON.stringify(obj, null, 2)}\n`);
 export const clean = ({ _blocks, ...rest }) => rest; // drop the yaml Documents from JSON output
 export const fail = (msg) => { process.stderr.write(`spine: ${msg}\n`); process.exit(1); };
+const warn = (msg) => process.stderr.write(`spine: warn — ${msg}\n`);
 
-// spine set-status <feature-id> <status> — flip one feature's status in design.md.
+// spine set-status <feature-id> <status> — flip one feature's status in graph.md.
 export function setStatusCommand([featureId, status]) {
   if (!featureId || !status) { fail('usage: spine set-status <feature-id> <status>'); }
   const text = read();
   const model = parse(text);
   setStatus(model, featureId, status);
-  writeFileSync(DEFAULT, render(text, model));
+  writeFileSync(GRAPH, render(text, model));
   out(model.features.find((f) => f.id === featureId));
 }
 
-// spine note <feature-id> <text> — append a note to one feature node in design.md.
-export function noteCommand([featureId, text]) {
-  if (!featureId || !text) { fail('usage: spine note <feature-id> <text>'); }
-  const source = read();
-  const model = parse(source);
-  appendNote(model, featureId, text);
-  writeFileSync(DEFAULT, render(source, model));
-  out(model.features.find((f) => f.id === featureId));
+// spine ledger [graph.md] — print the status story to stdout; writes nothing.
+export function ledgerCommand([file]) {
+  const model = parse(read(file));
+  const story = renderLedger(model);
+  process.stdout.write(story);
 }
 
-// spine ledger <render|append-run [summary.json|-]>.
-export function ledgerCommand([sub, arg]) {
-  if (sub === 'render') {
-    const model = parse(read());
-    const priorText = existsSync(LEDGER) ? readFileSync(LEDGER, 'utf8') : '';
-    writeFileSync(LEDGER, renderLedger(model, readEscalations(), priorText));
-    out({ written: LEDGER });
-    return;
-  }
-  if (sub === 'append-run') {
-    appendRunCommand(arg);
-    return;
-  }
-  fail('usage: spine ledger <render|append-run [summary.json|-]>');
-}
-
-// spine ledger append-run [summary.json|-] — read a run-summary JSON (file arg, "-", or
-// omitted all mean stdin) and insert its bullet into the Ledger. A missing Ledger file
-// throws here, before any write; a summary the pure function refuses throws too.
-function appendRunCommand(summaryFile) {
-  const source = summaryFile && summaryFile !== '-' ? summaryFile : 0; // 0 = stdin
-  const summary = JSON.parse(readFileSync(source, 'utf8'));
-  const priorText = readFileSync(LEDGER, 'utf8');
-  writeFileSync(LEDGER, appendRun(priorText, summary));
-  out({ written: LEDGER });
-}
-
-// docs/escalations/*.md → open EscalationRecords; an absent directory means none.
-function readEscalations() {
-  if (!existsSync(ESCALATIONS_DIR)) { return []; }
-  return readdirSync(ESCALATIONS_DIR)
-    .filter((f) => f.endsWith('.md'))
-    .map((f) => parseEscalation(readFileSync(path.join(ESCALATIONS_DIR, f), 'utf8')))
-    .filter(Boolean);
-}
-
-// spine models [defaults.json] [executors-dir] — the resolved role table: plugin
-// defaults < project (.claude/settings.json) < local (.claude/settings.local.json),
-// both under the "the-loop".modelBindings key, both read from cwd (agents run at the
-// target repo's root); validated against the executor registry at executors-dir
-// (same default as `spine executors`). A hard error (unregistered-executor,
-// model-outside-playbook) prints every error to stderr and exits 1 with no table; the
-// three guard warnings print to stderr in the pinned format but never fail — the
-// table still prints and the exit stays 0.
+// spine models [defaults.json] [executors-dir] — print the resolved role table.
+// A hard error (unregistered executor, model outside its playbook) exits 1 with no
+// table; guard warnings print to stderr but never fail.
 export function modelsCommand([defaultsFile, executorsDir]) {
+  const { table, errors, warnings } = buildModelsTable(defaultsFile, executorsDir);
+  for (const w of warnings) { process.stderr.write(`warn ${w.code}: ${w.message} (${w.where})\n`); }
+  if (errors.length > 0) {
+    for (const e of errors) { process.stderr.write(`error ${e.code}: ${e.message} (${e.where})\n`); }
+    process.exit(1);
+  }
+  out(table);
+}
+
+// The resolved role table + registry validation, shared by `models` and `launch`:
+// plugin defaults < project (.claude/settings.json) < local (.claude/settings.local.json),
+// both under the "the-loop".modelBindings key, both read from cwd.
+function buildModelsTable(defaultsFile, executorsDir) {
   const defaultsPath = defaultsFile || path.join(PLUGIN_ROOT, 'config/model-bindings.json');
   const defaults = readDefaults(defaultsPath);
   const project = readSettingsLayer('.claude/settings.json');
@@ -100,12 +70,7 @@ export function modelsCommand([defaultsFile, executorsDir]) {
   const table = resolveModels({ defaults, project, local });
   const registry = readRegistry(executorsDir || path.join(PLUGIN_ROOT, 'executors'));
   const { errors, warnings } = validateBindings(table, registry);
-  for (const w of warnings) { process.stderr.write(`warn ${w.code}: ${w.message} (${w.where})\n`); }
-  if (errors.length > 0) {
-    for (const e of errors) { process.stderr.write(`error ${e.code}: ${e.message} (${e.where})\n`); }
-    process.exit(1);
-  }
-  out(table);
+  return { table, errors, warnings };
 }
 
 // Every *.md file in dir, parsed into the registry keyed by id; an absent dir is an
@@ -148,11 +113,11 @@ function readSettingsLayer(file) {
   return settings?.['the-loop']?.modelBindings ?? {};
 }
 
-// The plan subcommands: parse | check | task | report | remediate | fix.
+// The plan subcommands: parse | check | task.
 export function planCommand(argv) {
   const [sub, featureId, ...args] = argv;
-  if (!featureId || !['parse', 'check', 'task', 'report', 'remediate', 'fix'].includes(sub)) {
-    fail('usage: spine plan <parse|check|task|report|remediate|fix> <feature-id> …');
+  if (!featureId || !['parse', 'check', 'task'].includes(sub)) {
+    fail('usage: spine plan <parse|check|task> <feature-id> …');
   }
   switch (sub) {
     case 'parse': {
@@ -164,185 +129,173 @@ export function planCommand(argv) {
       process.exit(planCheck(featureId, args[0], args[1]));
       break;
     }
-    case 'task': {
-      taskCommand(featureId, args);
-      break;
-    }
-    case 'remediate': {
-      remediateCommand(featureId, args);
-      break;
-    }
-    case 'fix': {
-      fixCommand(featureId, args);
-      break;
-    }
     default: {
-      reportCommand(featureId, args);
+      taskCommand(featureId, args);
     }
   }
 }
 
-// spine plan task <feature-id> <task-id> [plan.md] [design.md] — a build agent's slice.
-function taskCommand(featureId, [taskId, planFile, designFile]) {
-  if (!taskId) { fail('usage: spine plan task <feature-id> <task-id> [plan.md] [design.md]'); }
+// spine plan task <feature-id> <task-id> [plan.md] [graph.md] — a build task's kernel.
+function taskCommand(featureId, [taskId, planFile, graphFile]) {
+  if (!taskId) { fail('usage: spine plan task <feature-id> <task-id> [plan.md] [graph.md]'); }
   const { plan } = loadPlan(featureId, planFile);
-  const design = parse(read(designFile));
+  const design = parse(read(graphFile));
   out(resolveTask(plan, design, taskId));
 }
 
-// spine plan report <feature-id> <task-id> [report.json|-] [plan.md] — fold + write back.
-function reportCommand(featureId, [taskId, reportFile, planFile]) {
-  if (!taskId) { fail('usage: spine plan report <feature-id> <task-id> [report.json|-] [plan.md]'); }
-  const source = reportFile && reportFile !== '-' ? reportFile : 0; // 0 = stdin
-  const report = JSON.parse(readFileSync(source, 'utf8'));
-  const { file, text, plan } = loadPlan(featureId, planFile);
-  foldReport(plan, taskId, report);
-  writeFileSync(file, render(text, plan));
-  out(plan.tasks.find((t) => t.id === taskId));
-}
+// spine launch --scope <id,id,…> [--target <ref>] — the one-shot snapshot assembler
+// (ADR-0036/0038): gates the graph and the scope, gathers every per-feature input
+// (design doc, plan from the feature branch, task state from git), and prints the
+// snapshot the workflow consumes as `args`. Any gate failure exits 1 with nothing
+// printed to stdout.
+export function launchCommand(argv) {
+  const opts = parseFlags(argv, { '--scope': 'scope', '--target': 'target' });
+  if (!opts.scope) { fail('usage: spine launch --scope <id,id,…> [--target <ref>]'); }
+  const scope = opts.scope.split(',').map((s) => s.trim()).filter(Boolean);
+  const target = opts.target || 'main';
 
-// spine plan remediate <feature-id> [findings.json|-] — append the round-marker + write back.
-function remediateCommand(featureId, [findingsFile]) {
-  const source = findingsFile && findingsFile !== '-' ? findingsFile : 0; // 0 = stdin
-  const findings = JSON.parse(readFileSync(source, 'utf8'));
-  const { file, text, plan } = loadPlan(featureId);
-  appendRemediation(plan, findings);
-  writeFileSync(file, render(text, plan));
-  out(plan.tasks.find((t) => t.remediation));
-}
+  const model = parse(read());
+  const graphIssues = validate(model);
+  failOnIssues(graphIssues.errors, `the feature graph fails validation — fix ${GRAPH} first`);
+  failOnIssues(checkScope(model, scope).errors, 'scope gate failed — nothing launched');
 
-// spine plan fix <feature-id> [fix.json|-] — append a fix-N task + write back.
-function fixCommand(featureId, [fixFile]) {
-  const source = fixFile && fixFile !== '-' ? fixFile : 0; // 0 = stdin
-  const directive = JSON.parse(readFileSync(source, 'utf8'));
-  const { file, text, plan } = loadPlan(featureId);
-  const task = appendFix(plan, directive);
-  writeFileSync(file, render(text, plan));
-  out(task);
-}
+  const { table: models, errors, warnings } = buildModelsTable();
+  for (const w of warnings) { process.stderr.write(`warn ${w.code}: ${w.message} (${w.where})\n`); }
+  failOnIssues(errors, 'model bindings failed executor validation — nothing launched');
 
-// spine validate <scan|waive> <feature-id> …
-export function validateCommand(argv) {
-  const [sub, featureId, ...args] = argv;
-  if (sub === 'waive') { waiveCommand(featureId, args); return; }
-  if (sub !== 'scan' || !featureId) { fail('usage: spine validate <scan <feature-id> [target] [branch]|waive <feature-id> [waiver.json|-]>'); }
-  scanCommand(featureId, args);
-}
+  const probe = existsSync(DESIGN) ? sectionAfter(readFileSync(DESIGN, 'utf8'), '## Runtime probe') : null;
+  if (probe == null) { warn(`no "## Runtime probe" section in ${DESIGN} — validation runs without a runtime probe`); }
 
-// spine validate scan <feature-id> [target] [branch] — the forensics scanner (leg 1).
-// Gathers the git facts here (the bin edge owns effects), scans in the pure core.
-function scanCommand(featureId, args) {
-  const target = args[0] || 'main';
-  const branch = args[1] || `loop/${featureId}`;
-  const base = git(['merge-base', target, branch]).trim();
-  const patchId = gitPatchId(base, branch);
-  const planFile = planPath(featureId);
-  const plan = existsSync(planFile) ? parsePlan(readFileSync(planFile, 'utf8')) : null;
-  const validationsFile = `docs/validations/${featureId}.md`;
-  const latest = existsSync(validationsFile) ? latestEntry(readFileSync(validationsFile, 'utf8')) : null;
-  const diff = parseUnifiedDiff(git(['diff', '--unified=0', base, branch]));
-  out({
-    feature: featureId, target, branch, base,
-    patch_id: patchId,
-    dedup: isDeduped(patchId, latest),
-    retried: latest ? latest.retried : null,
-    latest_result: latest ? latest.result : null,
-    hits: scan({ diff, plan }),
-  });
-}
-
-// spine validate waive <feature-id> [waiver.json|-] — append one waiver to the entry
-// under the LAST "## Validation" heading; refuses (nothing written) on a missing
-// required field, a missing validations file, or a file with no entry yet.
-function waiveCommand(featureId, [waiverFile]) {
-  if (!featureId) { fail('usage: spine validate waive <feature-id> [waiver.json|-]'); }
-  const source = waiverFile && waiverFile !== '-' ? waiverFile : 0; // 0 = stdin
-  const waiver = JSON.parse(readFileSync(source, 'utf8'));
-  const file = `docs/validations/${featureId}.md`;
-  const updated = appendWaiver(readFileSync(file, 'utf8'), waiver);
-  writeFileSync(file, updated);
-  out(latestEntry(updated));
-}
-
-// spine escalation resolve <feature-id> <kind> [--reason <text>] [--phase <plan|build|validate>].
-// The two flags each take a value; anything else is exit-1.
-export function escalationCommand(argv) {
-  const [sub, featureId, kind, ...flags] = argv;
-  if (sub !== 'resolve' || !featureId || !kind) { fail('usage: spine escalation resolve <feature-id> <kind> [--reason <text>] [--phase <plan|build|validate>]'); }
-  const opts = {};
-  for (let i = 0; i < flags.length; i += 2) {
-    const key = { '--reason': 'reason', '--phase': 'phase' }[flags[i]];
-    if (!key || flags[i + 1] === undefined) { fail(`unknown or valueless flag: ${flags[i]}`); }
-    opts[key] = flags[i + 1];
+  const inputs = {};
+  for (const id of scope) {
+    inputs[id] = gatherFeatureInputs(id, model);
   }
-  resolveEscalationCommand(featureId, kind, opts);
+  const spine = `node "${path.join(PLUGIN_ROOT, 'bin/spine.js')}"`;
+  out(assembleSnapshot({ model, scope, target, probe, models, inputs, spine }));
 }
 
-// Fold a parked feature back in. Every guard runs before the first write, so a refused
-// resolution leaves the target untouched; then the contracted effect order runs: flip
-// status, run kind-specific extras, delete the record, re-render the Ledger (so
-// What-needs-you drops the entry). Never commits — the adjust skill owns the booking commit.
-function resolveEscalationCommand(featureId, kind, { reason, phase: phaseFlag }) {
-  const recordFile = path.join(ESCALATIONS_DIR, `${featureId}.md`);
-  const phase = resolveParkPhase(recordFile, phaseFlag);
-  const text = read();
-  const model = parse(text);
-  const feature = model.features.find((f) => f.id === featureId);
-  if (!feature) { fail(`unknown feature id: ${featureId}`); }
-  if (feature.status !== 'parked') { fail(`feature ${featureId} is ${feature.status}, not parked`); }
-  const { status, deletesPlan, stampsRetried } = planResolution(kind, phase, { reason });
-
-  setStatus(model, featureId, status);
-  writeFileSync(DEFAULT, render(text, model));
-  const deleted = deletesPlan ? removePlan(featureId) : [];
-  const retried = stampsRetried ? stampValidations(featureId, reason) : null;
-  if (!phaseFlag) { unlinkSync(recordFile); deleted.push(recordFile); }
-  const priorLedger = existsSync(LEDGER) ? readFileSync(LEDGER, 'utf8') : '';
-  writeFileSync(LEDGER, renderLedger(model, readEscalations(), priorLedger));
-  out({ feature: featureId, kind, phase, status, deleted, retried });
+// Print every issue to stderr and exit 1 — the gate refusal every launch check shares.
+function failOnIssues(errors, message) {
+  if (errors.length === 0) { return; }
+  for (const e of errors) { process.stderr.write(`error ${e.code}: ${e.message}${e.where ? ` (${e.where})` : ''}\n`); }
+  fail(message);
 }
 
-// The park's phase: from the record normally, or from --phase (the damaged-park escape
-// hatch) when no record exists. A present record and --phase are mutually exclusive —
-// either mismatch is exit-1 before any write.
-function resolveParkPhase(recordFile, phaseFlag) {
-  const record = existsSync(recordFile) ? parseEscalation(readFileSync(recordFile, 'utf8')) : null;
-  if (phaseFlag && record) { fail(`a record exists at ${recordFile}; --phase is for a damaged park with no record`); }
-  if (!phaseFlag && !record) { fail(`no escalation record at ${recordFile}; pass --phase for a damaged park`); }
-  return phaseFlag || record.phase;
+// One feature's launch-time inputs: its design doc, its plan (from the feature
+// branch first — the plan's durable home — falling back to a working-tree file),
+// and the head subjects of its branches (task state).
+function gatherFeatureInputs(id, model) {
+  const docFile = path.join(FEATURES_DIR, `${id}.md`);
+  const designDoc = existsSync(docFile) ? readFileSync(docFile, 'utf8') : null;
+  if (designDoc == null) { warn(`no per-feature design doc at ${docFile}`); }
+
+  const branchHeads = readBranchHeads(id);
+  const planText = readPlanText(id, branchHeads);
+  return { designDoc, plan: planText == null ? null : gatePlan(id, planText, model), branchHeads };
 }
 
-// re-plan discards the plan artifact when one exists.
-function removePlan(featureId) {
-  const file = planPath(featureId);
-  if (!existsSync(file)) { return []; }
-  unlinkSync(file);
-  return [file];
+// The plan's durable home is the feature branch; a working-tree file is tolerated
+// with a warning (useful mid-migration), absence is simply "not planned yet".
+function readPlanText(id, branchHeads) {
+  if (branchHeads[featureBranch(id)] !== undefined) {
+    const onBranch = gitShowOptional(`${featureBranch(id)}:${planPath(id)}`);
+    if (onBranch != null) { return onBranch; }
+  }
+  if (!existsSync(planPath(id))) { return null; }
+  warn(`plan for ${id} read from the working tree, not its branch — commit it to ${featureBranch(id)}`);
+  return readFileSync(planPath(id), 'utf8');
 }
 
-// retry-on-a-validate-park stamps the latest validations entry with today's UTC date
-// and the human's reason, so the next scan dedups false and re-runs all four legs.
-function stampValidations(featureId, reason) {
-  const file = `docs/validations/${featureId}.md`;
-  const mark = `${new Date().toISOString().slice(0, 10)} — ${reason}`;
-  writeFileSync(file, stampRetried(readFileSync(file, 'utf8'), mark));
-  return mark;
+// A plan that reaches the snapshot must validate against the graph; refusal here
+// beats a mid-run stall.
+function gatePlan(id, planText, model) {
+  const plan = parsePlan(planText);
+  const { errors, warnings } = validatePlan(plan, model);
+  for (const w of warnings) { warn(`plan ${id}: ${w.code} — ${w.message}${w.where ? ` (${w.where})` : ''}`); }
+  failOnIssues(errors, `plan for ${id} fails validation — nothing launched`);
+  return clean(plan);
+}
+
+// Head subjects of every branch belonging to a feature: loop/<id> and loop/<id>--*.
+function readBranchHeads(id) {
+  const raw = git(['for-each-ref', `refs/heads/${featureBranch(id)}`, `refs/heads/${featureBranch(id)}--*`,
+    '--format=%(refname:short)\t%(subject)']);
+  const lines = raw.split('\n').filter(Boolean);
+  const heads = {};
+  for (const line of lines) {
+    const [name, ...subject] = line.split('\t');
+    heads[name] = subject.join('\t');
+  }
+  return heads;
+}
+
+// spine worktree <create <branch> [--from <ref>] | remove <path>> — the one sanctioned
+// worktree lifecycle (ADR-0038): agents call create as their first act and do all work
+// inside the printed path; the main checkout is the human's and is never touched.
+export function worktreeCommand(argv) {
+  const [sub, ...rest] = argv;
+  if (sub === 'create') { worktreeCreate(rest); return; }
+  if (sub === 'remove') { worktreeRemove(rest); return; }
+  fail('usage: spine worktree <create <branch> [--from <ref>]|remove <path>>');
+}
+
+function worktreeCreate([branch, ...flagArgs]) {
+  if (!branch) { fail('usage: spine worktree create <branch> [--from <ref>]'); }
+  const { from } = parseFlags(flagArgs, { '--from': 'from' });
+  const dir = path.join(WORKTREES_DIR, branch.replaceAll('/', '-'));
+  if (existsSync(dir)) {
+    out({ path: dir, branch, created: false });
+    return;
+  }
+  const branchExists = gitOk(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`]);
+  if (branchExists) { git(['worktree', 'add', dir, branch]); }
+  else { git(['worktree', 'add', '-b', branch, dir, from || 'main']); }
+  linkNodeModules(dir);
+  out({ path: dir, branch, created: true });
+}
+
+// Worktrees don't share node_modules; for node projects, link the root install in so
+// tests run without a per-worktree install. Best-effort: any failure just skips it.
+function linkNodeModules(dir) {
+  try {
+    if (existsSync(path.join(dir, 'package.json')) && existsSync('node_modules') && !existsSync(path.join(dir, 'node_modules'))) {
+      symlinkSync(path.resolve('node_modules'), path.join(dir, 'node_modules'), 'dir');
+    }
+  } catch { /* best-effort */ }
+}
+
+function worktreeRemove([dir]) {
+  if (!dir) { fail('usage: spine worktree remove <path>'); }
+  git(['worktree', 'remove', '--force', dir]);
+  git(['worktree', 'prune']);
+  out({ removed: dir });
+}
+
+// --flag value pairs → an options object; an unknown or valueless flag is exit-1.
+function parseFlags(argv, map) {
+  const opts = {};
+  for (let i = 0; i < argv.length; i += 2) {
+    const key = map[argv[i]];
+    if (!key || argv[i + 1] === undefined) { fail(`unknown or valueless flag: ${argv[i]}`); }
+    opts[key] = argv[i + 1];
+  }
+  return opts;
 }
 
 // git with argv handed straight to the binary — never a shell. A ref built from an
-// untrusted graph's feature id (branch = `loop/<id>`) therefore reaches git as one
-// literal argument: shell metacharacters in it cannot start a command, they just make
-// an unresolvable ref that fails cleanly.
+// untrusted graph's feature id therefore reaches git as one literal argument: shell
+// metacharacters in it cannot start a command, they just make an unresolvable ref
+// that fails cleanly.
 function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
-// `git diff <base> <branch> | git patch-id --stable`, piped in-process so no shell
-// parses either ref. Returns patch-id's leading field, or null on an empty diff.
-function gitPatchId(base, branch) {
-  const diff = execFileSync('git', ['diff', base, branch], { maxBuffer: 64 * 1024 * 1024 });
-  const out = execFileSync('git', ['patch-id', '--stable'], { input: diff, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  return out.split(' ', 1)[0] || null;
+function gitOk(args) {
+  try { git(args); return true; } catch { return false; }
+}
+
+function gitShowOptional(spec) {
+  try { return git(['show', spec]); } catch { return null; }
 }
 
 // Read + parse a plan artifact, guarding the feature-id match.
@@ -374,17 +327,17 @@ export function check(file) {
 
   const good = ok && didRoundTrip;
   process.stdout.write(
-    `${good ? 'OK  ' : 'FAIL'} ${model.features.length} features, ${model.contracts.length} contracts — ` +
+    `${good ? 'OK  ' : 'FAIL'} ${model.features.length} features — ` +
     `${errors.length} error(s), ${warnings.length} warning(s)\n`,
   );
   return good ? 0 : 1;
 }
 
-function planCheck(featureId, planFile, designFile) {
+function planCheck(featureId, planFile, graphFile) {
   const text = readFileSync(planFile || planPath(featureId), 'utf8');
   const model = parsePlan(text);
-  const design = parse(read(designFile));
-  const { ok, errors, warnings } = validatePlan(model, design, { standardExists: (p) => existsSync(p) });
+  const design = parse(read(graphFile));
+  const { ok, errors, warnings } = validatePlan(model, design);
   if (model.feature !== featureId) {
     errors.push({ code: 'feature-mismatch', message: `plan declares feature "${model.feature}" but was checked as "${featureId}"` });
   }

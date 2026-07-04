@@ -1,12 +1,16 @@
-// The feature-node schema and the model validator. Pure: validate() inspects an
+// The feature-node schema and the graph validator. Pure: validate() inspects an
 // already-parsed model and never touches text. Errors mean the doc is malformed as a
 // contract (block); warnings inform but don't block.
 
-/** The lifecycle a feature node moves through (the status enum). */
-export const STATUS = ['designed', 'planned', 'building', 'validated', 'shipped', 'parked', 'drifted'];
+/**
+ * The durable lifecycle a feature node moves through (ADR-0034): what has *landed*.
+ * Everything in-flight — planned, building, blocked-on-a-question — is derived from
+ * git (branches, plan files, task commits) at launch time, never stored here.
+ */
+export const STATUS = ['designed', 'validated', 'shipped'];
 
 /**
- * Ids become git refs (`loop/<id>`) and file paths (`docs/validations/<id>.md`)
+ * Ids become git refs (`loop/<id>`) and file paths (`docs/plans/<id>.md`)
  * downstream, so they must be a lowercase slug — no path separators, no shell
  * metacharacters, no leading hyphen. Rejecting a malformed id here stops a hostile
  * graph from an untrusted repo before its id can reach any ref or path construction.
@@ -28,10 +32,8 @@ export function validate(model) {
   const errors = [];
   const warnings = [];
   const err = (code, message, where) => { errors.push({ code, message, where }); };
-  const warn = (code, message, where) => { warnings.push({ code, message, where }); };
 
   const features = model.features || [];
-  const contracts = model.contracts || [];
 
   checkDocShape(model, err);
 
@@ -40,21 +42,11 @@ export function validate(model) {
     duplicate: ['duplicate-id', 'duplicate feature id'],
     malformed: ['malformed-id', 'feature id must be a lowercase slug matching ^[a-z0-9][a-z0-9-]*$'],
   });
-  const contractIds = collectIds(contracts, err, {
-    missing: ['missing-contract-id', 'contract is missing a string id'],
-    duplicate: ['duplicate-contract-id', 'duplicate contract id'],
-    malformed: ['malformed-contract-id', 'contract id must be a lowercase slug matching ^[a-z0-9][a-z0-9-]*$'],
-  });
 
-  const referenced = new Set();
   for (const f of features) {
     if (!f.id) { continue; }
     checkFeatureFields(f, err);
-    checkFeatureEdges(f, { err, warn, ids, contractIds, referenced });
-  }
-
-  for (const c of contracts) {
-    if (c.id && !referenced.has(c.id)) { warn('unreferenced-contract', 'contract is defined but no feature references it', c.id); }
+    checkFeatureEdges(f, { err, ids });
   }
 
   const cycle = findCycle(features);
@@ -84,25 +76,19 @@ function collectIds(items, err, codes) {
   return ids;
 }
 
-// Per-feature field checks: title, status, acceptance, drift stamp.
+// Per-feature field checks: title, status, acceptance.
 function checkFeatureFields(f, err) {
   if (!f.title) { err('missing-title', 'feature has no title', f.id); }
   if (!STATUS.includes(f.status)) { err('bad-status', `status must be one of ${STATUS.join('|')} (got ${JSON.stringify(f.status)})`, f.id); }
   if (!hasAcceptance(f.acceptance)) { err('missing-acceptance', 'feature has no acceptance criterion', f.id); }
-  if (f.design_version != null && !Number.isSafeInteger(f.design_version)) { err('bad-design-version', 'node design_version must be an integer', f.id); }
 }
 
-// Per-feature reference checks: depends_on edges and interface contracts.
-function checkFeatureEdges(f, { err, warn, ids, contractIds, referenced }) {
+// Per-feature reference checks: depends_on edges.
+function checkFeatureEdges(f, { err, ids }) {
   const deps = f.depends_on || [];
   for (const dep of deps) {
     if (dep === f.id) { err('self-dependency', 'feature depends on itself', f.id); }
     else if (!ids.has(dep)) { err('dangling-dependency', `depends_on unknown feature "${dep}"`, f.id); }
-  }
-  const interfaces = f.interfaces || [];
-  for (const cid of interfaces) {
-    referenced.add(cid);
-    if (!contractIds.has(cid)) { warn('dangling-interface', `interface "${cid}" has no contract body`, f.id); }
   }
 }
 
