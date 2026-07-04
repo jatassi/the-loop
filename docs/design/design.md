@@ -65,7 +65,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
-design_version: 7
+design_version: 8
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -195,12 +195,18 @@ features:
     title: Workflow progress groups by SDLC phase (Plan | Build | Validate), not by feature
     status: designed
     depends_on: [inner-loop-workflow]
+    interfaces: [boundary-result]
     notes:
-      - intake 2026-07-03, mid-run improvement request during wf_f1c42418 — the /workflows tree groups spawns per feature (opts.phase carries the feature id, the ADR-0029 choice), leaving the SDLC phases invisible as structure
-      - shape — opts.phase becomes the phase name (Plan | Build | Validate; derive spawns group under Validate as its opening leg; the remediation round's re-spawns reuse Build and Validate); the feature id (and the resolved model, per model-selection) stays on the label; meta gains the matching phases declaration while staying on the single line the shim and eslint processor pin; in multi-feature scopes the phase boxes pool across features and labels disambiguate — the accepted trade of the phase-first view
+      - intake 2026-07-03, mid-run improvement request during wf_f1c42418 — the /workflows tree groups spawns per feature (opts.phase carries the feature id, the ADR-0029 choice), leaving the SDLC phases invisible as structure; detailed 2026-07-04 by grilling (ADR-0029 amended in place)
+      - shape — every spawn's opts.phase becomes its SDLC phase name (plan → Plan; build and drive → Build; derive and validate → Validate, derive as its opening leg); the remediation round's re-spawns reuse Build and Validate for free through runBuild/runValidate; labels don't change — [model] agentType:feature-id[/task-id] already carries the feature id and resolved model, and becomes the sole feature disambiguator; in multi-feature scopes the phase boxes pool across features and labels disambiguate — the accepted trade of the phase-first view
+      - "meta gains phases: [{title: 'Plan'}, {title: 'Build'}, {title: 'Validate'}] — the documented harness entry shape, objects carrying title only (no detail strings — labels carry per-spawn detail; no per-phase model — models resolve per spawn from the binding table), in exactly that order — while staying on the single physical line the eslint preprocessor and shim regex pin (the preprocessor rewrites to end-of-line and appends void meta; a multi-line meta breaks its parse)"
+      - the stalled record's phase field renames to agent (boundary-result contract amended, design_version 7→8) — it keeps carrying opts.agentType (plan|build|drive|derive|validate), deliberately finer-grained than the coarse phase opt (drive vs build, derive vs validate is the diagnostic that matters), and the rename removes the name collision the coarse opt would create; touch set enumerated at design time — spawn()'s two stall sites plus the two synthetic stall literals in inner-loop.js, the relay triple in the-loop.md, the docket triple in adjust's skill, the Dictionary's stall entry — src/ledger.js never sees the field (the relay reduces stalled entries to feature ids before append-run); the escalation record's own phase field (plan|build|validate — where a park happened) is untouched and no collision — it already names an SDLC phase, which is what phase now consistently means everywhere; the stalled field was the one place phase mis-named an agentType
+      - tests — the shim stays untouched (it neutralizes meta and cannot see it); the meta declaration is covered by a source-shape test that extracts the meta line and evaluates it, asserting phases deep-equals the three title objects in order; shim phase assertions flip to the coarse sequence and stay (they prove grouping), with label assertions added — not substituted — to carry the feature-attribution proofs (the park/halt paths' "delta never spawns"); workflow-shim.test.js's own fixture scripts keep their arbitrary phase strings — generic shim mechanics, out of scope
+      - probe, run at design time (the ADR-0029 pattern, pulled forward because build agents hold no Workflow tool) — the harness documents opts.phase grouping (same string → same box) and meta.phases title-matching for phase() calls, but this script never calls phase(), so meta-title matching and declared box order for opts.phase strings are implied, not documented; a 5-spawn throwaway workflow mirroring the pinned shape (Build spawning first to expose declared-vs-first-use ordering, two features pooling) ran clean 2026-07-04 (wf_cbef963f-9f5); the /workflows tree observation is pending a desktop eyeball of that run (or a re-run of the 8-line throwaway) — non-blocking, worst case is cosmetic (grouping is documented; only title-matching/order is implied), and a contradiction folds back as a note amendment, never a build blocker
     acceptance:
-      - every workflow spawn's phase opt names its SDLC phase (Plan, Build, or Validate — derive under Validate), with the feature id and resolved model riding the label
-      - meta declares the three phases on its single line, and the shim harness asserts the spawn sequence's phase strings
+      - every workflow spawn's phase opt names its SDLC phase (build and drive spawns Build, derive and validate spawns Validate, plan spawns Plan), with the feature id and resolved model riding the label
+      - meta declares phases as three title-only entries in Plan, Build, Validate order on its single line, pinned by a source-shape test evaluating the meta line, and the shim tests assert every spawn's coarse phase string
+      - the BoundaryResult stalled entry carries agent (the spawned agentType) in place of phase, and the relay and adjust surfaces name the field accordingly
 
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
@@ -329,7 +335,7 @@ contracts:
     body: |
       { completed: [feature-id],   # each booked validated on the graph — the terminal status of a completed feature
         parked:    [{ feature-id, deviation, recommendation-menu }],
-        stalled:   [{ feature-id, phase, note }],   # agent died; nothing booked; next pass re-runs
+        stalled:   [{ feature-id, agent, note }],   # agent died; agent = the spawned agentType (plan|build|drive|derive|validate); nothing booked; next pass re-runs
         halted?:   { reason: budget-exhausted | environment-blocked, detail },
         budget:    { spent, remaining } }
       # budget unit is tokens; the cap channel is the opt-in harness budget

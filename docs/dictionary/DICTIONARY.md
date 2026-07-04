@@ -422,7 +422,7 @@ The condition of not clearing the [[perfection bar]], measured at the **outcome/
 
 ### stall
 **aliases:** stalled feature · **status:** active
-A [[feature]] the run could neither advance nor park: its phase agent died (a `null` return — user skip or terminal API error). Nothing is booked and nothing retried in-run — the graph never advanced, so the next stateless pass simply re-runs the phase. Reported in `BoundaryResult.stalled` `{feature, phase, note}` so a dead agent is never silently absorbed.
+A [[feature]] the run could neither advance nor park: its phase agent died (a `null` return — user skip or terminal API error). Nothing is booked and nothing retried in-run — the graph never advanced, so the next stateless pass simply re-runs the phase. Reported in `BoundaryResult.stalled` `{feature, agent, note}` (`agent` = the spawned agentType) so a dead agent is never silently absorbed.
 *Not to be confused with:* a park — a stall leaves no [[escalation record]] and needs no human decision, only a re-run.
 *See:* ADR-0029
 
