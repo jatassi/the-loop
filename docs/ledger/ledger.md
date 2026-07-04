@@ -21,6 +21,7 @@ Nothing parked — no open escalations.
 `frame`, `plan`, `workflow-phase-grouping`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
+- 2026-07-04 | wf_bcf2df42-2a7 | completed: ship
 - 2026-07-03 | wf_cf833be4-9b0 | stalled: ship
 - 2026-07-04 | wf_74be8a1f-77f | completed: executor-delegation
 - 2026-07-03 | wf_dfcca65b-283 | parked: executor-delegation
