@@ -18,7 +18,7 @@ test('config/model-bindings.json ships exactly the ten pinned default rows, each
   ]);
   assert.deepEqual(defaults.plan, { model: 'session' });
   assert.deepEqual(defaults['plan.audit'], { model: 'opus' });
-  assert.deepEqual(defaults['build.rote'], { model: 'sonnet' });
+  assert.deepEqual(defaults['build.rote'], { model: 'grok-build', via: 'grok' });
   assert.deepEqual(defaults['build.standard'], { model: 'sonnet' });
   assert.deepEqual(defaults['build.complex'], { model: 'opus' });
   assert.deepEqual(defaults.drive, { model: 'sonnet' });
