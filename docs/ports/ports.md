@@ -227,11 +227,16 @@ after) runs the same commands:
 
 - **deploy** ensures the marketplace is registered (`marketplace add` is a no-op exit-0
   when already present), refreshes it from the working tree (`marketplace update`), then
-  installs the plugin at the version `.claude-plugin/plugin.json` now carries
-  (`plugin install <id>` installs a fresh version, or is a no-op exit-0 when that version
-  is already installed — this is the pull-at-ship). `plugin update <bare-name>` is **not**
-  used: it fails on a not-yet-installed plugin, whereas version-aware `install` covers
-  bootstrap and update alike.
+  runs **both** `plugin install` and `plugin update`: install covers the bootstrap and
+  **never upgrades** — on an already-installed plugin it no-ops at the installed version
+  even when the marketplace carries a newer one (observed live at ship-2: the corridor's
+  first smoke failed exactly here, stuck at 0.1.0 with 0.2.0 in the marketplace — the
+  original binding's "version-aware install" note was doc-derived and wrong); update
+  covers the upgrade and requires the **full `plugin@marketplace` id** (a bare name is
+  "not found") but fails on a not-yet-installed plugin, so it can never run alone. In
+  the chain each is a benign exit-0 no-op in the state the other handles ("already
+  installed" / "already at the latest version") — both paths observed 2026-07-04 on a
+  throwaway fixture plugin (0.1.0 → 0.2.0 transition and cold bootstrap).
 - **rollback** uninstalls the plugin. For the bootstrap that restores the exact pre-ship
   state (absent); for a later ship it removes the just-deployed version rather than
   reverting to the prior one — the safe, consistent state (a half-applied bad version is
@@ -246,7 +251,7 @@ after) runs the same commands:
 
 ```yaml
 deploy-target:
-  deploy: claude plugin marketplace add "$PWD" && claude plugin marketplace update the-loop && claude plugin install the-loop@the-loop --scope user
+  deploy: claude plugin marketplace add "$PWD" && claude plugin marketplace update the-loop && claude plugin install the-loop@the-loop --scope user && claude plugin update the-loop@the-loop --scope user
   rollback: claude plugin uninstall the-loop@the-loop --scope user
   smoke: node -e 'const cp=require("child_process");const v=require("./.claude-plugin/plugin.json").version;const l=JSON.parse(cp.execSync("claude plugin list --json",{encoding:"utf8"}));const e=l.find(x=>x.id==="the-loop@the-loop");if(!(e&&e.enabled&&e.version===v))process.exit(1);cp.execSync("claude plugin details the-loop@the-loop",{stdio:"ignore"})'
 ```
