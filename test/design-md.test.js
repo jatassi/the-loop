@@ -13,7 +13,7 @@ const TEXT = readFileSync('docs/design/design.md', 'utf8');
 
 test('the real design.md parses to the full feature graph', () => {
   const m = parse(TEXT);
-  assert.equal(m.designVersion, 7); // bumped by ADR-0033 (ship design finalize — ship-record contract, corridor mechanics)
+  assert.equal(m.designVersion, 8); // bumped by workflow-phase-grouping design (boundary-result stalled phase→agent rename)
   assert.equal(m.features.length, 25); // +workflow-phase-grouping (2026-07-03 mid-run intake)
   assert.ok(m.contracts.length >= 6);
 });
