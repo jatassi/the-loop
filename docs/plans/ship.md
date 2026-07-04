@@ -105,7 +105,7 @@ tasks:
 
   - id: t2
     title: Corridor decision core — retry-free state machine (src/corridor.js)
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "src/corridor.js exports a pure API (no node:fs, node:child_process, or shell use) the bin edge can drive one step at a time: given the binding {deploy, rollback, smoke?} and the results so far, it yields either the next step to execute — one of the pinned step names deploy | smoke | rollback | smoke-verify, each carrying its command string — or a conclusion {outcome, rollback_verified?, health_signal}; proven by unit tests that drive it with injected pass/fail results and never execute real commands"
@@ -119,6 +119,17 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/corridor.js
+        - test/corridor.test.js
+      diff_actual:
+        files: 2
+        insertions: 189
+        deletions: 0
+      deviations: []
+      summary: "src/corridor.js exports nextCorridorStep(binding, results), a pure retry-free state machine driven one step at a time: given the deploy-target binding {deploy, rollback, smoke?} and the ordered {step, ok} results observed so far, it returns either the next step to run — one of the pinned names deploy | smoke | rollback | smoke-verify, each carrying its command string from the binding — or a conclusion {outcome, rollback_verified?, health_signal}. Every named transition is covered one test each: deploy ok + smoke ok concludes deployed; deploy ok + smoke fail yields rollback then smoke-verify, with smoke-verify ok/fail each concluding rolled-back with rollback_verified true/false; deploy fail yields rollback (still invoked) then smoke-verify when a smoke command exists, concluding deploy-failed with rollback_verified taken from that verify. The no-smoke degradation is covered by two tests: deploy ok with no smoke command concludes deployed with health_signal false and never yields a rollback step; deploy fail with no smoke command yields rollback then concludes deploy-failed with no rollback_verified field at all (asserted via 'in'). A ninth test enumerates all 16 pass/fail combinations of the four steps, driving the corridor to conclusion for each and asserting no step name repeats — proving there are no retry transitions; I confirmed this test's teeth by temporarily renaming the smoke-verify step's name to 'smoke' and watching it fail before reverting. The module imports nothing from node:fs, node:child_process, or any shell mechanism — it only shuffles strings and booleans. npm test (173 passing, including the 9 new corridor tests) and npm run check (25 features, 12 contracts, 0 errors/warnings on my footprint) both pass; a pre-existing eslint max-lines violation in .claude/worktrees/executor-delegation/bin/spine.js (a separate, untracked git worktree outside this repo's tracked files and outside my footprint) is unaffected by this change."
 
   - id: t3
     title: spine ship status — healing and pin helper on the CLI edge
