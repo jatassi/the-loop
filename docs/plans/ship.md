@@ -296,7 +296,7 @@ tasks:
 
   - id: t9
     title: Ship skill, second half — the two bookings, the corridor invocation, failure posture, tag
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "the skill's booking section pins commit 1: author docs/ships/ship-<N>.md as narrative plus the `## Ship record` yaml block per the ship-record contract carrying evidence and approval and no outcome, set .claude-plugin/plugin.json's version to 0.<N>.0 in the same commit, message ship-<N>: book evidence + approval — landed before any prod-touching command"
@@ -310,6 +310,16 @@ tasks:
     size: s
     tier: standard
     depends_on: [t5, t6, t8]
+    report:
+      result: built
+      footprint_actual:
+        - skills/ship/SKILL.md
+      diff_actual:
+        files: 1
+        insertions: 64
+        deletions: 0
+      deviations: []
+      summary: "skills/ship/SKILL.md now carries the second half of the Ship skill, sections 6-10 appended after the freshness gate (section 5) that t8 already closed with 'ship books its pre-deploy record and enters the deploy corridor.' Section 6 pins commit 1: author docs/ships/ship-<N>.md (narrative plus the `## Ship record` yaml block per the ship-record contract carrying evidence and approval and no `outcome` key) and set .claude-plugin/plugin.json's version to 0.<N>.0 in the same commit, message `ship-<N>: book evidence + approval`, stated as landing before any prod-touching command. Section 7 pins the corridor to exactly one invocation of `node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" ship corridor -`, its input built from the deploy-target binding excerpted verbatim from docs/ports/ports.md at run time (never hardcoded) as {deploy, rollback, smoke}, omitting smoke when the binding records none; it is named the only prod-touching command anywhere in the skill, with no prompts between approval and the concluded outcome. Section 8 hands that JSON verbatim to `spine ship book <N> -`, states every outcome (deployed/rolled-back/deploy-failed) gets exactly one Run-history bullet while the feature-status flip and the full Ledger re-render happen on deployed only, and commits precisely the files that command wrote (no hand edits) as commit 2, message `ship-<N>: book <outcome>`. Section 9 states the failure posture as written: a `rollback_verified: false` conclusion is the loudest line and a full stop, no second autonomous swing at prod and no retry of any corridor step, and a deploy-failed outcome still books commit 2 before Ship hands the human the same verify-by-hand instruction as an interrupted ship. Section 10 states the tag rule as written: `git tag loop/ship/<N>` after commit 2, deployed outcomes only, refs-last. No ADR or internal-doc references were added (grep confirms zero), the deploy-target binding's specifics stay excerpted from docs/ports/ports.md rather than hardcoded, and the file remains self-contained per the loop-surfaces standard. This is a prose surface with no executable behavior to unit-test (the constitution bars testing documentation); each of the five acceptance criteria was verified by reading the written rules against it, and npm test (197 passing) plus npm run check (25 features, 12 contracts, 0 errors/warnings) both stay green with the addition, confirming no regression."
 
   - id: t10
     title: Front door — route the ship proposal and jump to the ship skill by name
