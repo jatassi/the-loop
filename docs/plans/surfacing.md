@@ -165,7 +165,7 @@ tasks:
       summary: "src/ledger.js gains appendRun(priorText, summary): a pure function that inserts one deterministic bullet as the first content immediately after the \"## Run history\" heading. It throws (nothing written by any caller) when summary.date or summary.run is missing, and when priorText carries no \"## Run history\" heading at all. The bullet's fields render in fixed order — date, run, then completed/parked/stalled id lists (each omitted when empty), halted's reason and detail (omitted when absent), and budget's spent/remaining (omitted when absent) — pipe-joined for a single deterministic line, e.g. \"- 2026-07-04 | wf_999 | completed: widget | parked: gadget\". bin/spine.js wires spine ledger append-run [summary.json|-] (stdin default, matching the report/remediate commands' convention): it reads the summary JSON, reads the existing Ledger (an absent file throws via readFileSync's own ENOENT, caught by the top-level try/catch, before any write), calls appendRun, and writes the result back. Because \"## Run history\" is one of renderLedger's carried sections, a subsequent spine ledger render preserves the appended bullet byte-identically — proven directly in test/spine-cli.test.js. test/ledger.test.js covers appendRun's fixed field order and empty-segment omission, its determinism across repeat calls with the same summary, and its two throw paths (missing date/run; missing heading) — each watched red (ReferenceError on the unexported name, then the unimplemented-throw path) before green. test/spine-cli.test.js covers the CLI end to end: a happy path via both a file argument and stdin that inserts newest-first above a prior entry while leaving the rest of the Ledger byte-identical; the three refusal paths (missing date, missing run, no \"## Run history\" heading, and an absent Ledger file) all exiting 1 with the Ledger left unchanged; and the render round-trip. npm test (132/132) and npm run check both pass."
   - id: t4
     title: spine plan fix — append fix-N, reset-and-chain a blocked task, plan-check exemptions
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "`spine plan fix <feature-id> [fix.json|-]` reads { directive, acceptance: [criterion], footprint: [path], title? } and appends a task to the plan: id fix-N (N = 1 + the count of existing fix-flagged tasks), fix: true, status pending, covers [], the given acceptance and footprint (both required non-empty — exit 1 nothing written otherwise), injects [], standards [], size s, tier standard, title defaulting to the directive's first line"
@@ -179,6 +179,19 @@ tasks:
     size: m
     tier: standard
     depends_on: [t3]
+    report:
+      result: built
+      footprint_actual:
+        - bin/spine.js
+        - src/plan.js
+        - test/plan.test.js
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 4
+        insertions: 232
+        deletions: 9
+      deviations: []
+      summary: "src/plan.js gains appendFix(plan, {directive, acceptance, footprint, title}) (ADR-0032): it refuses an empty acceptance or footprint list and a title-less, directive-less input (nothing written by any caller), then appends fix-N (N = 1 + however many fix-flagged tasks already exist, so a second fix appends as fix-2 rather than being one-shot). The appended task carries fix: true, status pending, covers [], the given acceptance/footprint, injects [], standards [], size s, tier standard, and a title defaulting to the directive's first line. Its own depends_on lists every prior task id except any currently blocked task; each blocked task (a build park) is separately reset to pending, has its report key dropped, and gets fix-N appended to its own depends_on -- chaining it behind the fix without creating a cycle -- in both the JS model and the retained YAML document (doc.setIn/deleteIn/addIn), mirroring appendRemediation's parse-mutate-render shape. checkTaskCovers now exempts fix-flagged tasks from task-covers-nothing (mirroring the remediation marker) while their empty covers still satisfies no criterion, and normalizeTask/parsePlan carry the fix flag through untouched. bin/spine.js wires `spine plan fix <feature-id> [fix.json|-]` (stdin default, matching remediate's convention) into the plan subcommand dispatch and usage strings. test/plan.test.js covers the append shape and round-trip, the reset-and-chain behavior with a cycle-freedom check via validatePlan, the task-covers-nothing/uncovered-criterion exemption plus the fix-2 not-one-shot case, and the three refusal paths -- each watched red (ReferenceError on the unexported name, then the CLI's prior usage-string rejection) before green by temporarily reverting src/plan.js and bin/spine.js and rerunning. test/spine-cli.test.js covers the CLI end to end: a happy path that appends fix-1, resets and chains a blocked task, and leaves a subsequent `spine plan check` passing, plus both refusal paths writing nothing. npm test (137/137) and npm run check both pass."
   - id: t5
     title: Latest-entry judgment — retried-aware patch-id dedup in the scanner
     status: pending
