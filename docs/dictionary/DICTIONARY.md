@@ -25,6 +25,12 @@ The section headings below are informal wayfinding, nothing more — place a new
 **Status values:** `active` · `deprecated → Canonical Term` (a tombstone for a renamed/retired term, so old names resolve to new ones).
 
 **Rules:**
+- **Prefer standard industry terms.** Before adding any entry, ask: *does a standard
+  industry term already name this?* If yes, use that term and add nothing — a model
+  already knows what "blocked", "queue", or "test plan" mean, and every invented word
+  forfeits that prior. A made-up term is a documented exception that must name what
+  the standard term fails to capture. (ADR-0037's ratchet; a one-time pass replacing
+  existing invented terms with standard equivalents is part of the v2 rebuild.)
 - **Use canonical terms verbatim.** Validate flags an alias used where a canonical term exists, and usage inconsistent with a definition.
 - **Register every new proper noun here** when you mint one. Validate flags a new term that collides or overlaps with an existing one — a collision is a surfaced [[deviation]].
 - Relevant entries are **injected on demand** — you will not always be shown the whole file.
