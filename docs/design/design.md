@@ -173,7 +173,7 @@ features:
 
   - id: executor-delegation
     title: Delegated executors — rote tasks driven through registered CLI executors by a Claude driver
-    status: building
+    status: parked
     depends_on: [model-selection]
     notes:
       - designed 2026-07-03 by grilling (ADR-0031), seeded from AlphaMind's grok-cli dogfood; sharpened same day by the pre-build grill (ADR-0031 amended in place); off by default — a project opts in by rebinding build.rote to an executor's model with via naming a registered executor; the binding table stays the single routing surface, no separate delegation switch

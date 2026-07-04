@@ -8,17 +8,19 @@ Total: 25 (design_version 6)
 
 - designed: 13
 - planned: 0
-- building: 4
+- building: 3
 - validated: 8
 - shipped: 0
-- parked: 0
+- parked: 1
 - drifted: 0
 
 ## What needs you
-Nothing parked — no open escalations.
+- **executor-delegation** (validate): One contract-breaking acceptance-leg finding, propagating identically into the runtime leg's pack replay: t4 wires validateBindings unconditionally into spine models, and test/spine-cli.test.js:224 (model-selection's own acceptance-criterion-1 test) uses a fixture binding drive via the placeholder value "my-executor" — never a registered executor, used only to prove that an arbitrary via value survives settings-layer merges untouched. That via now trips the new unregistered-executor hard error, so spine models exits 1 with no table, breaking the test's every assertion. Confirmed not pre-existing: the identical test passes cleanly (121/121) at the integration target's pre-diff tip (worktree-executor-delegation, commit 8aae8c6); it only fails (152/153) once executor-delegation's diff lands, reproduced consistently across two full-suite runs, not flaky. The same failure also breaks the "full suite green" pinned observation replayed from two existing probe-pack entries (docs/probes/inner-loop-workflow.md and docs/probes/ledger-title-preservation.md), recorded as its own runtime-leg finding since no clause of executor-delegation's own contract supersedes model-selection's via-pass-through behavior. Four completion reports (t4, t5, t6, t7, t8) each characterize the failure as "pre-existing, unrelated" and leave it red under the no-unrelated-fixes rule — the quoted facts are accurate, but "pre-existing" is not: it is this diff's own regression into an already-validated feature's acceptance criterion. All other legs are clean: forensics found zero confirmed hits (one dismissed, prose-only); conformance found zero findings on either axis, with every criterion independently re-exercised live against fresh fixtures, including a real, unscripted end-to-end claude -p --agent drive run against the real grok CLI, reproducing criterion 1's exact shape.
+  - menu: fix-in-place — append a task updating test/spine-cli.test.js:224's fixture to bind drive via either the literal agent (or no via) or a real registered executor id instead of the placeholder "my-executor" (preserving the test's actual point — via rides through merges untouched — without tripping the new hard-validation), build it on the branch, re-validate; waive — merge on human authority, recording the one red model-selection acceptance-criterion-1 regression as an accepted transitional gap until a separate commit updates the stale fixture; re-plan — route t4 back to Plan to scope spine models's new hard-validation (e.g. an explicit opt-in flag, or a documented one-time fixture update alongside the wiring change) so a pre-existing, already-validated feature's test fixture isn't broken by a later feature's unconditional CLI change, then rebuild and re-validate
+  - branch: loop/executor-delegation
 
 ## What's next
-`frame`, `plan`, `executor-delegation`, `workflow-phase-grouping`, `surfacing`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
+`frame`, `plan`, `workflow-phase-grouping`, `surfacing`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
 **2026-07-03 · runs wf_81a89a5d / wf_16bdf774 / wf_97851563 / wf_9efd8be6 — model-selection, passes 2–5 to validated** — the fix-in-place cycle after the pass-1 park: pass 2 halted on a dirty tree (an uncommitted session dictionary edit — clean-tree gate save #1), pass 3 halted on the harness's own agent worktree at .claude/worktrees/ (save #2; now gitignored), pass 4 ran all four legs to a would-be-PERFECT verdict blocked only by a concurrent session's worktree holding main, pass 5 parked on surfacing's design_version bump breaking the test pin (delta-proved unrelated to this diff; fixed as main-side maintenance), and pass 6 hit the patch-id dedup rule against the stale deviation entry — surfacing's retry-despite-dedup criterion (ADR-0032) observed live before the feature is built. Resolved by the recorded human-merge in docs/validations/model-selection.md; squash 37af221, booked validated. The hand-rolled binding fork is retired: workflows/inner-loop.js on main now reads args.models for real. Also landed post-merge: the halted.detail reconciliation fix (54f98f2, Opus subagent in an isolated worktree, session-reviewed).
