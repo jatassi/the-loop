@@ -109,7 +109,7 @@ tasks:
       summary: "parseEscalation now normalizes every menu entry to { resolution, option }: a YAML mapping with those keys passes through unchanged and a bare string becomes { resolution: null, option: <string> }, via a new normalizeMenuEntry helper; the EscalationRecord typedef documents the normalized MenuEntry[] shape. renderLedger's What-needs-you section renders each entry as `[<resolution>] <option>` (null resolution renders as `[?]`), joined with `; `, deterministically. test/escalation.test.js's fixture now mixes a mapping entry and a bare-string entry in one menu, proving both shapes parse and normalize correctly in one pass; test/ledger.test.js's ESCALATIONS fixture carries the same mixed shape and its expected body asserts the `[fix-in-place] ...; [?] ...` rendering. npm test (121/121) and npm run check both pass."
   - id: t2
     title: spine note — append a feature-node note through parse → mutate → render
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "`spine note <feature-id> <text>` appends <text> to that feature's notes array in docs/design/design.md (creating the notes key when absent), prints the updated node as JSON, and leaves every byte outside the feature-graph block untouched"
@@ -122,6 +122,19 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - bin/spine.js
+        - src/note.js
+        - test/note.test.js
+        - test/spine-cli.test.js
+      diff_actual:
+        files: 4
+        insertions: 127
+        deletions: 1
+      deviations: []
+      summary: "src/note.js exports appendNote(model, featureId, text), a pure function mirroring setStatus's parse-mutate-render shape: it finds the feature node by id (throwing `unknown feature id: <id>` when absent), refuses a non-string or empty text (throwing `note text must be a non-empty string`), then appends text to model.features[idx].notes (creating the array when the key is absent) and mirrors the same array into the retained YAML document via doc.setIn(['features', idx, 'notes'], notes) so render() persists only that feature's notes line. bin/spine.js wires a new `note` command (noteCommand) that does I/O only: read design.md, parse, call appendNote, write back on success, print the updated node as JSON; an unknown id or empty text throws before any write, so nothing is written on refusal. test/note.test.js covers the pure layer (creating the notes key from absent, appending across two calls, round-tripping the rendered text; refusing an unknown id or empty text with the model left untouched) and test/spine-cli.test.js covers the CLI layer end-to-end: a happy-path append that leaves every byte outside the feature-graph block untouched (asserted byte-for-byte against the fixture), the two refusal paths exiting 1 with nothing written, and a follow-up test proving `spine check` still reports OK after the append and `spine resolve <feature-id>` surfaces the new note riding the resolved node. All 4 acceptance criteria were watched red before green (confirmed by deliberately reverting each implementation half and rerunning). npm test (125/125) and npm run check both pass."
   - id: t3
     title: spine ledger append-run — one deterministic newest-first Run-history line
     status: pending
