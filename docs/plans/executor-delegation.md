@@ -339,7 +339,7 @@ tasks:
       summary: "src/executors.js now exports validateBindings(table, registry), which walks the resolved model table's roles and, for every binding whose via is present and not the literal agent, accumulates issues into { errors, warnings } and never throws. Two hard errors: unregistered-executor when via names no id in the registry, and model-outside-playbook when a registered via's binding model (session included) is absent from that executor's models list — each names the offending role in where, proven by dedicated tests (the second covers both the session case and an arbitrary out-of-playbook model in one test, following the file's established grouping idiom). Three warnings, none of which ever raise an error: no-routing-surface for a via on any role outside the {build.rote, build.standard, build.complex} set, off-rubric-tier for a via specifically on build.standard or build.complex, and ignored-effort for a binding's effort field when its via resolves to a registered executor carrying no effort_flag; a via of agent or an absent via short-circuits before any check runs, proven by a test covering an off-rubric-tier role, an unbound role, and an effort-carrying role simultaneously, asserting zero issues of either kind. Each of the six new tests was confirmed to actually exercise its own check by temporarily disabling that check in isolation and watching only the corresponding test go red, then restoring. src/index.js re-exports parseExecutor, parseExecutors, and validateBindings from src/executors.js (a barrel re-export, left untested per the constitution's list of things never to test). The module stays pure per docs/standards/pure-core-thin-cli.md — no fs, no process. Full repo test suite (139 tests), eslint over the whole tree, and `node bin/spine.js check` (25 features, 11 contracts, 0 errors/warnings) are all green."
   - id: t3
     title: Grok playbook — executors/grok.md with the pinned machine block and the dogfood lore, self-contained
-    status: pending
+    status: built
     covers: [3]
     acceptance:
       - executors/grok.md carries the plan's pinned grok machine block verbatim as one fenced yaml block under the exact heading "## Machine block" — id grok, command grok, models [grok-build, grok-composer-2.5-fast], worktree driver-made, the pinned invocation template, availability grok --version, auth_smoke run grok -p "say PONG" --max-turns 1 with expect PONG, concurrency 2, and no effort_flag
@@ -351,6 +351,16 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - executors/grok.md
+      diff_actual:
+        files: 1
+        insertions: 73
+        deletions: 0
+      deviations: []
+      summary: "executors/grok.md now exists, self-contained, with the plan's pinned grok machine block carried verbatim as one fenced yaml block under the exact heading \"## Machine block\" (id grok, command grok, models [grok-build, grok-composer-2.5-fast], worktree driver-made, the pinned invocation template with {model}/{prompt}/{worktree} placeholders, availability grok --version, auth_smoke run grok -p \"say PONG\" --max-turns 1 with expect PONG, concurrency 2, no effort_flag) — confirmed by running the already-shipped parseExecutor against the file, which returns exactly that record. The surrounding narrative lore states every pinned item as its own bullet: grok commits only once a task finishes, so zero commits after a run is always truncation; -m is always passed explicitly because the CLI defaults to Composer; search_replace flakes on large/repetitive files (a mechanical-defect signature); three or more concurrent jobs trip a 429; a benign AuthorizationRequired log line can appear with auth fine; grok models misreports auth so only the smoke check is trusted; grok auto-discovers CLAUDE.md; grok over-deletes behavioral tests when judgment is required (a judgment defect, never a retry); --effort parses but its effect is unobserved on these models (why no effort_flag is set); --check exists and is deliberately unused because self-checking is still a self-report; and --worktree/--worktree-ref exist but are unobserved, so worktree mode stays driver-made pending the probe. The file is self-contained: grep finds zero hits for \"ADR\" and zero hits for any other project's name or document (AlphaMind, dogfood, sonnet, cursor, xai, the-loop). Full repo test suite (139 tests), eslint, and `node bin/spine.js check` (25 features, 11 contracts, 0 errors/warnings) all stay green — this task added no code, so nothing in the existing suite was expected to move."
   - id: t4
     title: CLI wiring — spine executors prints the registry; spine models validates bindings against it
     status: pending
