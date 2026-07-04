@@ -184,6 +184,29 @@ async function spawn(prompt, opts, featureId) {
   return r;
 }
 
+// The route condition (executor-delegation): a build.<tier> binding carries `via` and
+// it names something other than the ordinary agent default.
+function isViaBound(binding) {
+  return Boolean(binding.via) && binding.via !== 'agent';
+}
+
+// Routes a via-bound build task to the drive agent instead of the ordinary build agent
+// (executor-delegation): the driver's own binding resolves from a silent `drive.<via>`
+// sub-role lookup first — found means used with no log line ever — otherwise the
+// ordinary `roleBinding('drive')` (whose own unbound fallback logs the existing pinned
+// line). Spawn model/effort opts ride the driver binding alone; the executor model never
+// rides a spawn opt, only the pinned prompt/label/log lines name it.
+function spawnDrive(featureId, task, binding) {
+  const via = binding.via;
+  const driverRole = `drive.${via}`;
+  const driverBinding = Object.prototype.hasOwnProperty.call(modelTable, driverRole) ? modelTable[driverRole] : roleBinding('drive');
+  log(`model-selection — task ${featureId}/${task.id} routed via ${via}/${binding.model}, driver ${driverBinding.model}`);
+  const prompt = `feature: ${featureId}\ntask: ${task.id}\nexecutor: ${via}\nexecutor-model: ${binding.model}`;
+  return spawn(prompt, {
+    agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${featureId}/${task.id} via ${via}/${binding.model}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(driverBinding),
+  }, featureId);
+}
+
 // Runs the feature's pending tasks in depends_on order; returns the first feature-kind
 // blocked return (build.md's "first block parks" contract), or a halted/stalled signal
 // from `spawn` — either way the caller stops there. Undefined once every task has built
@@ -200,9 +223,11 @@ async function runBuild(featureId, tasks) {
       log(`model-selection — task ${featureId}/${task.id} has no tier, routing build.standard`);
     }
     const binding = roleBinding(`build.${task.tier ?? 'standard'}`);
-    const built = await spawn(`feature: ${featureId}\ntask: ${task.id}`, {
-      agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(binding),
-    }, featureId);
+    const built = isViaBound(binding)
+      ? await spawnDrive(featureId, task, binding)
+      : await spawn(`feature: ${featureId}\ntask: ${task.id}`, {
+        agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(binding),
+      }, featureId);
     if (built.halted || built.stalled) { return built; }
     if (built.result === 'blocked' && built.kind === 'feature') { return built; }
   }

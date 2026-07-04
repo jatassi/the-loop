@@ -375,7 +375,7 @@ test("spine models resolves the shipped plugin defaults relative to bin/spine.js
 
 const CUSTOM_DEFAULTS = JSON.stringify({
   build: { model: 'opus', effort: 'low' },
-  drive: { model: 'sonnet', via: 'my-executor' },
+  drive: { model: 'grok-build', via: 'grok' },
 });
 
 test('spine models merges an overridden defaults file with project < local settings overrides (whole-entry replacement), stamping per-role provenance and carrying a bound via through untouched', () => {
@@ -383,13 +383,13 @@ test('spine models merges an overridden defaults file with project < local setti
   try {
     const defaultsOnly = JSON.parse(spine(['models', 'defaults.json'], { cwd: root }));
     assert.deepEqual(defaultsOnly.build, { model: 'opus', effort: 'low', provenance: 'default' });
-    assert.deepEqual(defaultsOnly.drive, { model: 'sonnet', via: 'my-executor', provenance: 'default' });
+    assert.deepEqual(defaultsOnly.drive, { model: 'grok-build', via: 'grok', provenance: 'default' });
 
     mkdirSync(path.join(root, '.claude'), { recursive: true });
     writeFileSync(path.join(root, '.claude/settings.json'), JSON.stringify({ 'the-loop': { modelBindings: { build: { model: 'haiku' } } } }));
     const withProject = JSON.parse(spine(['models', 'defaults.json'], { cwd: root }));
     assert.deepEqual(withProject.build, { model: 'haiku', provenance: 'project' }); // wholesale replacement — effort is gone
-    assert.deepEqual(withProject.drive, { model: 'sonnet', via: 'my-executor', provenance: 'default' }); // untouched
+    assert.deepEqual(withProject.drive, { model: 'grok-build', via: 'grok', provenance: 'default' }); // untouched
 
     writeFileSync(path.join(root, '.claude/settings.local.json'), JSON.stringify({ 'the-loop': { modelBindings: { build: { model: 'opus', effort: 'high' } } } }));
     const withLocal = JSON.parse(spine(['models', 'defaults.json'], { cwd: root }));
