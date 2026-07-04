@@ -217,7 +217,7 @@ features:
 
   - id: ship
     title: Ship (human-gated, evidence package, health-gated delegated rollback)
-    status: designed
+    status: planned
     depends_on: [validate, surfacing]
     interfaces: [ship-record]
     notes:
