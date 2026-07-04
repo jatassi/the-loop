@@ -13,7 +13,7 @@ const TEXT = readFileSync('docs/design/design.md', 'utf8');
 
 test('the real design.md parses to the full feature graph', () => {
   const m = parse(TEXT);
-  assert.equal(m.designVersion, 5); // bumped by ADR-0030 (task-contract gains tier; model-binding contract added)
+  assert.equal(m.designVersion, 6); // bumped by ADR-0032 (surfacing design finalize — typed resolution kinds)
   assert.equal(m.features.length, 25); // +workflow-phase-grouping (2026-07-03 mid-run intake)
   assert.ok(m.contracts.length >= 6);
 });
