@@ -7,8 +7,10 @@ the retried-mark dedup amendment, `spine escalation resolve`), the kind-stamped
 `{resolution, option}` menu shape end to end (parse/render/relay/author), and the
 `adjust` skill + `/the-loop` boundary wiring that folds a parked feature's decision
 back through it. Exercised black-box against the fixture-repo probe binding — never
-in-process imports — with the live `claude -p "/the-loop"` channel (agent-pack
-surfaces, this binding's recorded soft spot) named as unrunnable rather than faked.
+in-process imports — with the live `claude -p` channel (agent-pack
+surfaces, this binding's recorded soft spot) named as unrunnable rather than faked —
+runnable since ship-1's deploy via the namespaced `/the-loop:the-loop`; see the
+live-channel step.
 
 Volatile fields (temp-dir paths, exact dates/reasons, commit SHAs) are masked below;
 replay re-derives them fresh.
@@ -35,18 +37,19 @@ steps:
     expected_observation: each call inserts exactly one bullet as the first line under "## Run history" (newest-first, prior bullets pushed down); the repeated-summary bullet is byte-identical to its first production; every other Ledger byte is unchanged
   - action: delta proof — on the merge-base (pre-surfacing main), attempt `spine ledger append-run`, `spine escalation resolve`, and `spine note`; render the Ledger against the same kind-stamped escalation record
     expected_observation: all three subcommands are unrecognized (usage-string fallback, no mutation); the Ledger's menu line renders `[object Object]; [object Object]` — both discriminate red-at-base / green-on-merged-tree for this diff
-  - action: live channel — from the fixture, `claude -p "/the-loop"`
-    expected_observation: "Unknown command: /the-loop" — the-loop is not an installed plugin in the probe fixture's environment; recorded as unobserved, not faked, matching the same limitation already recorded in docs/probes/inner-loop-workflow.md
+  - action: live channel — from the fixture, `claude -p "/the-loop:the-loop"` (namespaced; the bare `/the-loop` form is "Unknown command" even with the plugin installed — observed 2026-07-04, ship-2 replay)
+    expected_observation: with the plugin installed, the front door presents the parked docket — the pinned deviation and the kind-stamped menu verbatim, recommended option first — and proposes resolve-parked routed at the adjust skill (observed live 2026-07-04, ship-2 replay); with no plugin installed, "Unknown command" (the original record, retained for cold environments)
   - action: pack replay — inner-loop-workflow.md, ledger-title-preservation.md, model-selection.md
     expected_observation: every deterministic step reproduces (npm test full suite green, npm run check 0 error/0 warning, ledger-title preamble preservation, model-bindings resolution/precedence/spawn-plumbing/tier-routing); inner-loop-workflow.md's pinned `npm run check` feature/contract count ("21 features, 10 contracts") is stale drift unrelated to this diff — the identical mismatch reproduces byte-for-byte on the merge-base itself, so it is not a regression this diff introduced
   - action: teardown
     expected_observation: all temp fixture dirs and the merge-base worktree removed; no loop-probe-* dirs left behind
 ```
 
-**Unobserved**, named rather than silently skipped: the live `claude -p "/the-loop"`
-run's actual narrated presentation of the docket (kind-stamped menu text, recommended
-option first) at both the run boundary and re-entry — the plugin isn't installed as
-a command surface inside the fixture-repo probe's temp git repo, this binding's
-recorded soft spot. The deterministic prerequisites it depends on (orient's
-`parked`/`resolve-parked` signal, the escalation record's normalized menu shape, and
-the Ledger's kind-stamped rendering) were all exercised directly and pass.
+**Formerly unobserved, since observed** (2026-07-04, ship-2 replay, via the
+namespaced `/the-loop:the-loop`): the live channel's narrated docket presentation —
+kind-stamped menu text verbatim, recommended option first, resolve-parked proposal —
+was reproduced from a parked fixture at re-entry. Still unobserved: the same
+presentation at a true run boundary (the relay path immediately after a live run
+returns, rather than a fresh re-entry orient). The deterministic prerequisites
+(orient's `parked`/`resolve-parked` signal, the escalation record's normalized menu
+shape, and the Ledger's kind-stamped rendering) were all exercised directly and pass.

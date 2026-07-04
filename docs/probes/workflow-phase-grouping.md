@@ -13,9 +13,10 @@ binding divergence the feature's own design notes and this validation's expectat
 sheet both name (the script never calls `phase()`, so declared-vs-first-use box order
 and meta-title matching for `opts.phase` strings are implied, not runtime-observable
 through this binding). This pack's replay leans on that deterministic unit-test
-channel; the live `claude -p "/the-loop"` channel and a live desktop-eyeball of the
-`/workflows` tree grouping remain this binding's recorded soft spot, named rather than
-faked.
+channel; the live `claude -p` channel (runnable since ship-1's deploy via the
+namespaced `/the-loop:the-loop`) and the `/workflows` tree grouping (desktop-observed
+2026-07-04 — declared meta.phases order confirmed, features pooled, labels
+disambiguating; recorded in the feature's design notes) have both since been observed.
 
 Volatile fields (temp-dir paths, exact durations, commit SHAs) are masked below;
 replay re-derives them fresh.
@@ -77,13 +78,15 @@ steps:
     expected_observation: no loop-probe-* temp dirs or stray worktrees left behind
 ```
 
-**Unobserved**, named rather than silently skipped: the live `claude -p "/the-loop"`
-channel's actual `/workflows` desktop-tree rendering (spawns pooling into Plan/Build/
-Validate boxes in declared-vs-first-use order, labels disambiguating features in a
-multi-feature scope) — the fixture-repo probe binding drives `bin/spine.js` and the
-deterministic shim channel, never the desktop tree itself, and build agents hold no
-Workflow tool to observe it from inside a task; the feature's own design notes already
-mark this "pending a desktop eyeball," non-blocking. Also unobserved: `spine plan
+**Formerly unobserved, since observed** (2026-07-04): the `/workflows` desktop-tree
+rendering — three boxes named Plan | Build | Validate in declared `meta.phases` order
+(a Build spawn ran first, so declaration order beats first-use order), features
+pooled per box, labels disambiguating — confirmed by a live desktop observation of
+the probe workflow re-run (`wf_e7b31dd9-38a`) and recorded in the feature's design
+notes; the fixture-repo probe binding still cannot drive that observation itself
+(it exercises `bin/spine.js` and the deterministic shim channel, never the desktop
+tree, and build agents hold no Workflow tool), so replay leans on the deterministic
+channel with the tree observation now on record rather than pending. Also unobserved: `spine plan
 check`'s tier-validation warn/error paths and the shim's layer-precedence/tier-routing
 steps from `docs/probes/model-selection.md` (seeding a tiered plan into the fixture-
 repo probe was out of proportion to this diff's zero footprint overlap with

@@ -61,8 +61,10 @@ reassembly) — there is no code path implementing this judgment, only the
 skill's own prose, which was read against its acceptance criterion and
 matches, but never exercised live. These are the same class of limitation
 `docs/probes/surfacing.md` and `docs/probes/inner-loop-workflow.md` already
-recorded for the live `claude -p "/the-loop"` channel: unrunnable in this
-installation, recorded rather than faked.
+recorded for the live `claude -p` channel: unrunnable in that installation,
+recorded rather than faked (since ship-1's deploy the channel runs via the
+namespaced `/the-loop:the-loop` — ship-2 replay, 2026-07-04; the ship skill's
+session-prose legs remain unobservable from a fixture either way).
 
 One advisory (not contract-breaking — no acceptance criterion or
 task-selected standard cites it) surfaced during the new exercise: `spine

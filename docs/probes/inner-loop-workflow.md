@@ -16,12 +16,14 @@ replay re-derives them fresh each time.
 steps:
   - action: bring up the fixture-repo probe's populated variant — `node bin/probe-fixture.js populated`
     expected_observation: prints a temp git repo path ($FIX) seeded with a committed docs/design/design.md + docs/ledger/ledger.md
-  - action: from $FIX, invoke the live agent-pack channel — `claude -p "/the-loop"`
+  - action: from $FIX, invoke the live agent-pack channel — `claude -p "/the-loop:the-loop"` (plugin commands resolve namespaced; the bare `/the-loop` form is "Unknown command" even with the plugin installed — observed 2026-07-04, ship-2 replay)
     expected_observation: >-
-      unrunnable in this installation — "Unknown command: /the-loop" (the-loop is not
-      an installed plugin here); recorded as unobserved, not faked. When runnable, this
-      is the leg's primary channel and should reproduce a BoundaryResult per the
-      pinned shape.
+      with the plugin installed (any post-ship-1 environment) the front door orients
+      against $FIX's graph, states position, and proposes the next action, stopping at
+      the human scope handshake — observed live 2026-07-04 (ship-2 replay); a headless
+      run carries no human to confirm scope, so a full BoundaryResult through this
+      channel still requires a live session. With no plugin installed: "Unknown
+      command" (the original pre-ship-1 record, retained for cold environments).
   - action: deterministic channel — `npm run check`
     expected_observation: "OK   21 features, 10 contracts — 0 error(s), 0 warning(s)"
   - action: deterministic channel — `npm test`
@@ -32,10 +34,12 @@ steps:
     expected_observation: docs/probes/ carried no prior entries at validation time — trivially complete
 ```
 
-**Unobserved**, named rather than silently skipped: the live `claude -p "/the-loop"`
-run against either arm of criterion 3 (an environment-shaped block via a dirtied
-$FIX tree, or a budget cap low enough to exhaust mid-run) — the plugin isn't
-installed in this environment, and separately, `args` carries no budget/cap input
+**Unobserved**, named rather than silently skipped (the orient/propose presentation
+itself was observed live 2026-07-04 via the namespaced command — ship-2 replay — so
+this note now scopes to what remains): the live channel run against either arm of
+criterion 3 (an environment-shaped block via a dirtied
+$FIX tree, or a budget cap low enough to exhaust mid-run) — a headless run stops at
+the scope handshake, and separately, `args` carries no budget/cap input
 channel through which a live run could even be seeded to exhaust (a contract gap
 the expectation sheet itself names). The populated fixture variant also seeds only
 a two-feature graph (one validated, one building), not the two-independent-designed-
