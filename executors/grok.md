@@ -8,36 +8,7 @@ tell a real defect from a false alarm.
 
 Operational lore, every item load-bearing:
 
-- grok commits only once a task is fully finished — it never commits partial
-  progress along the way. That means zero commits after a run is always
-  truncation, with no exception: a run that stopped before its own finish line
-  never got the chance to save anything, however the rest of the tree looks.
-- The CLI's default model, when no model flag is given, is Composer
-  (`grok-composer-2.5-fast`) rather than `grok-build`. The invocation template
-  below always passes `-m {model}` explicitly for this reason — the intended
-  model is never left to the CLI's own default.
-- grok's built-in `search_replace` edit tool flakes on large or
-  highly-repetitive files: it can fail to find or misapply a replacement even
-  when the target text is plainly present. This is a mechanical-defect
-  signature, not a judgment one — a run that fails this way is worth the one
-  retry, not an immediate park.
-- Running three or more grok jobs at once trips a 429 rate-limit response on
-  the team account. The concurrency below is pinned to 2 to stay clear of that
-  ceiling.
-- grok sometimes logs a line reading `AuthorizationRequired` even when
-  authentication is completely fine. Seeing that line in a run's output is not,
-  by itself, evidence of an auth failure.
-- The `grok models` subcommand cannot be trusted to report authentication
-  state — it has been observed to claim auth is broken when it is not. Only
-  the auth smoke check below is trusted to establish whether grok is actually
-  authenticated.
-- grok auto-discovers and reads any `CLAUDE.md` file present in the repository
-  it is invoked in, the same way Claude Code does. Nothing needs to hand it
-  repo conventions separately.
-- grok over-deletes behavioral tests the moment a task calls for judgment
-  rather than mechanical work. Deleting or weakening a test that should have
-  stayed red is the signature failure the driver's diff review exists to
-  catch, and it is always a judgment defect — never a retry.
+- none yet, populate as you observe noteworthy behaviors
 
 ## Machine block
 
