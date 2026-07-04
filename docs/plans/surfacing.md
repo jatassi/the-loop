@@ -81,7 +81,7 @@ design_version: 6
 tasks:
   - id: t1
     title: Kind-stamped menus — record parser normalization + Ledger rendering
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - "parseEscalation normalizes every menu entry to { resolution, option }: a YAML mapping with those keys passes through; a bare string becomes { resolution: null, option: <the string> } — pre-amendment records still parse without error"
@@ -94,6 +94,19 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/escalation.js
+        - src/ledger.js
+        - test/escalation.test.js
+        - test/ledger.test.js
+      diff_actual:
+        files: 4
+        insertions: 36
+        deletions: 7
+      deviations: []
+      summary: "parseEscalation now normalizes every menu entry to { resolution, option }: a YAML mapping with those keys passes through unchanged and a bare string becomes { resolution: null, option: <string> }, via a new normalizeMenuEntry helper; the EscalationRecord typedef documents the normalized MenuEntry[] shape. renderLedger's What-needs-you section renders each entry as `[<resolution>] <option>` (null resolution renders as `[?]`), joined with `; `, deterministically. test/escalation.test.js's fixture now mixes a mapping entry and a bare-string entry in one menu, proving both shapes parse and normalize correctly in one pass; test/ledger.test.js's ESCALATIONS fixture carries the same mixed shape and its expected body asserts the `[fix-in-place] ...; [?] ...` rendering. npm test (121/121) and npm run check both pass."
   - id: t2
     title: spine note — append a feature-node note through parse → mutate → render
     status: pending
