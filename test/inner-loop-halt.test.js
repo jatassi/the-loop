@@ -68,7 +68,16 @@ test('an environment-kind blocked build return halts the run, preserving complet
 
   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'alpha', 'alpha', 'alpha', 'beta', 'gamma', 'gamma']);
+  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate', 'Plan', 'Plan', 'Build']);
+  assert.deepEqual(spawns.map((s) => s.opts.label), [
+    '[session] plan:alpha',
+    '[session] build:alpha/alpha1',
+    '[session] derive:alpha',
+    '[session] validate:alpha',
+    '[session] plan:beta',
+    '[session] plan:gamma',
+    '[session] build:gamma/g1',
+  ]); // delta never appears — the halt fires before delta's plan spawns
   assert.deepEqual(result.completed, ['alpha']);
   assert.deepEqual(result.parked, [{ feature: 'beta', deviation: bounce.deviation, menu: bounce.menu }]);
   assert.deepEqual(result.halted, { reason: 'environment-blocked', detail: envBlock.detail });
@@ -152,7 +161,14 @@ test('a thrown error named for budget exhaustion halts the run; message text alo
 
   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'alpha', 'alpha', 'alpha', 'beta']);
+  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate', 'Plan']);
+  assert.deepEqual(spawns.map((s) => s.opts.label), [
+    '[session] plan:alpha',
+    '[session] build:alpha/alpha1',
+    '[session] derive:alpha',
+    '[session] validate:alpha',
+    '[session] plan:beta',
+  ]); // beta never gets past its plan spawn — the budget halt fires there
   assert.deepEqual(result.completed, ['alpha']);
   assert.deepEqual(result.halted, { reason: 'budget-exhausted', detail: budgetError.message });
   assert.deepEqual(result.budget, budget);
@@ -177,7 +193,7 @@ test('an error whose message merely mentions budget, but isn\'t named or coded f
   const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
   assert.equal(result.halted, undefined);
-  assert.deepEqual(result.stalled, [{ feature: 'alpha', phase: 'plan', note: impostor.message }]);
+  assert.deepEqual(result.stalled, [{ feature: 'alpha', agent: 'plan', note: impostor.message }]);
   assert.deepEqual(result.completed, ['beta']);
 });
 
@@ -203,8 +219,8 @@ test('a null return or any other thrown error stalls just that feature, and the 
   const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
   assert.deepEqual(result.stalled, [
-    { feature: 'alpha', phase: 'plan', note: 'agent returned null' },
-    { feature: 'beta', phase: 'plan', note: crash.message },
+    { feature: 'alpha', agent: 'plan', note: 'agent returned null' },
+    { feature: 'beta', agent: 'plan', note: crash.message },
   ]);
   assert.deepEqual(result.completed, ['gamma']);
   assert.equal(result.halted, undefined);
@@ -232,7 +248,7 @@ test('a planned return without task summaries stalls the feature and the run con
 
   assert.equal(result.stalled.length, 1);
   assert.equal(result.stalled[0].feature, 'alpha');
-  assert.equal(result.stalled[0].phase, 'plan');
+  assert.equal(result.stalled[0].agent, 'plan');
   assert.ok(result.stalled[0].note.includes('no task summaries'), 'note names the gap');
   assert.deepEqual(result.completed, ['gamma']);
   assert.equal(result.halted, undefined);

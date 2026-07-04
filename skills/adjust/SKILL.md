@@ -37,7 +37,7 @@ phase and kind, the deviation in a line, and its menu with the recommended optio
 Arriving from a run boundary, also state — but do not act on — what the relay carried
 alongside the parks:
 
-- **`stalled`** items, each `feature` / `phase` / `note`: nothing was booked, and the phase
+- **`stalled`** items, each `feature` / `agent` / `note`: nothing was booked, and the phase
   re-runs on the next pass. This session does not decide them.
 - **`halted`**, if present: its `reason` and `detail`. The run stopped; name it and move on.
   It is not a decision for this session.

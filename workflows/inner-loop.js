@@ -6,7 +6,7 @@
 // workflow script exports: a single `export const meta` line, and a bare top-level
 // `return` of the BoundaryResult once the harness (and test/workflow-shim.js, in tests)
 // applies its own async-body transform to this text.
-export const meta = { name: 'inner-loop', description: 'One autonomous pass over the feature graph: Plan → Build → Validate per in-scope feature, park-and-drain, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the args orientation snapshot — never invoked bare' };
+export const meta = { name: 'inner-loop', description: 'One autonomous pass over the feature graph: Plan → Build → Validate per in-scope feature, park-and-drain, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the args orientation snapshot — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
 
 // Some callers deliver args as a JSON-encoded string rather than the parsed snapshot;
 // normalize into a local before anything reads it — the launch leg cannot control the
@@ -173,10 +173,10 @@ async function spawn(prompt, opts, featureId) {
     r = await agent(prompt, opts);
   } catch (error) {
     if (isBudgetExhausted(error)) { return { halted: { reason: 'budget-exhausted', detail: error.message } }; }
-    return { stalled: { feature: featureId, phase: opts.agentType, note: error.message } };
+    return { stalled: { feature: featureId, agent: opts.agentType, note: error.message } };
   }
   if (r == null) {
-    return { stalled: { feature: featureId, phase: opts.agentType, note: 'agent returned null' } };
+    return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } };
   }
   if (isEnvironmentBlock(opts.agentType, r)) {
     return { halted: { reason: 'environment-blocked', detail: haltDetail(r) } };
@@ -203,7 +203,7 @@ function spawnDrive(featureId, task, binding) {
   log(`model-selection — task ${featureId}/${task.id} routed via ${via}/${binding.model}, driver ${driverBinding.model}`);
   const prompt = `feature: ${featureId}\ntask: ${task.id}\nexecutor: ${via}\nexecutor-model: ${binding.model}`;
   return spawn(prompt, {
-    agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${featureId}/${task.id} via ${via}/${binding.model}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(driverBinding),
+    agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${featureId}/${task.id} via ${via}/${binding.model}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(driverBinding),
   }, featureId);
 }
 
@@ -215,7 +215,7 @@ function spawnDrive(featureId, task, binding) {
 // already booked durable, so the next pass re-enters Build with a corrected snapshot.
 async function runBuild(featureId, tasks) {
   if (!Array.isArray(tasks)) {
-    return { stalled: { feature: featureId, phase: 'plan', note: 'no task summaries reached the script (planned return or args.plans entry empty) — plan artifact is booked; re-run with a corrected snapshot' } };
+    return { stalled: { feature: featureId, agent: 'plan', note: 'no task summaries reached the script (planned return or args.plans entry empty) — plan artifact is booked; re-run with a corrected snapshot' } };
   }
   const pending = orderTasks(tasks).filter((task) => task.status !== 'built');
   for (const task of pending) {
@@ -226,7 +226,7 @@ async function runBuild(featureId, tasks) {
     const built = isViaBound(binding)
       ? await spawnDrive(featureId, task, binding)
       : await spawn(`feature: ${featureId}\ntask: ${task.id}`, {
-        agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(binding),
+        agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding),
       }, featureId);
     if (built.halted || built.stalled) { return built; }
     if (built.result === 'blocked' && built.kind === 'feature') { return built; }
@@ -239,7 +239,7 @@ async function runValidate(featureId, sheet) {
   const binding = roleBinding('validate');
   return spawn(
     `feature: ${featureId}\nexpectation-sheet: ${JSON.stringify(sheet)}`,
-    { agentType: 'validate', label: `${modelLabel(binding)}validate:${featureId}`, phase: featureId, schema: VALIDATE_SCHEMA, ...modelOpts(binding) },
+    { agentType: 'validate', label: `${modelLabel(binding)}validate:${featureId}`, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding) },
     featureId,
   );
 }
@@ -271,7 +271,7 @@ async function runRemediation(featureId, remediationTask, sheet) {
 
   const verdict = await runValidate(featureId, sheet);
   if (verdict.result !== 'remediation-pending') { return verdict; }
-  return { stalled: { feature: featureId, phase: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' } };
+  return { stalled: { feature: featureId, agent: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' } };
 }
 
 // Runs Plan when the feature enters `designed`; otherwise resumes from the task list
@@ -281,7 +281,7 @@ async function runPlan(featureId) {
   if (statusById.get(featureId) !== 'designed') { return { tasks: snapshot.plans[featureId] }; }
   const binding = roleBinding('plan');
   const planned = await spawn(`feature: ${featureId}`, {
-    agentType: 'plan', label: `${modelLabel(binding)}plan:${featureId}`, phase: featureId, schema: PLAN_SCHEMA, ...modelOpts(binding),
+    agentType: 'plan', label: `${modelLabel(binding)}plan:${featureId}`, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
   }, featureId);
   if (isSignal(planned) || planned.result === 'bounce') { return planned; }
   return { tasks: planned.tasks };
@@ -294,7 +294,7 @@ async function runValidationCycle(featureId) {
   const deriveBinding = roleBinding('derive');
   const derived = await spawn(
     `feature: ${featureId}\nslice: ${JSON.stringify(snapshot.slices[featureId])}\nprobe: ${JSON.stringify(snapshot.probe)}`,
-    { agentType: 'derive', label: `${modelLabel(deriveBinding)}derive:${featureId}`, phase: featureId, schema: DERIVE_SCHEMA, ...modelOpts(deriveBinding) },
+    { agentType: 'derive', label: `${modelLabel(deriveBinding)}derive:${featureId}`, phase: 'Validate', schema: DERIVE_SCHEMA, ...modelOpts(deriveBinding) },
     featureId,
   );
   if (isSignal(derived)) { return derived; }

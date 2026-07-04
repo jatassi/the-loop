@@ -41,7 +41,14 @@ test('a plan bounce parks the feature with its deviation and menu carried verbat
   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
   assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'plan', 'build', 'derive', 'validate']);
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'beta', 'beta', 'beta', 'beta']);
+  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Plan', 'Build', 'Validate', 'Validate']);
+  assert.deepEqual(spawns.map((s) => s.opts.label), [
+    '[session] plan:alpha',
+    '[session] plan:beta',
+    '[session] build:beta/b1',
+    '[session] derive:beta',
+    '[session] validate:beta',
+  ]);
   assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: bounce.deviation, menu: bounce.menu }]);
   assert.deepEqual(result.completed, ['beta']);
   assert.deepEqual(result.stalled, []);
@@ -165,7 +172,13 @@ test('a validate blocked return with kind feature parks and drains; kind environ
   const { result: envResult, spawns: envSpawns } = await runWorkflowScript(SCRIPT, { agentReplies: envReplies, args: envArgs, budget });
 
   assert.deepEqual(envResult.halted, { reason: 'environment-blocked', detail: envBlock.detail });
-  assert.deepEqual(envSpawns.map((s) => s.opts.phase), ['gamma', 'gamma', 'gamma', 'gamma']); // delta never spawns
+  assert.deepEqual(envSpawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate']); // delta never spawns
+  assert.deepEqual(envSpawns.map((s) => s.opts.label), [
+    '[session] plan:gamma',
+    '[session] build:gamma/g1',
+    '[session] derive:gamma',
+    '[session] validate:gamma',
+  ]); // delta appears in none of them
   assert.deepEqual(envResult.completed, []);
 });
 
@@ -197,7 +210,14 @@ test('a dependent of a parked feature never spawns, while an independent feature
 
   const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'gamma', 'gamma', 'gamma', 'gamma']); // beta contributes none
+  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Plan', 'Build', 'Validate', 'Validate']); // beta contributes none
+  assert.deepEqual(spawns.map((s) => s.opts.label), [
+    '[session] plan:alpha',
+    '[session] plan:gamma',
+    '[session] build:gamma/g1',
+    '[session] derive:gamma',
+    '[session] validate:gamma',
+  ]); // beta never appears — the drain excludes the parked feature's dependent
   assert.ok(logs.some((l) => l.includes('beta')), 'beta was skipped via a log() line, never an error');
   assert.deepEqual(result.completed, ['gamma']);
   assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: bounce.deviation, menu: bounce.menu }]);

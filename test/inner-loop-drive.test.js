@@ -57,7 +57,7 @@ test('a via-bound build.<tier> binding spawns agentType drive with the pinned pr
 
   const driveSpawn = spawns[1];
   assert.equal(driveSpawn.opts.agentType, 'drive');
-  assert.equal(driveSpawn.opts.phase, 'alpha');
+  assert.equal(driveSpawn.opts.phase, 'Build');
   assert.deepEqual(driveSpawn.opts.schema.properties.result.enum, ['built', 'blocked']); // BUILD_SCHEMA, unchanged
   assert.equal(driveSpawn.prompt, 'feature: alpha\ntask: t1\nexecutor: grok\nexecutor-model: grok-build');
   assert.equal(driveSpawn.opts.label, '[sonnet] drive:alpha/t1 via grok/grok-build');

@@ -62,7 +62,18 @@ test('a designed, dependency-linked pair runs Plan→Build→Derive→Validate p
   // untiered, so both fall back to build.standard, unbound (session) in this fixture.
   assert.equal(spawns[1].opts.label, '[session] build:alpha/t1');
   assert.equal(spawns[2].opts.label, '[session] build:alpha/t2');
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'alpha', 'alpha', 'alpha', 'alpha', 'beta', 'beta', 'beta', 'beta']);
+  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Validate', 'Plan', 'Build', 'Validate', 'Validate']);
+  assert.deepEqual(spawns.map((s) => s.opts.label), [
+    '[session] plan:alpha',
+    '[session] build:alpha/t1',
+    '[session] build:alpha/t2',
+    '[opus] derive:alpha',
+    '[session] validate:alpha',
+    '[session] plan:beta',
+    '[session] build:beta/b1',
+    '[opus] derive:beta',
+    '[session] validate:beta',
+  ]);
   assert.equal(spawns[3].opts.model, 'opus'); // derive resolves the bound model
   assert.equal(spawns[3].opts.effort, 'low'); // and its bound effort — no longer hardcoded
   assert.ok(spawns[3].prompt.includes(JSON.stringify(args.probe)), 'derive prompt carries the probe binding');

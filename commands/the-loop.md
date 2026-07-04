@@ -129,7 +129,7 @@ one procedure, so neither route improvises its own version.
    - `completed` — which features finished.
    - `parked` — each with its `deviation` and `menu`, verbatim; these need a
      decision.
-   - `stalled` — each with its `feature`/`phase`/`note`; nothing was booked for it,
+   - `stalled` — each with its `feature`/`agent`/`note`; nothing was booked for it,
      and the phase re-runs on the next pass.
    - `halted`, if present — its `reason` (`budget-exhausted` or
      `environment-blocked`) and `detail`, alongside whatever `completed`/`parked`

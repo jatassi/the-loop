@@ -89,7 +89,7 @@ test('a second remediation-pending on the same feature stalls with a protocol-vi
 
   assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build', 'derive', 'validate', 'build', 'validate']);
   assert.deepEqual(result.stalled, [
-    { feature: 'alpha', phase: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' },
+    { feature: 'alpha', agent: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' },
   ]);
   assert.deepEqual(result.completed, []);
   assert.equal(result.halted, undefined);
