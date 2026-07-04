@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { parse } from '../src/parse.js';
-import { appendRemediation, foldReport, parsePlan, planPath, REPORT_RESULTS, resolveTask, TASK_SIZES, validatePlan } from '../src/plan.js';
+import { appendRemediation, foldReport, parsePlan, planPath, REPORT_RESULTS, resolveTask, TASK_SIZES, TASK_TIERS, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
 
 const DESIGN = parse(`## Feature graph
@@ -74,6 +74,13 @@ test('parsePlan extracts feature, drift stamp, and normalized tasks', () => {
   assert.deepEqual(m.tasks[0].standards, ['docs/standards/render.md']);
   assert.deepEqual(m.tasks[1].standards, []); // absent field normalizes to none
   assert.ok(!('report' in m.tasks[0])); // absent report stays absent
+  assert.ok(!('tier' in m.tasks[0])); // absent tier stays absent, like report
+});
+
+test('normalizeTask carries tier through when present, straight off a real parse', () => {
+  const withTier = parsePlan(PLAN.replace('    status: pending\n    covers: [1]', '    status: pending\n    tier: rote\n    covers: [1]'));
+  assert.equal(withTier.tasks[0].tier, 'rote'); // carried through when present
+  assert.ok(!('tier' in withTier.tasks[1])); // sibling task untouched — still absent
 });
 
 test('parsePlan is lenient when the block is absent', () => {
@@ -84,8 +91,7 @@ test('parsePlan is lenient when the block is absent', () => {
 
 test('a well-formed plan validates clean and round-trips byte-for-byte', () => {
   const r = validatePlan(model(), DESIGN);
-  assert.deepEqual(r.errors, []);
-  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.errors, []); // the base fixture predates tier — grandfathered to warnings only
   assert.ok(r.ok);
   assert.equal(render(PLAN, model()), PLAN);
 });
@@ -131,11 +137,28 @@ test('per-task contract fields are enforced', () => {
   m.tasks[0].status = 'doing';
   m.tasks[0].acceptance = '';
   m.tasks[0].footprint = [];
+  m.tasks[0].tier = 'urgent'; // out-of-enum tier
   m.tasks[1].size = 'xl'; // not representable: split or bounce
   const got = codes(validatePlan(m, DESIGN));
-  for (const c of ['bad-task-status', 'missing-task-acceptance', 'missing-footprint', 'bad-size']) {
+  for (const c of ['bad-task-status', 'missing-task-acceptance', 'missing-footprint', 'bad-size', 'bad-tier']) {
     assert.ok(got.includes(c), c);
   }
+});
+
+test('an absent tier warns without blocking — a plan cut before this feature still checks', () => {
+  const r = validatePlan(model(), DESIGN); // base fixture carries no tier anywhere
+  assert.ok(r.ok);
+  assert.ok(r.warnings.some((w) => w.code === 'missing-tier' && w.where === 't1'));
+  assert.ok(r.warnings.some((w) => w.code === 'missing-tier' && w.where === 't2'));
+});
+
+test('a fully tiered plan checks clean — no missing-tier warning once every task is stamped', () => {
+  const m = model();
+  m.tasks[0].tier = 'standard';
+  m.tasks[1].tier = 'complex';
+  const r = validatePlan(m, DESIGN);
+  assert.ok(r.ok);
+  assert.deepEqual(r.warnings, []);
 });
 
 test('size m passes but warns — the comfort ceiling needs narrative justification', () => {
@@ -145,6 +168,7 @@ test('size m passes but warns — the comfort ceiling needs narrative justificat
   assert.ok(r.ok);
   assert.ok(r.warnings.some((w) => w.code === 'size-at-ceiling'));
   assert.deepEqual(TASK_SIZES, ['xs', 's', 'm']);
+  assert.deepEqual(TASK_TIERS, ['rote', 'standard', 'complex']);
 });
 
 test('coverage: both directions between tasks and feature criteria', () => {
@@ -198,7 +222,9 @@ test('task standards: docs/standards/ paths only, existence via the injected pro
 });
 
 test('resolveTask hands a builder its slice: contract, covered criteria texts, inject bodies', () => {
-  const s = resolveTask(model(), DESIGN, 't2');
+  const m = model();
+  m.tasks[1].tier = 'complex';
+  const s = resolveTask(m, DESIGN, 't2');
   assert.equal(s.feature, 'widget');
   assert.equal(s.design_version, 2);
   assert.equal(s.task.id, 't2');
@@ -206,6 +232,7 @@ test('resolveTask hands a builder its slice: contract, covered criteria texts, i
   assert.equal(s.injects.length, 1);
   assert.match(s.injects[0].body, /render\(\), save\(\)/);
   assert.deepEqual(s.unbuilt_dependencies, ['t1']); // t1 is still pending — builder must refuse
+  assert.equal(s.task.tier, 'complex'); // stamped tier rides the slice
   assert.deepEqual(resolveTask(model(), DESIGN, 't1').task.standards, ['docs/standards/render.md']); // standards ride the slice
 });
 
@@ -266,12 +293,14 @@ test('appendRemediation appends the round-marker to the model and the retained d
   assert.deepEqual(task.footprint, ['src/render.js', 'src/save.js']); // deduplicated
   assert.equal(task.acceptance.length, FINDINGS.length);
   assert.equal(task.size, 's');
+  assert.equal(task.tier, 'standard'); // stamped at append, so it never triggers missing-tier
   assert.deepEqual(task.depends_on, ['t1', 't2']);
 
   const text = render(PLAN, m);
   const re = parsePlan(text);
   assert.deepEqual(re.tasks[2].footprint, ['src/render.js', 'src/save.js']);
   assert.equal(re.tasks[2].remediation, true);
+  assert.equal(re.tasks[2].tier, 'standard');
   assert.equal(render(text, re), text); // the appended artifact still round-trips
 });
 
@@ -292,6 +321,7 @@ test('validatePlan allows empty covers on a remediation task, and parsePlan pres
   const r = validatePlan(m, DESIGN);
   assert.ok(r.ok);
   assert.deepEqual(r.errors, []);
+  assert.ok(r.warnings.every((w) => w.where !== 'remediation' || w.code !== 'missing-tier')); // stamped at append
 
   const re = parsePlan(render(PLAN, m));
   assert.equal(re.tasks[2].remediation, true);

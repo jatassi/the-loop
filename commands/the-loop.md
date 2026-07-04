@@ -81,12 +81,13 @@ one procedure, so neither route improvises its own version.
    - `target` — `main`, unless the design narrative names another ref.
    - `scope` — the confirmed list from step 2.
    - `index` — `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" index`.
+   - `models` — `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" models`.
    - `slices` — for every feature-id in `scope`,
      `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" resolve <feature-id>`, keyed by id.
    - `plans` — for every feature-id in `scope` that already has a plan (status
      `planned` or `building`), `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" plan parse
-     <feature-id>`, its tasks reduced to `{ id, status, depends_on, size }` each,
-     keyed by id. A `designed` feature has no plan yet — omit it.
+     <feature-id>`, its tasks reduced to `{ id, status, depends_on, size, tier }`
+     each, keyed by id. A `designed` feature has no plan yet — omit it.
    - `probe` — the project's runtime-probe **binding** as recorded at Design: the
      bring-up / exercise / teardown instructions from the design narrative's
      Lifecycle section, or from the project's ports inventory where one exists
@@ -105,7 +106,12 @@ one procedure, so neither route improvises its own version.
    and relaunch rather than launching into certain stalls.
 5. **Launch.** Call the Workflow: `scriptPath` =
    `$CLAUDE_PLUGIN_ROOT/workflows/inner-loop.js`, `args` = the step-3 snapshot.
-6. **Relay the result.** State the returned `BoundaryResult` to the human plainly:
+6. **Relay the result.** State the returned `BoundaryResult` to the human plainly,
+   and alongside it, any `model-selection —` prefixed lines found by scanning the
+   run's log output (the workflow's live output, surfaced in the `/workflows` view
+   and returned by the Workflow tool) — stated verbatim, so a role that fell back
+   to the session model, or a task routed by tier default, stays visible at the run
+   boundary:
    - `completed` — which features finished.
    - `parked` — each with its `deviation` and `menu`, verbatim; these need a
      decision.

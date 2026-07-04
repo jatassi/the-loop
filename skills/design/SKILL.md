@@ -28,11 +28,16 @@ model, interface contracts, boundaries, tech posture.
 - **Survey before you invent.** Before proposing to custom-build anything — auth,
   persistence, orchestration — search for what already exists and cite what you find.
   Low confidence on a consequential choice is a research trigger, not a coin flip.
-- **Design it twice.** When a choice is contested or hard to reverse, sketch two or
-  three radically different shapes — parallel subagents, each handed a different
-  constraint (minimize the interface · maximize flexibility · optimize the common
-  case) — then compare and recommend one. Be opinionated: the human wants a strong
-  read, not a menu.
+- **Design it twice.** When a choice is contested or hard to reverse, resolve the
+  alternates' model: `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" models`, and read the
+  `design.alternative` role's entry — its `model`, or the session inherit when that
+  value is literally `"session"` or the role is missing from the printed table
+  (session-side spawns take a model only — a bound effort does not apply there).
+  Sketch two or three radically different shapes on that model — parallel
+  subagents, each titled `[<resolved-model>] ` and handed a different constraint
+  (minimize the interface · maximize flexibility · optimize the common case) —
+  then compare and recommend one. Be opinionated: the human wants a strong read,
+  not a menu.
 - **Ask the three lifecycle questions.** Each is project-shaped, "none" is a recorded
   answer, never a skipped question, and the answers land in the narrative's
   **Lifecycle** section:
@@ -48,8 +53,8 @@ Capture side effects the moment a decision lands — never batch them to the end
 - **A term pinned** → write it into `docs/dictionary/DICTIONARY.md` right there: one
   heading and a one-line definition per term, related terms linked as `[[name]]`.
 - **A decision that is hard to reverse, surprising without context, and a real
-  trade-off** → offer to record it as an ADR in `docs/adr/`. All three criteria or no
-  ADR.
+  trade-off** → offer to record it as an Architecture Decision Record in
+  `docs/adr/`. All three criteria or no record.
 
 ## 3 · Slice the features — the human owns the knife
 
@@ -111,10 +116,13 @@ bad statuses. Fix until it prints `OK`.
 
 Three checks stand between a draft and finalize:
 
-1. **Reader test.** Hand the draft to a fresh subagent with zero session context; it
-   reports back what it would build and where the document is ambiguous or silent.
-   Fold every finding into the draft — an ambiguity the reader hits, a build agent
-   will hit too.
+1. **Reader test.** Resolve the reader's model — `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js"
+   models`, and read the `design.reader` role's entry: its `model`, or the session
+   inherit when that value is literally `"session"` or the role is missing from the
+   printed table. Hand the draft to a fresh subagent on that model (title prefixed
+   `[<resolved-model>] `), with zero session context; it reports back what it would
+   build and where the document is ambiguous or silent. Fold every finding into the
+   draft — an ambiguity the reader hits, a build agent will hit too.
 2. **Sweep.** Confirm: every **Decided** and **Done looks like** item from the Brief
    landed in a feature or was explicitly dropped with the human · no TBDs or
    placeholders anywhere · no criterion two builders could read differently ·
@@ -131,8 +139,8 @@ Three checks stand between a draft and finalize:
   re-renders it; nobody hand-edits it.
 - Review the Dictionary entries captured during the session; fill any gaps the sweep
   exposed.
-- Commit design.md, the Ledger, the Dictionary, and any ADRs together — the project's
-  first artifact commit.
+- Commit design.md, the Ledger, the Dictionary, and any decision records together —
+  the project's first artifact commit.
 
 Close by telling the human the design is final, `/the-loop` now sees an active
 project, and the engine — Plan → Build → Validate — picks up the first

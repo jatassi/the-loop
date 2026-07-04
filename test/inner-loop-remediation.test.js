@@ -54,7 +54,7 @@ test('a remediation-pending verdict spawns the remediation build then re-validat
   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
   assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build', 'derive', 'validate', 'build', 'validate']);
-  assert.equal(spawns[4].opts.label, 'build:alpha/remediation');
+  assert.equal(spawns[4].opts.label, '[session] build:alpha/remediation'); // untiered, unbound — session fallback
   const validatePrompts = spawns.filter((s) => s.opts.agentType === 'validate').map((s) => s.prompt);
   assert.equal(validatePrompts[0], validatePrompts[1]);
   assert.deepEqual(result.completed, ['alpha']);

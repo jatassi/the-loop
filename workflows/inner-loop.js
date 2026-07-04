@@ -34,7 +34,7 @@ const TASK_SUMMARY = {
   type: 'array',
   items: {
     type: 'object',
-    properties: { ...strings('id', 'status', 'size'), depends_on: stringArray },
+    properties: { ...strings('id', 'status', 'size', 'tier'), depends_on: stringArray },
     required: ['id'],
   },
 };
@@ -52,6 +52,35 @@ const VALIDATE_SCHEMA = phaseSchema(['perfect', 'deviation', 'remediation-pendin
   ...strings('kind', 'deviation', 'detail', 'remediation_task', 'patch_id', 'reconstruction'),
   menu: stringArray, merged: { type: 'boolean' }, dedup: { type: 'boolean' },
 });
+
+// `args.models` carries the resolved binding table `{ role: { model, effort?, via?,
+// provenance } }` the launch leg assembled (feature: model-selection); the workflow
+// script never imports src/models.js (workflow scripts import nothing), so the lookup
+// is reimplemented inline against this pinned table shape. A role missing from the
+// table — or the table itself absent — falls back to the session model with a logged,
+// run-boundary-visible fallback line; the resolver's job of expressing that fallback is
+// this table lookup's job here.
+const modelTable = snapshot.models || {};
+function roleBinding(role) {
+  if (Object.prototype.hasOwnProperty.call(modelTable, role)) { return modelTable[role]; }
+  log(`model-selection — role ${role} unbound, session-model fallback`);
+  return { model: 'session' };
+}
+
+// The pinned spawn-opts rule: a bound non-session model rides as `model`; `effort`
+// rides exactly when the binding carries one; the literal `session` model passes no
+// model opt at all (the deliberate inherit).
+function modelOpts(binding) {
+  const opts = {};
+  if (binding.model !== 'session') { opts.model = binding.model; }
+  if (binding.effort !== undefined) { opts.effort = binding.effort; }
+  return opts;
+}
+
+// Every spawn label carries this prefix: the bound model, or `session` when unbound.
+function modelLabel(binding) {
+  return `[${binding.model}] `;
+}
 
 // In-memory status view, seeded from the snapshot's index and updated as agents return — the
 // frontier below is computed against this, not the on-disk snapshot, so a dependency
@@ -145,8 +174,12 @@ async function runBuild(featureId, tasks) {
   }
   const pending = orderTasks(tasks).filter((task) => task.status !== 'built');
   for (const task of pending) {
+    if (task.tier == null) {
+      log(`model-selection — task ${featureId}/${task.id} has no tier, routing build.standard`);
+    }
+    const binding = roleBinding(`build.${task.tier ?? 'standard'}`);
     const built = await spawn(`feature: ${featureId}\ntask: ${task.id}`, {
-      agentType: 'build', label: `build:${featureId}/${task.id}`, phase: featureId, schema: BUILD_SCHEMA,
+      agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(binding),
     }, featureId);
     if (built.halted || built.stalled) { return built; }
     if (built.result === 'blocked' && built.kind === 'feature') { return built; }
@@ -156,9 +189,10 @@ async function runBuild(featureId, tasks) {
 // Spawns Validate carrying an expectation sheet — factored out because the remediation
 // round (below) re-spawns it a second time against the very same sheet.
 async function runValidate(featureId, sheet) {
+  const binding = roleBinding('validate');
   return spawn(
     `feature: ${featureId}\nexpectation-sheet: ${JSON.stringify(sheet)}`,
-    { agentType: 'validate', label: `validate:${featureId}`, phase: featureId, schema: VALIDATE_SCHEMA },
+    { agentType: 'validate', label: `${modelLabel(binding)}validate:${featureId}`, phase: featureId, schema: VALIDATE_SCHEMA, ...modelOpts(binding) },
     featureId,
   );
 }
@@ -198,8 +232,9 @@ async function runRemediation(featureId, remediationTask, sheet) {
 // bounce return itself for the caller to park, or a halted/stalled signal.
 async function runPlan(featureId) {
   if (statusById.get(featureId) !== 'designed') { return { tasks: snapshot.plans[featureId] }; }
+  const binding = roleBinding('plan');
   const planned = await spawn(`feature: ${featureId}`, {
-    agentType: 'plan', label: `plan:${featureId}`, phase: featureId, schema: PLAN_SCHEMA,
+    agentType: 'plan', label: `${modelLabel(binding)}plan:${featureId}`, phase: featureId, schema: PLAN_SCHEMA, ...modelOpts(binding),
   }, featureId);
   if (isSignal(planned) || planned.result === 'bounce') { return planned; }
   return { tasks: planned.tasks };
@@ -209,9 +244,10 @@ async function runPlan(featureId) {
 // remediation round when the verdict comes back remediation-pending. Returns the final
 // verdict (perfect/deviation/blocked) or a halted/stalled signal.
 async function runValidationCycle(featureId) {
+  const deriveBinding = roleBinding('derive');
   const derived = await spawn(
     `feature: ${featureId}\nslice: ${JSON.stringify(snapshot.slices[featureId])}\nprobe: ${JSON.stringify(snapshot.probe)}`,
-    { agentType: 'derive', label: `derive:${featureId}`, phase: featureId, schema: DERIVE_SCHEMA, effort: 'low' },
+    { agentType: 'derive', label: `${modelLabel(deriveBinding)}derive:${featureId}`, phase: featureId, schema: DERIVE_SCHEMA, ...modelOpts(deriveBinding) },
     featureId,
   );
   if (isSignal(derived)) { return derived; }

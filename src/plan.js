@@ -20,6 +20,16 @@ export const TASK_STATUS = ['pending', 'building', 'built', 'blocked'];
  */
 export const TASK_SIZES = ['xs', 's', 'm'];
 
+/**
+ * Decision-density classes a task may be stamped with — how much the task leaves the
+ * builder to decide, not its size. `rote` additionally requires correctness fully
+ * captured by the task's tests + lint; when unsure between `rote` and `standard`,
+ * choose `standard`. Selects the `build.<tier>` model binding downstream (ADR-0030).
+ * Absent on a task cut before this field existed — validatePlan warns, never errors,
+ * and downstream defaults an untiered task to `standard` with fallback provenance.
+ */
+export const TASK_TIERS = ['rote', 'standard', 'complex'];
+
 const HEADING = '## Tasks';
 
 /** The conventional location of a feature's plan artifact. */
@@ -38,6 +48,8 @@ export function planPath(featureId, root = 'docs/plans') {
  * @property {string[]} standards   docs/standards/ files the task builds under (Plan-selected)
  * @property {string[]} footprint   expected files created/modified
  * @property {string} size          xs | s | m
+ * @property {string} [tier]        rote|standard|complex — decision-density, stamped
+ *                                   at Plan; absent on a pre-feature plan
  * @property {string[]} depends_on  task-ordering edges (overlapping footprints must be chained)
  * @property {Object} [report]      completion report, folded in by Build (contract: completion-report)
  */
@@ -80,6 +92,7 @@ function normalizeTask(t) {
     footprint: t.footprint || [],
     size: t.size,
     depends_on: t.depends_on || [],
+    ...((t.tier != null) && { tier: t.tier }),
     ...((t.report != null) && { report: t.report }),
     ...((t.remediation != null) && { remediation: t.remediation }),
   };
@@ -114,6 +127,7 @@ export function validatePlan(plan, design, { standardExists } = {}) {
   for (const t of tasks) {
     if (!t.id) { continue; }
     checkTaskFields(t, { err, warn });
+    checkTaskTier(t, { err, warn });
     checkTaskCovers(t, { err, criteria, covered });
     checkTaskEdges(t, { err, contractIds, ids });
     checkTaskStandards(t, { err, standardExists });
@@ -178,6 +192,14 @@ function checkTaskFields(t, { err, warn }) {
     warn('size-at-ceiling', 'task sits at the comfort ceiling — the plan narrative must justify why it cannot split', t.id);
   }
   if (t.footprint.length === 0) { err('missing-footprint', 'task declares no expected file footprint', t.id); }
+}
+
+// Decision-density tier: enum-checked when present. A plan cut before this field
+// existed carries none — absence only warns (grandfathered), downstream defaults it
+// to `standard` with fallback provenance.
+function checkTaskTier(t, { err, warn }) {
+  if (t.tier == null) { warn('missing-tier', 'task has no tier — routes to build.standard downstream', t.id); }
+  else if (!TASK_TIERS.includes(t.tier)) { err('bad-tier', `tier must be one of ${TASK_TIERS.join('|')} (got ${JSON.stringify(t.tier)})`, t.id); }
 }
 
 // Per-task coverage claims: each `covers` index lands inside the feature's criteria.
@@ -326,6 +348,7 @@ export function appendRemediation(plan, findings) {
     standards: [],
     footprint,
     size: 's',
+    tier: 'standard',
     depends_on: plan.tasks.map((t) => t.id),
   };
   plan.tasks.push(task);

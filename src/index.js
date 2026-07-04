@@ -8,4 +8,7 @@ export { STATUS,validate } from './schema.js';
 // /the-loop's orientation core (feature: the-loop-entry).
 export { detectState, frontier, orient,propose } from './entry.js';
 // The plan artifact — per-feature task contracts, the Plan → Build handoff (feature: plan).
-export { parsePlan, planPath, TASK_SIZES,TASK_STATUS, validatePlan } from './plan.js';
+export { parsePlan, planPath, TASK_SIZES,TASK_STATUS, TASK_TIERS, validatePlan } from './plan.js';
+// The model-binding resolver — role → model/effort/via merge across defaults <
+// project < local layers, with provenance (feature: model-selection).
+export { bindingFor, EFFORTS,resolveModels } from './models.js';

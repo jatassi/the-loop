@@ -22,13 +22,18 @@
 //   spine validate scan <feature-id> [target] [branch]  forensics tripwires + patch-id dedup over
 //                                                       the feature branch's diff (target: main,
 //                                                       branch: loop/<feature-id> by default)
+//   spine models [defaults.json]    resolved role table: plugin defaults <
+//                                    project (.claude/settings.json) < local
+//                                    (.claude/settings.local.json), "the-loop".modelBindings
 
 import { execSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { parseEscalation } from '../src/escalation.js';
 import { renderLedger } from '../src/ledger.js';
+import { resolveModels } from '../src/models.js';
 import { parse } from '../src/parse.js';
 import { appendRemediation, foldReport, parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
@@ -40,6 +45,8 @@ import { latestPatchId, parseUnifiedDiff, scan } from '../src/validate.js';
 const DEFAULT = 'docs/design/design.md';
 const LEDGER = 'docs/ledger/ledger.md';
 const ESCALATIONS_DIR = 'docs/escalations';
+// The plugin's own root: bin/spine.js's parent directory's parent — never cwd.
+const PLUGIN_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const read = (file) => readFileSync(file || DEFAULT, 'utf8');
 const out = (obj) => process.stdout.write(`${JSON.stringify(obj, null, 2)}\n`);
 const clean = ({ _blocks, ...rest }) => rest; // drop the yaml Documents from JSON output
@@ -85,8 +92,12 @@ try {
       validateCommand(rest);
       break;
     }
+    case 'models': {
+      modelsCommand(rest);
+      break;
+    }
     default: {
-      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|ledger render|plan <parse|check|task|report|remediate> <id>|validate scan <id>> [file…]\n');
+      process.stdout.write('usage: spine <parse|index|resolve <id>|check|set-status <id> <status>|ledger render|plan <parse|check|task|report|remediate> <id>|validate scan <id>|models [defaults.json]> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }
@@ -120,6 +131,48 @@ function readEscalations() {
     .filter((f) => f.endsWith('.md'))
     .map((f) => parseEscalation(readFileSync(path.join(ESCALATIONS_DIR, f), 'utf8')))
     .filter(Boolean);
+}
+
+// spine models [defaults.json] — the resolved role table: plugin defaults <
+// project (.claude/settings.json) < local (.claude/settings.local.json), both under
+// the "the-loop".modelBindings key, both read from cwd (agents run at the target
+// repo's root). The optional trailing arg overrides the defaults-file path.
+function modelsCommand([defaultsFile]) {
+  const defaultsPath = defaultsFile || path.join(PLUGIN_ROOT, 'config/model-bindings.json');
+  const defaults = readDefaults(defaultsPath);
+  const project = readSettingsLayer('.claude/settings.json');
+  const local = readSettingsLayer('.claude/settings.local.json');
+  out(resolveModels({ defaults, project, local }));
+}
+
+// The plugin-defaults file: expected to exist and parse — a read or parse failure
+// names the file.
+function readDefaults(file) {
+  let text;
+  try {
+    text = readFileSync(file, 'utf8');
+  } catch (error) {
+    throw new Error(`could not read defaults file ${file}: ${error.message}`, { cause: error });
+  }
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error });
+  }
+}
+
+// A settings layer (project or local): a missing file, or a present file missing the
+// "the-loop".modelBindings key, is an empty layer — never an error. Unparseable JSON
+// in a present file is an error naming the file.
+function readSettingsLayer(file) {
+  if (!existsSync(file)) { return {}; }
+  let settings;
+  try {
+    settings = JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error });
+  }
+  return settings?.['the-loop']?.modelBindings ?? {};
 }
 
 // The plan subcommands: parse | check | task | report | remediate.

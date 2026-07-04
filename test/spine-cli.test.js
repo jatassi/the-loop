@@ -175,7 +175,11 @@ test('spine plan remediate appends the round-marker so plan check passes; a seco
 
     const task = JSON.parse(spine(['plan', 'remediate', 'widget'], { cwd: root, input: JSON.stringify(FINDINGS) }));
     assert.equal(task.id, 'remediation');
-    assert.match(spine(['plan', 'check', 'widget'], { cwd: root }), /^OK/);
+    // t1 predates the tier field this feature adds, so plan check still warns
+    // missing-tier for it — the grandfather posture (an untiered task warns,
+    // never blocks). The remediated plan still passes: tolerate that leading
+    // warn line, but require the output to end in the OK summary line.
+    assert.match(spine(['plan', 'check', 'widget'], { cwd: root }), /^(?: {2}warn .*\n)*OK {2}.*\n$/);
 
     const written = readFileSync(planPath, 'utf8');
     spineFails(['plan', 'remediate', 'widget'], { cwd: root, input: JSON.stringify(FINDINGS) });
@@ -200,4 +204,62 @@ test('the spine usage string names set-status, ledger render, and plan remediate
   assert.match(usage, /set-status/);
   assert.match(usage, /ledger render/);
   assert.match(usage, /plan <[^>]*remediate/);
+});
+
+test("spine models resolves the shipped plugin defaults relative to bin/spine.js's own location, never cwd, and succeeds with no project or local settings present", () => {
+  const root = fixture({}); // no .claude/, no config/ — an empty target repo
+  try {
+    const table = JSON.parse(spine(['models'], { cwd: root }));
+    assert.deepEqual(table.plan, { model: 'session', provenance: 'default' }); // one shipped row, not the whole table
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const CUSTOM_DEFAULTS = JSON.stringify({
+  build: { model: 'opus', effort: 'low' },
+  drive: { model: 'sonnet', via: 'my-executor' },
+});
+
+test('spine models merges an overridden defaults file with project < local settings overrides (whole-entry replacement), stamping per-role provenance and carrying a bound via through untouched', () => {
+  const root = fixture({ 'defaults.json': CUSTOM_DEFAULTS });
+  try {
+    const defaultsOnly = JSON.parse(spine(['models', 'defaults.json'], { cwd: root }));
+    assert.deepEqual(defaultsOnly.build, { model: 'opus', effort: 'low', provenance: 'default' });
+    assert.deepEqual(defaultsOnly.drive, { model: 'sonnet', via: 'my-executor', provenance: 'default' });
+
+    mkdirSync(path.join(root, '.claude'), { recursive: true });
+    writeFileSync(path.join(root, '.claude/settings.json'), JSON.stringify({ 'the-loop': { modelBindings: { build: { model: 'haiku' } } } }));
+    const withProject = JSON.parse(spine(['models', 'defaults.json'], { cwd: root }));
+    assert.deepEqual(withProject.build, { model: 'haiku', provenance: 'project' }); // wholesale replacement — effort is gone
+    assert.deepEqual(withProject.drive, { model: 'sonnet', via: 'my-executor', provenance: 'default' }); // untouched
+
+    writeFileSync(path.join(root, '.claude/settings.local.json'), JSON.stringify({ 'the-loop': { modelBindings: { build: { model: 'opus', effort: 'high' } } } }));
+    const withLocal = JSON.parse(spine(['models', 'defaults.json'], { cwd: root }));
+    assert.deepEqual(withLocal.build, { model: 'opus', effort: 'high', provenance: 'local' }); // local beats project too
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('spine models: a resolver rejection or unparseable settings JSON exits 1 naming the offender; the usage string names models', () => {
+  const badDefaultsRoot = fixture({ 'defaults.json': JSON.stringify({ build: { effort: 'low' } }) }); // missing model
+  try {
+    const error = spineFails(['models', 'defaults.json'], { cwd: badDefaultsRoot });
+    assert.match(error.stderr, /build.*default/);
+  } finally {
+    rmSync(badDefaultsRoot, { recursive: true, force: true });
+  }
+
+  const badProjectRoot = fixture({ 'defaults.json': '{}' });
+  try {
+    mkdirSync(path.join(badProjectRoot, '.claude'), { recursive: true });
+    writeFileSync(path.join(badProjectRoot, '.claude/settings.json'), '{ not json');
+    const error = spineFails(['models', 'defaults.json'], { cwd: badProjectRoot });
+    assert.match(error.stderr, /\.claude\/settings\.json/);
+  } finally {
+    rmSync(badProjectRoot, { recursive: true, force: true });
+  }
+
+  assert.match(spine([]), /models/);
 });

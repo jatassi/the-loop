@@ -73,7 +73,7 @@ test('a feature-kind blocked build return parks the feature and spawns no furthe
   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
 
   assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build']); // t2 never spawns, nor derive/validate
-  assert.equal(spawns[1].opts.label, 'build:alpha/t1');
+  assert.equal(spawns[1].opts.label, '[session] build:alpha/t1'); // untiered, unbound — session fallback
   assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: 'the contract contradicts itself', menu: blocked.menu }]);
   assert.deepEqual(result.completed, []);
 });

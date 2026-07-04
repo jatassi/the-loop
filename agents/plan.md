@@ -125,6 +125,12 @@ Write `docs/plans/<feature-id>.md`: a short narrative (the decomposition rationa
 the wiring story, any `m`-size justification) followed by the machine-parsed block
 under its exact heading:
 
+Every task also gets a `tier` — decision-density, not size: how much the task
+leaves the builder to decide. `rote` means nothing is left to decide *and*
+correctness is fully captured by the task's own tests plus lint; `complex` means
+real judgment calls remain; `standard` is everything in between. When unsure
+between rote and standard, choose standard.
+
     ## Tasks
 
     ```yaml
@@ -140,6 +146,7 @@ under its exact heading:
         standards: []           # docs/standards/ files the task builds under (empty is the norm)
         footprint: [path, …]    # expected files created or modified
         size: xs                # xs | s | m
+        tier: standard           # rote | standard | complex — decision-density, not size (see above)
         depends_on: []          # task ordering; overlapping footprints must be chained
     ```
 
@@ -154,12 +161,17 @@ Fix every error; leave warnings only when the narrative answers them.
 
 Trigger this when any of: the feature touches multiple
 interface contracts · multiple other features depend on it (directly or transitively) ·
-your judgment says a planning mistake here is expensive. Spawn one agent whose
-prompt contains ONLY the resolved slice and the plan file path, instructed to
-audit adversarially: criteria the tasks miss, details the plan asserts that the
-slice does not support, footprints that look implausible against the actual repo.
-Fold its findings in and re-run the check (step 6). Skip this for small,
-low-blast-radius plans — it costs a full agent.
+your judgment says a planning mistake here is expensive. Before spawning, resolve
+the audit's model: `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" models`, and read the
+`plan.audit` role's entry — its `model`, or the session inherit when that value is
+literally `"session"` or the role is missing from the printed table. Spawn one
+agent on that model, its title/label prefixed `[<resolved-model>] ` (e.g.
+`[opus] plan-audit:<feature-id>`), whose prompt contains ONLY the resolved slice
+and the plan file path, instructed to audit adversarially: criteria the tasks
+miss, details the plan asserts that the slice does not support, footprints that
+look implausible against the actual repo. Fold its findings in and re-run the
+check (step 6). Skip this for small, low-blast-radius plans — it costs a full
+agent.
 
 ## 8 · Book the plan
 
@@ -177,7 +189,7 @@ Once `spine plan check` is clean (after any audit fold-in):
 Planned (booked in step 8):
 
     { "result": "planned", "feature": "<id>",
-      "tasks": [{ "id": "<task-id>", "status": "pending", "depends_on": ["<task-id>", …], "size": "xs|s|m" }, …],
+      "tasks": [{ "id": "<task-id>", "status": "pending", "depends_on": ["<task-id>", …], "size": "xs|s|m", "tier": "rote|standard|complex" }, …],
       "plan": "docs/plans/<id>.md", "notes": "<one line, only if something needs saying>" }
 
 `tasks` carries one summary per task written in step 6, in the order they appear in
