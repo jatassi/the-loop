@@ -178,7 +178,10 @@ rebase conflict from step 2) — park the feature; the task itself stays `pendin
 in the plan, ready to retry once a human resolves the park:
 
 1. Author the menu — 2–3 concrete ways to unblock (resolve the conflict by hand,
-   revisit the contract, re-plan the task) — addressed to a human, not a builder.
+   revisit the contract, re-plan the task) — addressed to a human, not a
+   builder. Each option is kind-stamped `{resolution, option}`, the recommended
+   option first — `resolution` is one of `retry | fix-in-place | re-plan |
+   defer` (`waive` belongs to validate parks only and is never offered here).
 2. Write `docs/escalations/<feature-id>.md`: narrative prose naming the defect,
    then one fenced `yaml` block under the exact heading `## Escalation`:
 
@@ -188,7 +191,7 @@ in the plan, ready to retry once a human resolves the park:
        phase: build
        kind: feature
        deviation: <the defect, one paragraph>
-       menu: [<option>, …]
+       menu: [{resolution: retry|fix-in-place|re-plan|defer, option: <text>}, …]  # recommended first
        branch: loop/<feature-id>
        ```
 
@@ -216,7 +219,7 @@ Blocked, feature-shaped (the park is booked — step 5):
     { "task": "<feature-id>/<task-id>", "result": "blocked", "kind": "feature",
       "footprint_actual": [], "diff_actual": { "files": 0, "insertions": 0, "deletions": 0 },
       "deviations": ["<the defect, precisely — what you observed, not who to blame>"],
-      "menu": ["<option>", "…"],
+      "menu": [{"resolution": "retry|fix-in-place|re-plan|defer", "option": "<text>"}, "…"],
       "summary": "<what you tried and where it stopped>" }
 
 Blocked, environment-shaped (nothing booked):

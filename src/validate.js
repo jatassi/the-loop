@@ -5,6 +5,10 @@
 // justification); this layer only observes. Pure over in-memory models per
 // docs/standards/pure-core-thin-cli.md — bin/spine.js gathers the git facts.
 
+import YAML from 'yaml';
+
+import { replaceBlock } from './blocks.js';
+
 /**
  * @typedef {Object} DiffLine
  * @property {number} line  1-based line number (new file for added, old file for removed)
@@ -188,14 +192,105 @@ function footprintExcursions(tasks) {
 }
 
 /**
- * The last patch_id recorded in a validations file (docs/validations/<feature-id>.md)
- * — the dedup key: a diff whose patch-id matches needs no re-validation.
- * @param {string} text
- * @returns {string|null}
+ * @typedef {Object} LatestEntry
+ * @property {string|null} patch_id  the dedup key
+ * @property {string|null} result    perfect | deviation | remediation-pending
+ * @property {string|null} retried   the retry mark ("<date> — <reason>"), or null
  */
-export function latestPatchId(text) {
-  let id = null;
-  const entries = text.matchAll(/patch_id:\s*([0-9a-f]{40})/g);
-  for (const m of entries) { id = m[1]; }
-  return id;
+
+const VALIDATION_HEADING = /^## Validation\b.*$/gm;
+
+/**
+ * The span of the retained yaml block under the LAST `## Validation` heading in a
+ * validations file (docs/validations/<feature-id>.md) — the substrate latestEntry
+ * (read) and appendWaiver/stampRetried (mutate) all anchor to. Anchored to that
+ * heading only, never to the last yaml block or the last `patch_id:` match, so a
+ * file ending in a trailing `## Resolution` block (which carries its own patch_id)
+ * still resolves to the Validation entry before it. Null when the file carries no
+ * `## Validation` entry yet.
+ * @param {string} text
+ * @returns {import('./blocks.js').Span|null}
+ */
+function lastValidationSpan(text) {
+  let heading = null;
+  for (const m of text.matchAll(VALIDATION_HEADING)) { heading = m; }
+  if (!heading) { return null; }
+  const fence = /```ya?ml[^\n]*\n/g;
+  fence.lastIndex = heading.index + heading[0].length;
+  const open = fence.exec(text);
+  if (!open) { return null; }
+  const innerStart = open.index + open[0].length;
+  const innerEnd = text.indexOf('\n```', innerStart);
+  if (innerEnd === -1) { return null; }
+  return { inner: text.slice(innerStart, innerEnd), innerStart, innerEnd };
+}
+
+/**
+ * The judged entry under the LAST `## Validation` heading — the dedup key. Null-safe:
+ * an absent/empty file, or one with no `## Validation` entry yet, yields null.
+ * @param {string} text
+ * @returns {LatestEntry|null}
+ */
+export function latestEntry(text) {
+  const span = lastValidationSpan(text);
+  if (!span) { return null; }
+  const js = YAML.parse(span.inner) || {};
+  return { patch_id: js.patch_id ?? null, result: js.result ?? null, retried: js.retried ?? null };
+}
+
+/**
+ * Dedup means "no fresh judgment needed": the diff's own patch-id matches the latest
+ * entry's, and that entry carries no retried mark — a mark means a human asked for a
+ * fresh re-judgment despite the identical diff, so a marked match still dedups false.
+ * @param {string|null} patchId
+ * @param {LatestEntry|null} latest
+ * @returns {boolean}
+ */
+export function isDeduped(patchId, latest) {
+  return latest != null && patchId != null && patchId === latest.patch_id && latest.retried == null;
+}
+
+/**
+ * Append a waiver to the waivers list of the entry under the LAST `## Validation`
+ * heading in a validations file, creating the waivers key when the entry lacks one.
+ * Waivers carry no expiry field — a recorded waiver is permanent for the feature
+ * (ADR-0032). The retained yaml block is parsed, mutated, and spliced back, so every
+ * byte outside that entry's own block (including a trailing non-Validation block) is
+ * preserved. Throws — nothing written by any caller — on a missing/empty required
+ * field, or a file with no `## Validation` entry yet.
+ * @param {string} text
+ * @param {{obligation: string, reason: string, approver: string}} waiver
+ * @returns {string}
+ */
+export function appendWaiver(text, waiver) {
+  const { obligation, reason, approver } = waiver || {};
+  if (!obligation || !reason || !approver) {
+    throw new Error('a waiver requires non-empty obligation, reason, and approver');
+  }
+  const span = lastValidationSpan(text);
+  if (!span) { throw new Error('no "## Validation" entry to waive against'); }
+  const doc = YAML.parseDocument(span.inner);
+  const entry = { obligation, reason, approver };
+  if (doc.hasIn(['waivers'])) { doc.addIn(['waivers'], entry); }
+  else { doc.setIn(['waivers'], [entry]); }
+  return replaceBlock(text, span, doc.toString().replace(/\n$/, ''));
+}
+
+/**
+ * Set (or replace) the `retried` key on the entry under the LAST `## Validation`
+ * heading — the mark ADR-0032's retry-on-validate-park resolution stamps so
+ * isDeduped treats the match as dedup false despite an identical patch-id, letting
+ * all four validator legs run fresh. Consumed by t7's `spine escalation resolve
+ * retry`. Every byte outside that entry's own yaml block is preserved. Throws when
+ * the file carries no `## Validation` entry yet.
+ * @param {string} text
+ * @param {string} mark  "<date> — <reason>"
+ * @returns {string}
+ */
+export function stampRetried(text, mark) {
+  const span = lastValidationSpan(text);
+  if (!span) { throw new Error('no "## Validation" entry to stamp'); }
+  const doc = YAML.parseDocument(span.inner);
+  doc.setIn(['retried'], mark);
+  return replaceBlock(text, span, doc.toString().replace(/\n$/, ''));
 }

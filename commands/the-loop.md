@@ -50,7 +50,9 @@ this / where are we / what needs you / what's next), then report:
 - **What needs the human** — every id in `parked`, each with its recommendation, first.
 - **The proposal** — the default next action. If `frontier` is non-empty alongside
   parked items, offer both: decisions unblock parks; the frontier can advance
-  meanwhile. Accepting `advance-frontier` enters the launch leg below.
+  meanwhile. Accepting `resolve-parked` routes to the `adjust` skill — the re-entry
+  route its own description names; accepting `advance-frontier` enters the launch
+  leg below.
 
 **`partial`** — a half-configured project. Name exactly what `missing` lists, propose
 a repair (finish the interrupted Design, or restore the file from git history), and do
@@ -121,9 +123,29 @@ one procedure, so neither route improvises its own version.
      `environment-blocked`) and `detail`, alongside whatever `completed`/`parked`
      landed before the halt.
 
+   Book this boundary before moving on — every return here, whatever shape it took,
+   gets exactly one Run-history line. Assemble a run-summary JSON: `date` = today
+   (`YYYY-MM-DD`, this session's own clock — the `BoundaryResult` itself carries no
+   date), `run` = the run identifier the Workflow call returned (or, when none comes
+   back, a session-chosen label), `completed` passed through verbatim, `parked` and
+   `stalled` reduced to just their entries' `feature` ids, and `halted`/`budget`
+   passed through when present. Pipe that JSON to
+   `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" ledger append-run -`, then commit
+   `docs/ledger/ledger.md` alone — its own commit, nothing else riding along:
+   `ledger: append-run <run>`.
+
+   When `parked` is non-empty, hand off to the `adjust` skill right here — the
+   run-boundary route its own description names; it lays out the full docket and
+   folds each decision back through the resolution toolkit. Separately, when
+   `parked` or `halted` is non-empty and this session has a push-notification
+   capability available (the notification-channel port's harness-native default
+   adapter — optional, so its absence here is ordinary, never an error), push a
+   one-line summary through it; unbound, say nothing here and continue.
+
 ### Proposal kinds
 
-`onboard` route to onboarding · `resolve-parked` parked escalations need decisions ·
+`onboard` route to onboarding ·
+`resolve-parked` parked escalations need decisions, routed to the `adjust` skill ·
 `advance-frontier` run the dependency-ready features · `ship` the validated frontier
 awaits the human gate · `new-intake` everything is shipped; bring the next idea ·
 `repair` artifacts missing or graph invalid · `blocked` unreachable on a valid graph —

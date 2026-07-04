@@ -67,7 +67,9 @@ function whatNeedsYou(escalations) {
     return '## What needs you\nNothing parked — no open escalations.';
   }
   const entries = escalations.map((e) => {
-    const menu = e.menu && e.menu.length > 0 ? e.menu.join('; ') : '(none)';
+    const menu = e.menu && e.menu.length > 0
+      ? e.menu.map((m) => `[${m.resolution ?? '?'}] ${m.option}`).join('; ')
+      : '(none)';
     return `- **${e.feature}** (${e.phase}): ${e.deviation ?? '(no deviation recorded)'}\n  - menu: ${menu}\n  - branch: ${e.branch ?? 'none'}`;
   });
   return ['## What needs you', ...entries].join('\n');
@@ -78,4 +80,38 @@ function whatsNext(model) {
   const tick = '`';
   const ready = frontier(model).map((f) => `${tick}${f.id}${tick}`);
   return `## What's next\n${ready.length > 0 ? ready.join(', ') : 'Nothing dependency-ready.'}`;
+}
+
+/**
+ * Insert one newest-first Run-history bullet as the first content after the
+ * "## Run history" heading in a Ledger's prior text. Pure: the heading and its
+ * carried content are the only things read; everything else in priorText passes
+ * through untouched. "## Run history" is a preserved section (renderLedger carries
+ * it byte-identically), so a subsequent render keeps the inserted bullet exactly.
+ * @param {string} priorText
+ * @param {{date: string, run: string, completed?: string[], parked?: string[],
+ *   stalled?: string[], halted?: {reason: string, detail: string},
+ *   budget?: {spent: number, remaining: number}}} summary
+ * @returns {string}
+ */
+export function appendRun(priorText, summary) {
+  const { date, run } = summary || {};
+  if (!date || !run) { throw new Error('run summary requires date and run'); }
+  const headingRe = /^## Run history\s*$/m;
+  const m = headingRe.exec(priorText);
+  if (!m) { throw new Error('Ledger has no "## Run history" heading'); }
+  const at = m.index + m[0].length;
+  return `${priorText.slice(0, at)}\n${runBullet(summary)}${priorText.slice(at)}`;
+}
+
+// One deterministic line: date, run, then completed/parked/stalled id lists, halted
+// reason+detail, budget — in that fixed order, empty segments omitted.
+function runBullet({ date, run, completed = [], parked = [], stalled = [], halted, budget }) {
+  const fields = [date, run];
+  if (completed.length > 0) { fields.push(`completed: ${completed.join(', ')}`); }
+  if (parked.length > 0) { fields.push(`parked: ${parked.join(', ')}`); }
+  if (stalled.length > 0) { fields.push(`stalled: ${stalled.join(', ')}`); }
+  if (halted) { fields.push(`halted: ${halted.reason} — ${halted.detail}`); }
+  if (budget) { fields.push(`budget: ${budget.spent}/${budget.remaining}`); }
+  return `- ${fields.join(' | ')}`;
 }

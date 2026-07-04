@@ -95,6 +95,7 @@ function normalizeTask(t) {
     ...((t.tier != null) && { tier: t.tier }),
     ...((t.report != null) && { report: t.report }),
     ...((t.remediation != null) && { remediation: t.remediation }),
+    ...((t.fix != null) && { fix: t.fix }),
   };
 }
 
@@ -203,10 +204,11 @@ function checkTaskTier(t, { err, warn }) {
 }
 
 // Per-task coverage claims: each `covers` index lands inside the feature's criteria.
-// The remediation round-marker is exempt both ways (ADR-0027/0029): it covers no
-// criterion by design, and its empty `covers` never satisfies one either.
+// The remediation round-marker and a fix task (ADR-0027/0029, ADR-0032) are exempt
+// both ways: they cover no criterion by design, and their empty `covers` never
+// satisfies one either.
 function checkTaskCovers(t, { err, criteria, covered }) {
-  if (t.covers.length === 0 && !t.remediation) { err('task-covers-nothing', 'task claims no feature acceptance criterion', t.id); }
+  if (t.covers.length === 0 && !t.remediation && !t.fix) { err('task-covers-nothing', 'task claims no feature acceptance criterion', t.id); }
   for (const k of t.covers) {
     if (Number.isSafeInteger(k) && k >= 1 && k <= criteria.length) { covered.add(k); }
     else { err('bad-covers-ref', `covers references criterion #${k} but the feature has ${criteria.length}`, t.id); }
@@ -360,6 +362,88 @@ export function appendRemediation(plan, findings) {
 function fileOfFinding(finding) {
   const m = /^(.+):(\d+)$/.exec((finding && finding.location) || '');
   return m ? m[1] : null;
+}
+
+/**
+ * Append a fix task (ADR-0032): the mechanical channel a human's fix routes through
+ * after a park. Unlike the remediation round-marker, a fix is not one-shot — each
+ * call appends the next fix-N (N = 1 + however many fix-flagged tasks already exist).
+ * When the plan carries blocked tasks (a build park), each is reset to `pending`, its
+ * report dropped, and fix-N appended to its `depends_on` — chained behind the fix so
+ * it reruns after. fix-N's own `depends_on` lists every other prior task (so any
+ * overlapping footprint stays ordered) but never a task being reset — chaining both
+ * directions would cycle. When no task is blocked (a validate park), the reset step
+ * is simply empty and the append is plain.
+ * @param {PlanModel} plan
+ * @param {{directive?: string, acceptance: string[], footprint: string[], title?: string}} input
+ * @returns {TaskContract} the appended task
+ */
+export function appendFix(plan, input) {
+  const { directive, acceptance, footprint, title } = input || {};
+  validateFixInput(acceptance, footprint);
+  const resolvedTitle = title || firstLineOf(directive);
+  if (!resolvedTitle) {
+    throw new Error('fix requires a title, or a directive to default one from');
+  }
+  if (!plan._blocks.tasks) {throw new Error('plan has no tasks block to append into');}
+
+  const id = `fix-${plan.tasks.filter((t) => t.fix).length + 1}`;
+  const blocked = plan.tasks.filter((t) => t.status === 'blocked');
+  const blockedIds = new Set(blocked.map((t) => t.id));
+  const task = buildFixTask({ id, title: resolvedTitle, acceptance, footprint, priorIds: plan.tasks.map((t) => t.id), blockedIds });
+
+  const doc = plan._blocks.tasks.doc;
+  plan.tasks.push(task);
+  doc.setIn(['tasks', plan.tasks.length - 1], task);
+  resetBlockedTasks({ plan, doc, blocked, fixId: id });
+
+  return task;
+}
+
+function validateFixInput(acceptance, footprint) {
+  if (!Array.isArray(acceptance) || acceptance.length === 0) {
+    throw new Error('fix requires a non-empty acceptance list');
+  }
+  if (!Array.isArray(footprint) || footprint.length === 0) {
+    throw new Error('fix requires a non-empty footprint list');
+  }
+}
+
+// title's fallback: the directive's own first line; '' when there is no directive to fall
+// back to (the caller then refuses for lack of a title).
+function firstLineOf(directive) {
+  return typeof directive === 'string' ? directive.split('\n', 1)[0].trim() : '';
+}
+
+function buildFixTask({ id, title, acceptance, footprint, priorIds, blockedIds }) {
+  return {
+    id,
+    title,
+    status: 'pending',
+    fix: true,
+    covers: [],
+    acceptance,
+    injects: [],
+    standards: [],
+    footprint,
+    size: 's',
+    tier: 'standard',
+    depends_on: priorIds.filter((tid) => !blockedIds.has(tid)),
+  };
+}
+
+// Reset each blocked task to pending, drop its report, and chain fix-N behind it —
+// in both the JS model and the retained YAML document.
+function resetBlockedTasks({ plan, doc, blocked, fixId }) {
+  for (const t of blocked) {
+    const idx = plan.tasks.indexOf(t);
+    t.status = 'pending';
+    delete t.report;
+    t.depends_on.push(fixId);
+    doc.setIn(['tasks', idx, 'status'], 'pending');
+    doc.deleteIn(['tasks', idx, 'report']);
+    doc.addIn(['tasks', idx, 'depends_on'], fixId);
+  }
 }
 
 function hasAcceptance(a) {

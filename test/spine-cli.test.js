@@ -74,6 +74,41 @@ test('spine set-status flips one feature, prints it as JSON, and exits 0; an unk
   }
 });
 
+test('spine note appends text to a feature\'s notes array, creating the key when absent, prints the updated node as JSON, and leaves every byte outside the feature-graph block untouched; an unknown id or empty text exits 1 with nothing written', () => {
+  const root = fixture({ 'docs/design/design.md': DESIGN });
+  try {
+    const designPath = path.join(root, 'docs/design/design.md');
+    const node = JSON.parse(spine(['note', 'widget', 'a design-time note'], { cwd: root }));
+    assert.equal(node.id, 'widget');
+    assert.deepEqual(node.notes, ['a design-time note']);
+
+    const written = readFileSync(designPath, 'utf8');
+    assert.equal(written, DESIGN.replace(
+      '    acceptance: renders a widget\n',
+      '    acceptance: renders a widget\n    notes:\n      - a design-time note\n',
+    ));
+
+    spineFails(['note', 'ghost', 'a note'], { cwd: root });
+    spineFails(['note', 'widget', ''], { cwd: root });
+    assert.equal(readFileSync(designPath, 'utf8'), written); // the two refusals wrote nothing
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('after a note append, spine check still reports OK and spine resolve shows the new note riding the slice', () => {
+  const root = fixture({ 'docs/design/design.md': DESIGN });
+  try {
+    spine(['note', 'widget', 'a design-time note'], { cwd: root });
+    assert.match(spine(['check'], { cwd: root }), /^OK {2}/);
+
+    const resolved = JSON.parse(spine(['resolve', 'widget'], { cwd: root }));
+    assert.deepEqual(resolved.node.notes, ['a design-time note']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 const PRIOR_LEDGER = `## What this is
 Fixture ledger for the CLI wiring test.
 
@@ -125,6 +160,80 @@ test('spine ledger render reads design.md + docs/escalations/*.md (absent dir = 
 
     spine(['ledger', 'render'], { cwd: root }); // same inputs again
     assert.equal(readFileSync(ledgerPath, 'utf8'), withEscalation); // unchanged
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const SUMMARY = { date: '2026-07-04', run: 'wf_999', completed: ['widget'], parked: ['gadget'] };
+
+test('spine ledger append-run reads a run-summary JSON (file arg or stdin) and inserts one bullet as the first content after "## Run history", leaving the rest of the Ledger untouched', () => {
+  const root = fixture({ 'docs/ledger/ledger.md': PRIOR_LEDGER });
+  try {
+    const ledgerPath = path.join(root, 'docs/ledger/ledger.md');
+    const summaryPath = path.join(root, 'summary.json');
+    writeFileSync(summaryPath, JSON.stringify(SUMMARY));
+
+    spine(['ledger', 'append-run', 'summary.json'], { cwd: root });
+    assert.equal(readFileSync(ledgerPath, 'utf8'), PRIOR_LEDGER.replace(
+      '## Run history\n',
+      '## Run history\n- 2026-07-04 | wf_999 | completed: widget | parked: gadget\n',
+    ));
+
+    // a second call, via stdin this time, inserts newest-first above the first
+    const secondSummary = { date: '2026-07-05', run: 'wf_1000' };
+    spine(['ledger', 'append-run', '-'], { cwd: root, input: JSON.stringify(secondSummary) });
+    assert.equal(readFileSync(ledgerPath, 'utf8'), PRIOR_LEDGER.replace(
+      '## Run history\n',
+      '## Run history\n- 2026-07-05 | wf_1000\n- 2026-07-04 | wf_999 | completed: widget | parked: gadget\n',
+    ));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('spine ledger append-run exits 1 with nothing written when the summary is missing date/run, when the Ledger has no "## Run history" heading, or when the Ledger file is absent', () => {
+  const root = fixture({ 'docs/ledger/ledger.md': PRIOR_LEDGER });
+  try {
+    const ledgerPath = path.join(root, 'docs/ledger/ledger.md');
+    const before = readFileSync(ledgerPath, 'utf8');
+
+    spineFails(['ledger', 'append-run', '-'], { cwd: root, input: JSON.stringify({ run: 'wf_1' }) });
+    spineFails(['ledger', 'append-run', '-'], { cwd: root, input: JSON.stringify({ date: '2026-07-04' }) });
+    assert.equal(readFileSync(ledgerPath, 'utf8'), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+
+  const noHeadingRoot = fixture({ 'docs/ledger/ledger.md': '## What this is\nNo run history here.\n' });
+  try {
+    const ledgerPath = path.join(noHeadingRoot, 'docs/ledger/ledger.md');
+    const before = readFileSync(ledgerPath, 'utf8');
+    spineFails(['ledger', 'append-run', '-'], { cwd: noHeadingRoot, input: JSON.stringify(SUMMARY) });
+    assert.equal(readFileSync(ledgerPath, 'utf8'), before);
+  } finally {
+    rmSync(noHeadingRoot, { recursive: true, force: true });
+  }
+
+  const absentRoot = fixture({});
+  try {
+    spineFails(['ledger', 'append-run', '-'], { cwd: absentRoot, input: JSON.stringify(SUMMARY) });
+  } finally {
+    rmSync(absentRoot, { recursive: true, force: true });
+  }
+});
+
+test('a subsequent spine ledger render preserves the spine ledger append-run bullet byte-identically', () => {
+  const root = fixture({ 'docs/design/design.md': DESIGN, 'docs/ledger/ledger.md': PRIOR_LEDGER });
+  try {
+    const ledgerPath = path.join(root, 'docs/ledger/ledger.md');
+    spine(['ledger', 'append-run', '-'], { cwd: root, input: JSON.stringify(SUMMARY) });
+    const afterAppend = readFileSync(ledgerPath, 'utf8');
+
+    spine(['ledger', 'render'], { cwd: root });
+    const afterRender = readFileSync(ledgerPath, 'utf8');
+    assert.match(afterRender, /## Run history\n- 2026-07-04 \| wf_999 \| completed: widget \| parked: gadget\n2026-01-01: first hand-render\.\n$/);
+    assert.equal(afterRender.slice(afterRender.indexOf('## Run history')), afterAppend.slice(afterAppend.indexOf('## Run history')));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -196,6 +305,54 @@ test('spine plan remediate appends the round-marker so plan check passes; a seco
     assert.equal(readFileSync(planPath, 'utf8'), before); // a footprint-less findings set wrote nothing
   } finally {
     rmSync(freshRoot, { recursive: true, force: true });
+  }
+});
+
+const FIX_PLAN = `# Plan — widget
+
+## Tasks
+
+\`\`\`yaml
+feature: widget
+design_version: 1
+tasks:
+  - id: t1
+    title: Persistence
+    status: blocked
+    covers: [1]
+    acceptance: a saved widget round-trips
+    footprint: [src/save.js]
+    size: s
+    depends_on: []
+    report:
+      result: blocked
+\`\`\`
+`;
+
+test('spine plan fix appends fix-N, resets and chains the blocked task behind it, a subsequent spine plan check passes, and empty acceptance/footprint exits 1 with nothing written', () => {
+  const root = fixture({ 'docs/design/design.md': DESIGN, 'docs/plans/widget.md': FIX_PLAN });
+  try {
+    const planFile = path.join(root, 'docs/plans/widget.md');
+    const directive = { directive: 'Fix the save-path race\nMore context', acceptance: ['t1 saves without racing'], footprint: ['src/save.js'] };
+    const task = JSON.parse(spine(['plan', 'fix', 'widget'], { cwd: root, input: JSON.stringify(directive) }));
+    assert.equal(task.id, 'fix-1');
+    assert.deepEqual(task.depends_on, []); // t1 is the only prior task, and it's being reset
+
+    const plan = JSON.parse(spine(['plan', 'parse', 'widget'], { cwd: root }));
+    const t1 = plan.tasks.find((t) => t.id === 't1');
+    assert.equal(t1.status, 'pending');
+    assert.ok(!('report' in t1));
+    assert.deepEqual(t1.depends_on, ['fix-1']); // chained behind the fix
+    // t1 predates the tier field this feature adds, so plan check still warns
+    // missing-tier for it — tolerate that leading warn line, same as remediate's test.
+    assert.match(spine(['plan', 'check', 'widget'], { cwd: root }), /^(?: {2}warn .*\n)*OK {2}.*\n$/);
+
+    const before = readFileSync(planFile, 'utf8');
+    spineFails(['plan', 'fix', 'widget'], { cwd: root, input: JSON.stringify({ acceptance: [], footprint: ['src/save.js'] }) });
+    spineFails(['plan', 'fix', 'widget'], { cwd: root, input: JSON.stringify({ acceptance: ['a'], footprint: [] }) });
+    assert.equal(readFileSync(planFile, 'utf8'), before); // both refusals wrote nothing
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { parse } from '../src/parse.js';
-import { appendRemediation, foldReport, parsePlan, planPath, REPORT_RESULTS, resolveTask, TASK_SIZES, TASK_TIERS, validatePlan } from '../src/plan.js';
+import { appendFix, appendRemediation, foldReport, parsePlan, planPath, REPORT_RESULTS, resolveTask, TASK_SIZES, TASK_TIERS, validatePlan } from '../src/plan.js';
 import { render } from '../src/render.js';
 
 const DESIGN = parse(`## Feature graph
@@ -326,4 +326,78 @@ test('validatePlan allows empty covers on a remediation task, and parsePlan pres
   const re = parsePlan(render(PLAN, m));
   assert.equal(re.tasks[2].remediation, true);
   assert.ok(!('remediation' in re.tasks[0])); // non-remediation tasks stay unflagged
+});
+
+test('appendFix appends fix-N with the given acceptance/footprint, defaults title from the directive, and depends on every prior task when nothing is blocked', () => {
+  const m = model();
+  const task = appendFix(m, {
+    directive: 'Fix the render edge case\nmore detail the human typed',
+    acceptance: ['an empty widget renders without throwing'],
+    footprint: ['src/render.js'],
+  });
+
+  assert.equal(task.id, 'fix-1');
+  assert.equal(task.fix, true);
+  assert.equal(task.status, 'pending');
+  assert.deepEqual(task.covers, []);
+  assert.deepEqual(task.acceptance, ['an empty widget renders without throwing']);
+  assert.deepEqual(task.injects, []);
+  assert.deepEqual(task.standards, []);
+  assert.deepEqual(task.footprint, ['src/render.js']);
+  assert.equal(task.size, 's');
+  assert.equal(task.tier, 'standard');
+  assert.equal(task.title, 'Fix the render edge case'); // defaulted to the directive's first line
+  assert.deepEqual(task.depends_on, ['t1', 't2']); // every prior task — none blocked, so plain
+
+  const text = render(PLAN, m);
+  const re = parsePlan(text);
+  assert.equal(re.tasks[2].id, 'fix-1');
+  assert.equal(re.tasks[2].fix, true);
+  assert.equal(render(text, re), text); // the appended artifact still round-trips
+});
+
+test("appendFix resets a blocked task to pending, drops its report, chains fix-N behind it, and excludes that task from fix-N's own depends_on — no cycle", () => {
+  const m = model();
+  m.tasks[1].status = 'blocked';
+  m.tasks[1].report = { result: 'blocked', deviations: ['dirty tree'], summary: 'blocked' };
+
+  const task = appendFix(m, { title: 'Retry t2', acceptance: ['t2 runs clean'], footprint: ['src/save.js'] });
+
+  assert.deepEqual(task.depends_on, ['t1']); // t2 is being reset — excluded from fix-1's own edges
+  assert.equal(m.tasks[1].status, 'pending');
+  assert.ok(!('report' in m.tasks[1]));
+  assert.deepEqual(m.tasks[1].depends_on, ['t1', 'fix-1']); // chained behind the fix
+
+  const r = validatePlan(m, DESIGN);
+  assert.ok(!codes(r).includes('task-dependency-cycle'));
+
+  const text = render(PLAN, m);
+  const re = parsePlan(text);
+  assert.equal(re.tasks[1].status, 'pending');
+  assert.ok(!('report' in re.tasks[1]));
+  assert.deepEqual(re.tasks[1].depends_on, ['t1', 'fix-1']);
+  assert.equal(render(text, re), text); // the reset + chain survives round-trip too
+});
+
+test('a fix task itself raises no task-covers-nothing and its empty covers satisfies no feature criterion; a second fix appends as fix-2', () => {
+  const m = model();
+  appendFix(m, { title: 'First fix', acceptance: ['a'], footprint: ['src/a.js'] });
+
+  // Isolate the fix task against the two-criterion feature: exempt from task-covers-nothing,
+  // and its empty covers must not silently satisfy either criterion either.
+  const fixOnly = { ...m, tasks: [m.tasks[2]] };
+  const r = validatePlan(fixOnly, DESIGN);
+  assert.ok(!codes(r).includes('task-covers-nothing'));
+  assert.equal(codes(r).filter((c) => c === 'uncovered-criterion').length, 2);
+
+  const second = appendFix(m, { title: 'Second fix', acceptance: ['b'], footprint: ['src/b.js'] });
+  assert.equal(second.id, 'fix-2'); // fixes are not one-shot, unlike the remediation marker
+});
+
+test('appendFix refuses empty acceptance, empty footprint, and a title-less directive-less input, leaving the plan untouched', () => {
+  const m = model();
+  assert.throws(() => appendFix(m, { title: 't', acceptance: [], footprint: ['src/a.js'] }), /non-empty acceptance/);
+  assert.throws(() => appendFix(m, { title: 't', acceptance: ['a'], footprint: [] }), /non-empty footprint/);
+  assert.throws(() => appendFix(m, { acceptance: ['a'], footprint: ['src/a.js'] }), /title.*directive/);
+  assert.equal(m.tasks.length, 2); // nothing appended by any refusal
 });
