@@ -288,7 +288,7 @@ design_version: 6
 tasks:
   - id: t1
     title: Playbook parser — src/executors.js parses one executor playbook's machine block, hard-erroring with file and field
-    status: pending
+    status: built
     covers: [3]
     acceptance:
       - src/executors.js exports parseExecutor(text, file) returning the machine-block record ({id, command, models, worktree, invocation, availability, auth_smoke {run, expect}, concurrency, effort_flag only when present}) from a playbook whose fenced yaml sits under the exact heading "## Machine block" amid narrative prose, proven by a test parsing a realistic fixture playbook
@@ -300,6 +300,17 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/executors.js
+        - test/executors.test.js
+      diff_actual:
+        files: 2
+        insertions: 269
+        deletions: 0
+      deviations: []
+      summary: "src/executors.js now exports parseExecutor(text, file) and parseExecutors(entries): parseExecutor locates the fenced yaml block under the exact heading \"## Machine block\" (via blocks.js's yamlBlockAfter), parses it, and returns the machine-block record {id, command, models, worktree, invocation, availability, auth_smoke {run, expect}, concurrency, effort_flag only when present} — proven against a realistic grok-shaped fixture playbook with narrative prose around the block. Every malformed-playbook case throws an Error naming the file and the offending field: missing heading or fenced block, missing/mistyped required field, worktree outside native|driver-made, empty/non-array models, invocation missing {model}/{prompt} or lacking both {worktree} and {ref}, auth_smoke without run/expect, non-positive-integer concurrency, and id not equal to the filename stem — each is its own test in test/executors.test.js (12 tests total), and each was confirmed to actually exercise its check by temporarily disabling the corresponding validation and watching only that test fail. parseExecutors(entries) folds many {file, text} pairs into a registry keyed by id and throws naming both files on a duplicate id. The module stays pure per docs/standards/pure-core-thin-cli.md (no fs, no process); node:path is used only for pure filename-stem extraction. Full repo test suite (133 tests) and eslint both stay green."
   - id: t2
     title: Binding validation — validateBindings hard-fails unregistered via and off-playbook model, warns on the three guard cases
     status: pending
