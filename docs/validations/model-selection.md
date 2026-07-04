@@ -209,3 +209,248 @@ exercise:
 spec_ambiguities: []
 waivers: []
 ```
+
+## Validation — patch_id `116191601b26d859314ce554be0722c89358faa2`
+
+```yaml
+feature: model-selection
+design_version: 5
+patch_id: 116191601b26d859314ce554be0722c89358faa2
+readiness:
+  rebase: clean
+  resolutions: []
+  preconditions: { test_harness: ok, probe: ok }
+legs:
+  forensics:
+    verdict: PASS
+    findings: []
+    evidence: >-
+      Five scanner hits, all existing-test-mutation, all dismissed. test/inner-loop-happy.test.js:55,
+      test/inner-loop-park.test.js:76, test/inner-loop-remediation.test.js:57 — each rewrite updates a
+      pre-existing spawn-label assertion to the new `[<resolved-model>] ` prefix this feature's own
+      criterion 2 mandates (e.g. `build:alpha/t1` → `[session] build:alpha/t1`); all three files are
+      t5's declared footprint, and inner-loop-happy.test.js additionally gains new assertions (model
+      opts, fallback/untiered log lines, build.<tier> routing, a new dedicated test) — strengthened,
+      not weakened; confirmed by reading the actual diff. test/plan.test.js:5 — drops one strict
+      assert (`assert.deepEqual(r.warnings, [])`) and adds an import plus two new dedicated tests
+      ("an absent tier warns without blocking" and "a fully tiered plan checks clean") covering the
+      same ground more precisely — t4's own declared footprint exercising its own new `tier` field, no
+      coverage lost. test/spine-cli.test.js:178 — replaces a stale `/^OK/` match with a regex
+      tolerating leading warn lines while still requiring the OK summary line, pinning criterion 4's
+      grandfather posture as observed CLI behavior — t9's declared footprint, its sole stated purpose,
+      watched red before green per its own completion report. All five hits map 1:1 to a task's
+      declared footprint and its completion report's own stated rationale; none drops assertion
+      coverage without a replacement of equal or greater precision.
+    unobserved: ""
+  conformance:
+    verdict: PASS
+    findings: []
+    evidence: >-
+      Spec axis: read every task's diff against the plan's pinned cross-task conventions and the
+      expectation sheet, fresh (not relying on prior validation or completion reports as truth).
+      src/models.js exports EFFORTS/resolveModels/bindingFor verbatim per the pinned resolver surface,
+      touches no fs/process/clock, barrel-exported from src/index.js. config/model-bindings.json ships
+      exactly the ten pinned default rows, byte-checked. bin/spine.js's `models` command resolves
+      PLUGIN_ROOT from its own file location (read directly), reads project/local layers from cwd
+      under "the-loop".modelBindings, treats a missing file/key as an empty layer, names the offending
+      file/role on a parse/resolve failure — confirmed live: a bare fixture resolves the real shipped
+      table; a project override on build.complex flips it to provenance project; a differing local
+      override then wins, provenance local, non-carried fields dropped (whole-entry replacement).
+      src/plan.js exports TASK_TIERS, checkTaskTier raises error bad-tier / warning missing-tier
+      exactly as pinned — confirmed live: `tier: urgent` → ERROR bad-tier naming the task, FAIL, exit
+      1; absent tier → warn missing-tier naming the task, OK, exit 0 (grandfather posture holds).
+      appendRemediation stamps tier: standard (read directly in src/plan.js:351). workflows/inner-
+      loop.js's roleBinding/modelOpts/modelLabel match the pinned spawn-opts rule and pinned log-line
+      text exactly — confirmed live via a fresh shim exercise (not the shipped test suite): a
+      build.complex-tier task spawns model haiku/effort high (from a custom args.models fixture) with
+      label `[haiku] build:zeta/t1`; an untiered task logs `model-selection — task zeta/t2 has no
+      tier, routing build.standard` and falls back to build.standard, itself unbound, logging
+      `model-selection — role build.standard unbound, session-model fallback`, label `[session]
+      build:zeta/t2`, no model/effort opts; derive resolves its bound model+effort into both opts and
+      label; a role explicitly bound to the literal `"session"` model (a second fixture, `plan`)
+      shows label `[session] plan:eta` with no model opt and logs no fallback line at all — confirming
+      the distinct-provenance behavior (bound-to-session vs. unbound) exactly as pinned.
+      commands/the-loop.md, agents/plan.md, skills/design/SKILL.md all carry the pinned instructions
+      (models/tier assembly, plan.audit/design.reader/design.alternative resolution) and grep clean
+      for "ADR" (verified directly: zero hits in all three). No criterion's claimed surface is
+      missing; nothing unclaimed was built (`git diff main...loop/model-selection --stat` lists
+      exactly the nine tasks' declared footprints, no more). test/models.test.js (5 tests) and
+      test/spine-cli.test.js's three new `models` tests were read directly and match the pinned
+      coverage claims (default table shape, three-layer merge with provenance, malformed-entry
+      rejection, via pass-through). docs/research/2026-07-03-workflow-spawn-opts-precedence.md (t1)
+      states the question, seven attempted channels, the "no channel here can observe it" conclusion,
+      and the standing-consequence section — matches its acceptance criteria verbatim. Standards axis:
+      docs/standards/pure-core-thin-cli.md (t2/t3/t4) — src/models.js and src/plan.js stay pure, all
+      fs/process access sits in bin/spine.js, confirmed by reading every import in both files.
+      docs/standards/loop-surfaces.md (t6/t7/t8) — all three surfaces self-contained, no ADR
+      references, written for a zero-context agent. No baseline-catalog smells found: workflows/
+      inner-loop.js's three new helpers (roleBinding, modelOpts, modelLabel) are each one job, no
+      duplicated lookup logic across the four spawn call sites, file sits at 333 lines (`wc -l`),
+      inside its 350-line lint budget. `npm run lint` and `npm run check` both zero-finding clean.
+    unobserved: >-
+      Live execution of the plan agent's audit-spawn model resolution (agents/plan.md) and the
+      design skill's reader/alternative spawn resolution (skills/design/SKILL.md) — both session-side
+      surfaces with no test coverage (grep across test/ for agents/ and skills/ references: zero
+      hits) and the live `claude -p "/the-loop"` channel is unrunnable in this installation ("Unknown
+      command: /the-loop" — the-loop is not an installed plugin here, matching the runtime leg's own
+      observation below). Text-level instruction correctness was confirmed by direct reading instead.
+  acceptance:
+    verdict: FAIL
+    findings:
+      - severity: contract-breaking
+        cites: >-
+          artifact-spine feature acceptance — "a feature node + its contracts resolve by id;
+          design.md round-trips through parse/render" (test/design-md.test.js's own header: "the
+          dogfood: the artifact spine parses, validates, round-trips, and resolves the very document
+          that specifies it" — the structural-integrity canary for that criterion)
+        location: test/design-md.test.js:16
+        observation: >-
+          `npm test` fails: "the real design.md parses to the full feature graph" asserts
+          `m.designVersion === 5`, but docs/design/design.md's current designVersion is 6 — bumped by
+          commit 01c6a10 ("surfacing: design finalized by grilling — ADR-0032 typed resolution kinds
+          + mechanical fold-back (design_version 5→6)"), which landed on `main` after
+          model-selection's branch was cut and is entirely unrelated to and untouched by any of this
+          diff's nine tasks (confirmed: `git diff main...loop/model-selection --stat` touches neither
+          docs/design/design.md nor test/design-md.test.js). Delta-proof: checking out `main`'s tip
+          (01c6a10) in isolation, with none of model-selection's commits applied, reproduces the
+          identical failure (`6 !== 5`, `AssertionError`); checking out the commit immediately
+          preceding the "surfacing" design-finalize commit (149de72, the actual merge-base before
+          this feature's rebase) passes clean (7/7). Reproduced 3 times total (once in the full
+          suite, twice standalone), consistently red, not flaky. `npm test`: 119/120 pass (this is
+          the sole failure). `npm run check`: "OK   25 features, 11 contracts — 0 error(s), 0
+          warning(s)" — design.md itself is structurally valid; only this hardcoded test-file
+          constant is stale.
+        reobserve: "node --test test/design-md.test.js"
+    evidence: >-
+      `npm test`: 119 pass / 1 fail (the single finding above), reproduced identically across all
+      checkouts tried. `npm run lint` and `npm run check`: both zero-finding clean. This is the only
+      acceptance-leg finding; the deviation this feature's prior validation recorded (t4/t5's
+      test/spine-cli.test.js regression) is confirmed fixed by t9 — the same test now passes (7/7 in
+      test/spine-cli.test.js, verified directly), and the new regex tolerates the grandfather
+      posture's warn line while still requiring the OK summary line.
+    unobserved: ""
+  runtime:
+    verdict: FAIL
+    findings:
+      - severity: contract-breaking
+        cites: >-
+          docs/probes/inner-loop-workflow.md "deterministic channel — npm test" pinned expectation
+          ("full suite green...") and docs/probes/ledger-title-preservation.md "deterministic
+          corroboration" pinned expectation ("full suite green (0 fail)...")
+        location: test/design-md.test.js:16
+        observation: >-
+          Identical root cause as the acceptance-leg finding above (not a second, independently
+          introduced regression): replaying both existing probe-pack entries' "npm test" steps
+          reproduces the same 119/120-pass, 1-fail result, breaking each entry's pinned "full suite
+          green" observation. No clause of model-selection's own contract names or supersedes this
+          change (nothing in this feature's four acceptance criteria concerns design.md's parsed
+          version or feature count), so the supersession exception does not apply here the way it did
+          for this feature's own prior-validation acceptance-criterion-4 regression. Consistently red
+          across three reproductions, not flaky.
+        reobserve: "node --test test/design-md.test.js"
+    evidence: >-
+      Fixture-repo probe brought up clean (`node bin/probe-fixture.js populated` → a temp git repo,
+      clean tree, two-feature graph). Pack replay, oldest first — docs/probes/inner-loop-workflow.md:
+      bring-up matches; `claude -p "/the-loop"` unrunnable in this installation ("Unknown command:
+      /the-loop", matching the pinned prior observation); `npm run check` matches ("OK   25 features,
+      11 contracts — 0 error(s), 0 warning(s)", counts drift as pinned); `npm test` full-suite-green
+      pinned observation fails per the finding above; the four inner-loop shim test files pass 18/18
+      directly (matching t5's own completion report, up from the pack's originally-pinned 16/16); the
+      delta-proof step's literal historical claim ("'Could not find' the test files... pre-merge")
+      is, like the prior validation's note on this same pack entry, a historical fact about that
+      feature's own original merge event, not independently reproducible today (those files have
+      existed on `main` since inner-loop-workflow's own squash-merge) — noted, not scored as a
+      regression. Pack replay — docs/probes/ledger-title-preservation.md: every ledger-specific step
+      reproduced exactly as pinned (sentinel prefix survives byte-identical through a fresh render;
+      an empty-priorText seed produces the standard title line; the live case against this repo's
+      own docs/ledger/ledger.md preserves its title line before and after with an empty `git diff`;
+      test/ledger.test.js 5/5 green) — only the "full suite green (0 fail)" corroboration line is
+      red, per the same finding above. New exercise (this feature's own sheet, executed directly,
+      independent of the completion reports): criterion 1 — `spine models` on a bare fixture resolves
+      all ten registered roles, each with model/effort-where-applicable/provenance default; writing a
+      project-layer override for `build.complex` (haiku/medium) flips its provenance to project,
+      other roles untouched; adding a differing local-layer override (`opus3`, no effort) then wins,
+      provenance local, effort dropped (whole-entry replacement) — captured verbatim above. Criterion
+      2/3 — a fresh shim-driven run of the real workflows/inner-loop.js (via test/workflow-shim.js,
+      not the shipped test files) with a custom args.models binding build.complex/derive explicitly
+      and leaving plan/build.standard/validate unbound: the complex-tier task spawns model
+      haiku/effort high, label `[haiku] build:zeta/t1`; the untiered task logs the pinned
+      untiered-task line and falls back to build.standard, itself unbound, logging the pinned
+      unbound-role line, label `[session] build:zeta/t2`; derive spawns model opus/effort medium in
+      both opts and label. A second fixture binds `plan` explicitly to the literal `"session"` model:
+      label `[session] plan:eta`, no model opt, and — distinctly — no fallback log line at all
+      (bound-to-session is not the same as unbound). Criterion 4 — `spine plan check` on a fixture
+      plan: `tier: standard` checks clean (0/0, exit 0); `tier: urgent` produces `ERROR bad-tier`
+      naming the task, FAIL, exit 1; absent tier produces `warn missing-tier` naming the task, OK
+      with 1 warning, exit 0 (still passing — the grandfather posture holds). Delta proof, all four
+      criteria, executed against a worktree at the merge-base (01c6a10, main's tip before this
+      feature's rebase) and compared to the merged (rebased-branch) tree: `spine models` doesn't
+      exist pre-merge (usage error, exit 1) vs. the full resolved table on the merged tree; the
+      identical shim exercise pre-merge shows plain `build:zeta/t1`/`derive:zeta` labels, no
+      `[model]` prefix, no model/effort opts beyond derive's old hardcoded `effort: 'low'`, and zero
+      model-selection log lines — vs. the fully resolved behavior on the merged tree; `tier: urgent`
+      on the pre-merge plan checker passes silently (0 errors, 0 warnings, exit 0 — the field is
+      unknown to that validator) vs. `ERROR bad-tier`/exit 1 on the merged tree. Every new-exercise
+      criterion failed to discriminate on the merge-base and passed on the merged tree — this diff
+      caused the claimed behavior. Worktree removed after use.
+    unobserved: >-
+      The live `claude -p "/the-loop"` channel end-to-end (the-loop is not an installed plugin in
+      this environment, matching both prior probes' own recorded limitation) — covers live
+      confirmation of the launch leg's boundary relay of `model-selection —` lines
+      (commands/the-loop.md step 6, text-verified instead) and of the plan-agent audit spawn /
+      design-skill reader+alternative spawn model resolution in actual session-side execution
+      (text-verified instead, per the conformance leg's unobserved note).
+result: deviation
+deviation: >-
+  One contract-breaking acceptance-leg finding, and its identical propagation into the runtime leg's
+  pack replay: test/design-md.test.js's "the real design.md parses to the full feature graph" test
+  asserts docs/design/design.md's parsed designVersion equals 5, but main's tip (01c6a10, "surfacing:
+  design finalized by grilling — ADR-0032... design_version 5→6") already bumped it to 6 before
+  model-selection's branch was rebased onto it — a change entirely unrelated to and untouched by any
+  of this diff's nine tasks. Delta-proof confirms causation lies elsewhere: main's tip in isolation
+  (01c6a10, without model-selection's changes) reproduces the identical failure; the commit
+  immediately preceding the "surfacing" design-finalize commit (149de72) passes clean. Reproduced 3
+  times, consistently red, not flaky. The same underlying failure also breaks the "full suite green"
+  pinned observation replayed from two existing probe-pack entries (docs/probes/inner-loop-
+  workflow.md and docs/probes/ledger-title-preservation.md), recorded as its own runtime-leg finding
+  since no clause of model-selection's own contract supersedes it. All other legs are clean:
+  forensics found zero confirmed hits (five dismissed, each matching a declared task footprint);
+  conformance found zero findings on either axis, with every criterion independently re-exercised
+  live (not taken on the completion reports' word) — the resolver, CLI, tier validation, workflow
+  plumbing, and all three session-side surface instructions match the plan's pinned conventions
+  exactly, and the prior validation's own deviation (t4/t5's test/spine-cli.test.js regression) is
+  confirmed fixed by t9. Every one of model-selection's own four acceptance criteria was
+  independently exercised against a fresh fixture and delta-proved against the merge-base, all
+  passing cleanly.
+menu:
+  - fix-in-place — append a task (to model-selection's plan, or a small standalone maintenance
+    commit) updating test/design-md.test.js's hardcoded designVersion/feature-count assertions to
+    match the current graph (owned by the already-landed "surfacing" feature's drift, not
+    model-selection's own diff), then re-validate
+  - waive — merge model-selection on human authority, recording the pre-existing, unrelated
+    test/design-md.test.js regression (caused by the already-landed "surfacing" design-finalize
+    bump, confirmed via delta-proof to be independent of this diff) as an accepted transitional gap
+    until a separate commit updates the hardcoded assertion
+  - re-plan — route the test/design-md.test.js fix into whichever feature/maintenance track owns
+    docs/design/design.md's version-drift bookkeeping (not model-selection), and re-validate
+    model-selection once `main`'s test suite is green again
+branch: loop/model-selection
+merged: false
+exercise:
+  - action: "spine models on a bare fixture, then with project then local overrides on build.complex"
+    observed: "all ten roles resolve with provenance default; project override → {model: haiku, effort: medium, provenance: project}; local override → {model: opus3, provenance: local} (effort dropped, whole-entry replacement)"
+  - action: "shim-driven workflows/inner-loop.js run (test/workflow-shim.js), args.models binding build.complex/derive explicitly, plan/build.standard/validate left unbound, one complex-tier task and one untiered task"
+    observed: "build.complex spawn: model haiku, effort high, label '[haiku] build:zeta/t1'; derive spawn: model opus, effort medium, label '[opus] derive:zeta'; unbound build.standard/validate: label '[session] ...', no model/effort opts, each logs 'model-selection — role <role> unbound, session-model fallback'; untiered t2 logs 'model-selection — task zeta/t2 has no tier, routing build.standard'"
+  - action: "shim-driven run with plan bound explicitly to the literal 'session' model"
+    observed: "label '[session] plan:eta', no model opt, zero fallback log lines mentioning plan — distinct from the unbound case above"
+  - action: "spine plan check against a fixture plan with tier standard, then tier urgent, then no tier"
+    observed: "'OK   plan greet-cli: 1 task(s) — 0 error(s), 0 warning(s)' exit 0; 'ERROR bad-tier: tier must be one of rote|standard|complex (got \"urgent\") (t1)' / FAIL, exit 1; 'warn  missing-tier: task has no tier — routes to build.standard downstream (t1)' / OK with 1 warning, exit 0"
+  - action: "delta proof — all four exercises above repeated against a worktree at the merge-base (01c6a10, main's tip before this feature's rebase)"
+    observed: "spine models: usage error, exit 1 (command doesn't exist); shim run: plain labels, no model/effort opts beyond derive's old hardcoded effort:low, zero model-selection log lines; tier: urgent plan check: 'OK ... 0 error(s), 0 warning(s)', exit 0 (field unvalidated) — every exercise fails to discriminate pre-merge, passes on the merged tree"
+  - action: "full-tree acceptance: npm test, npm run lint, npm run check on the rebased branch"
+    observed: "npm test 119/120 pass (test/design-md.test.js fails 6 !== 5); npm run lint clean; npm run check 'OK   25 features, 11 contracts — 0 error(s), 0 warning(s)'"
+  - action: "isolate the design-md.test.js failure's cause — checkout main's tip (01c6a10) alone, then the pre-surfacing-finalize commit (149de72) alone"
+    observed: "01c6a10 alone: 6/7 pass, same failure (6 !== 5); 149de72 alone: 7/7 pass — the failure is introduced by the 'surfacing' feature's design-finalize commit, unrelated to and predating model-selection's own diff"
+spec_ambiguities: []
+waivers: []
+```

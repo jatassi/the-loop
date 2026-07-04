@@ -8,17 +8,19 @@ Total: 25 (design_version 6)
 
 - designed: 14
 - planned: 0
-- building: 4
+- building: 3
 - validated: 7
 - shipped: 0
-- parked: 0
+- parked: 1
 - drifted: 0
 
 ## What needs you
-Nothing parked — no open escalations.
+- **model-selection** (validate): One contract-breaking acceptance-leg finding, and its identical propagation into the runtime leg's pack replay: test/design-md.test.js's "the real design.md parses to the full feature graph" test asserts docs/design/design.md's parsed designVersion equals 5, but main's tip (01c6a10, "surfacing: design finalized by grilling — ADR-0032... design_version 5→6") already bumped it to 6 before model-selection's branch was rebased onto it — a change entirely unrelated to and untouched by any of this diff's nine tasks. Delta-proof confirms causation lies elsewhere: main's tip in isolation (01c6a10, without model-selection's changes) reproduces the identical failure; the commit immediately preceding the "surfacing" design-finalize commit (149de72) passes clean. Reproduced 3 times, consistently red, not flaky. The same underlying failure also breaks the "full suite green" pinned observation replayed from two existing probe-pack entries (docs/probes/inner-loop-workflow.md and docs/probes/ledger-title-preservation.md), recorded as its own runtime-leg finding since no clause of model-selection's own contract supersedes it. All other legs are clean: forensics found zero confirmed hits (five dismissed, each matching a declared task footprint); conformance found zero findings on either axis, with every criterion independently re-exercised live.
+  - menu: fix-in-place — append a task (to model-selection's plan, or a small standalone maintenance commit) updating test/design-md.test.js's hardcoded designVersion/feature-count assertions to match the current graph (owned by the already-landed "surfacing" feature's drift, not model-selection's own diff), then re-validate; waive — merge on human authority, recording the pre-existing, unrelated test/design-md.test.js regression (caused by the already-landed "surfacing" design-finalize bump, confirmed via delta-proof to be independent of this diff) as an accepted transitional gap until a separate commit updates the hardcoded assertion; re-plan — route the test/design-md.test.js fix into whichever feature/ maintenance track owns docs/design/design.md's version-drift bookkeeping (not model-selection), and re-validate model-selection once main's test suite is green again
+  - branch: loop/model-selection
 
 ## What's next
-`frame`, `plan`, `model-selection`, `workflow-phase-grouping`, `surfacing`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
+`frame`, `plan`, `workflow-phase-grouping`, `surfacing`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
 **2026-07-03 · run wf_f1c42418-2a0 — model-selection** (11 agents, ~83 min, ~1.04M subagent tokens): Plan cut 8 tasks → all eight built with per-task fold-ins → derive → validate → **parked at validate** on the one acceptance-leg finding above; every booking self-made in-run, tree left clean, HEAD on main. **Model bindings were hand-rolled for this run** (human-directed accommodation: this very run built the bindings infra, so it could not read it) via a session-only, never-committed fork of `workflows/inner-loop.js` applying the ADR-0030 default table — transcript-verified: plan on fable (session inherit), build ×8 + validate on sonnet, derive on opus@low — declared by a `log()` line at run start. Side findings: workflow `agent()` `opts.model` is empirically honored (the run itself supplies the t1 probe's missing observation and falsifies t1's introspective no-opt-sent claim — its own transcript shows sonnet); the opts-vs-present-frontmatter conflict pair stays untested and inert (no plugin agent carries model frontmatter); the `budget` global again returned `{}` (live shape still unconfirmed).
