@@ -77,7 +77,7 @@ design_version: 8
 tasks:
   - id: t1
     title: Rename the BoundaryResult stalled field phase → agent in the workflow script and its stall assertions
-    status: pending
+    status: built
     covers: [3]
     acceptance:
       - "workflows/inner-loop.js's four stalled literals carry `agent` in place of `phase`, values unchanged: spawn()'s thrown-non-budget-error site and its null-return site each carry `agent: opts.agentType`; runBuild's missing-task-list stall carries `agent: 'plan'`; runRemediation's second-remediation-pending stall carries `agent: 'validate'`; no stalled record anywhere in the file carries a `phase` key"
@@ -90,6 +90,19 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - workflows/inner-loop.js
+        - test/inner-loop-halt.test.js
+        - test/inner-loop-remediation.test.js
+      diff_actual:
+        files: 3
+        insertions: 9
+        deletions: 9
+      deviations:
+        - pre-existing, unrelated failure in test/design-md.test.js (design_version 8 vs pinned 7) reproduces identically with this task's changes stashed out — not touched by this footprint, left red per protocol
+      summary: "workflows/inner-loop.js's four stalled literals now carry `agent` in place of `phase` with values unchanged: spawn()'s thrown-non-budget-error site and its null-return site each carry `agent: opts.agentType`, runBuild's missing-task-list stall carries `agent: 'plan'`, and runRemediation's second-remediation-pending stall carries `agent: 'validate'` — grep confirms no stalled record in the file still carries a `phase` key. The five matching test expectations flipped alongside: test/inner-loop-halt.test.js's impostor-budget stall, its null-return + ordinary-throw pair, and its missing-task-summaries stall (including the `result.stalled[0].phase` read, now `.agent`), plus test/inner-loop-remediation.test.js's protocol-violation stall, each now assert `agent: 'plan'` or `agent: 'validate'` where they asserted `phase` before. The spawn opts' own `phase` field (the feature id) was left untouched, verified by grep and by the still-passing opts.phase assertions. Each rename was proven test-driven: the test file was flipped first (watched red against the still-phase-keyed source), then the corresponding script literal was renamed (watched green). npm test passes except one pre-existing, out-of-footprint failure (test/design-md.test.js's design_version pin), and npx eslint . is clean."
   - id: t2
     title: Spawn phase opts carry coarse SDLC names, meta declares phases, phase assertions flip to the coarse sequences
     status: pending
