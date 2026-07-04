@@ -97,18 +97,28 @@ one procedure, so neither route improvises its own version.
      verbatim — one excerpt, independent of scope. Never pass the abstract
      `runtime-probe` contract shape in its place, and never invent a binding: if
      none is recorded, pass the recorded opt-out note instead.
-4. **Check plugin-agent resolution.** The Workflow spawns by `agentType` — `plan`,
-   `build`, `derive`, `validate`. Confirm each of the four resolves as an agent type
-   for the session; for any that doesn't, symlink it from the plugin so resolution
-   is guaranteed: `mkdir -p .claude/agents` then
+4. **Pre-flight the executor bindings.** Compute the distinct `via` set across
+   every role in the step-3 `models` table — each role's `via` value other than
+   the literal `agent` or absent; an empty set skips this step entirely. Otherwise
+   read the executor registry: `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" executors`.
+   For each distinct `via`, run its playbook's `availability` command, then its
+   `auth_smoke.run` command, and confirm the output contains `auth_smoke.expect`.
+   Any failure — the CLI unavailable, or the auth check not producing the expected
+   output — stops the launch right here, exactly like the clean-tree gate: tell
+   the human what failed and that nothing ran. This smoke re-runs at every
+   launch — cached auth state is not state the stateless loop keeps.
+5. **Check plugin-agent resolution.** The Workflow spawns by `agentType` — `plan`,
+   `build`, `derive`, `validate`, `drive`. Confirm each of the five resolves as an
+   agent type for the session; for any that doesn't, symlink it from the plugin so
+   resolution is guaranteed: `mkdir -p .claude/agents` then
    `ln -s "$CLAUDE_PLUGIN_ROOT/agents/<name>.md" ".claude/agents/<name>.md"`. The
    link tracks the plugin, so once it exists it never goes stale and never needs
    redoing — but agent registration is read once, at session start: links created
    mid-session don't resolve until a fresh session, so tell the human to restart
    and relaunch rather than launching into certain stalls.
-5. **Launch.** Call the Workflow: `scriptPath` =
+6. **Launch.** Call the Workflow: `scriptPath` =
    `$CLAUDE_PLUGIN_ROOT/workflows/inner-loop.js`, `args` = the step-3 snapshot.
-6. **Relay the result.** State the returned `BoundaryResult` to the human plainly,
+7. **Relay the result.** State the returned `BoundaryResult` to the human plainly,
    and alongside it, any `model-selection —` prefixed lines found by scanning the
    run's log output (the workflow's live output, surfaced in the `/workflows` view
    and returned by the Workflow tool) — stated verbatim, so a role that fell back

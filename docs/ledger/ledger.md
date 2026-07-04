@@ -6,10 +6,10 @@ the-loop: an owned, composable agentic dev loop built from native Claude Code pr
 ## Where we are
 Total: 25 (design_version 7)
 
-- designed: 12
+- designed: 11
 - planned: 0
 - building: 3
-- validated: 10
+- validated: 11
 - shipped: 0
 - parked: 0
 - drifted: 0
@@ -18,9 +18,11 @@ Total: 25 (design_version 7)
 Nothing parked — no open escalations.
 
 ## What's next
-`frame`, `plan`, `executor-delegation`, `workflow-phase-grouping`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
+`frame`, `plan`, `workflow-phase-grouping`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
+- 2026-07-04 | wf_74be8a1f-77f | completed: executor-delegation
+- 2026-07-03 | wf_dfcca65b-283 | parked: executor-delegation
 - 2026-07-03 | wf_1c210607-7f2 | halted: environment-blocked — Build entry found the tree dirty — untracked directory 1bddab65-fc91-4f88-8117-969eadb754f6/ (a concurrent session's executor-delegation e2e debris: scratchpad/e2e-target/.claude/worktrees/drive-widget-t1.prompt.md); the build agent stopped before touching branch, plan, or code and cleaned nothing. Ship was planned and booked in-run (1bede8d, 605e3f6) before the halt
 - 2026-07-03 | wf_2d4c3940-0e0 | completed: surfacing | budget: undefined/undefined
 **2026-07-03 · runs wf_81a89a5d / wf_16bdf774 / wf_97851563 / wf_9efd8be6 — model-selection, passes 2–5 to validated** — the fix-in-place cycle after the pass-1 park: pass 2 halted on a dirty tree (an uncommitted session dictionary edit — clean-tree gate save #1), pass 3 halted on the harness's own agent worktree at .claude/worktrees/ (save #2; now gitignored), pass 4 ran all four legs to a would-be-PERFECT verdict blocked only by a concurrent session's worktree holding main, pass 5 parked on surfacing's design_version bump breaking the test pin (delta-proved unrelated to this diff; fixed as main-side maintenance), and pass 6 hit the patch-id dedup rule against the stale deviation entry — surfacing's retry-despite-dedup criterion (ADR-0032) observed live before the feature is built. Resolved by the recorded human-merge in docs/validations/model-selection.md; squash 37af221, booked validated. The hand-rolled binding fork is retired: workflows/inner-loop.js on main now reads args.models for real. Also landed post-merge: the halted.detail reconciliation fix (54f98f2, Opus subagent in an isolated worktree, session-reviewed).

@@ -12,3 +12,5 @@ export { parsePlan, planPath, TASK_SIZES,TASK_STATUS, TASK_TIERS, validatePlan }
 // The model-binding resolver — role → model/effort/via merge across defaults <
 // project < local layers, with provenance (feature: model-selection).
 export { bindingFor, EFFORTS,resolveModels } from './models.js';
+// Executor playbooks — parsing and binding-validation (feature: executor-delegation).
+export { parseExecutor, parseExecutors, validateBindings } from './executors.js';
