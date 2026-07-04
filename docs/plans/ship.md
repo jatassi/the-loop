@@ -163,7 +163,7 @@ tasks:
 
   - id: t4
     title: appendShip — the Ledger's ship history line (src/ledger.js)
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "src/ledger.js exports appendShip(priorText, entry) inserting exactly one bullet as the first content under the `## Run history` heading (same insertion semantics as the existing appendRun; it throws with priorText unmodified when the heading is absent) — bullet format pinned as `- <date> | ship-<N> | <outcome> | features: <comma-joined ids>`, with ` | rollback_verified: <true|false>` appended exactly when entry.rollback_verified is defined; missing date, ship number, or outcome throws — proven by unit tests including a Ledger whose Run history already holds bullets (the new bullet lands first and every other byte is unchanged)"
@@ -174,6 +174,17 @@ tasks:
     size: xs
     tier: rote
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/ledger.js
+        - test/ledger.test.js
+      diff_actual:
+        files: 2
+        insertions: 74
+        deletions: 1
+      deviations: []
+      summary: "src/ledger.js now exports appendShip(priorText, entry), mirroring appendRun's insertion semantics: it inserts exactly one bullet as the first content after the \"## Run history\" heading, throwing with priorText untouched when the heading is absent. The bullet is pinned as `- <date> | ship-<N> | <outcome> | features: <comma-joined ids>` with ` | rollback_verified: <true|false>` appended exactly when entry.rollback_verified is defined (checked via `!== undefined` so an explicit `false` still renders, proven by a dedicated assertion), and it throws when date, ship, or outcome is missing. Three new tests in test/ledger.test.js prove this: one drives a Ledger whose Run history already holds a bullet through both a deployed booking (features joined, no rollback_verified field) and a rolled-back booking (rollback_verified: false present) and asserts the new bullet lands first with every other byte unchanged; one asserts throws for each of date/ship/outcome missing; one asserts throws (and priorText left untouched) when the heading is absent. appendShip is pure by construction — the date arrives as entry.date and the function touches no clock or filesystem, matching the pure-core-thin-cli standard already governing the rest of src/ledger.js. Full suite (182 tests, up from 179) and npm run check (25 features, 12 contracts, 0 errors/warnings) both pass; scoped eslint on src/ledger.js and test/ledger.test.js is clean."
 
   - id: t5
     title: spine ship book — guarded commit-2 mechanics (record outcome, flips, Ledger)
