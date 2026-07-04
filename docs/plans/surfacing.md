@@ -250,7 +250,7 @@ tasks:
       summary: "src/validate.js gains a shared lastValidationSpan(text) helper (anchoring to the LAST `## Validation` heading, never the last yaml block or last patch_id: match) that latestEntry is refactored onto (no behavior change — its existing tests pass unmodified) and that two new exported functions build on: appendWaiver(text, waiver) appends {obligation, reason, approver} to the waivers list of the entry under that heading, creating the waivers key when the entry lacks one via doc.hasIn/setIn/addIn on a YAML.parseDocument of the entry's own retained block, and refuses (throws, so no caller can write) a missing/empty required field or a file with no `## Validation` entry yet; waivers carry no expiry field by construction. stampRetried(text, mark) sets or replaces the `retried` key on that same entry the same way, consumed by t7's resolve command. Both splice their mutated inner block back via blocks.js's replaceBlock, so every byte outside the touched entry's own yaml block — including a trailing non-Validation block such as `## Resolution` — is preserved exactly (verified both by a dedicated fixture test and by running appendWaiver directly against the real docs/validations/model-selection.md, confirming byte-identical prefix and suffix around the mutated span). bin/spine.js wires `spine validate waive <feature-id> [waiver.json|-]` (stdin/file, matching the note/ledger/fix commands' convention): it reads the waiver JSON, reads docs/validations/<feature-id>.md (an absent file throws via readFileSync before any write), calls appendWaiver, writes the result back, and prints the updated latest entry as JSON. test/validate.test.js adds five new tests (appendWaiver create-then-append-to-existing-list including the no-expiry-field check; appendWaiver's two refusal paths; stampRetried set-then-replace; and a combined anchoring test proving both mutations touch only the last `## Validation` entry's block while leaving a trailing `## Resolution` block byte-identical) — each watched red before green (confirmed directly: temporarily stubbing both new exported functions to throw, reran the suite, and exactly those three new tests exercising them failed; restored, all green). npm test (145/145) and npm run check/lint both pass clean."
   - id: t7
     title: spine escalation resolve — the shared resolution spine
-    status: pending
+    status: built
     covers: [2, 3]
     acceptance:
       - "`spine escalation resolve <feature-id> <kind> [--reason <text>] [--phase <plan|build|validate>]` accepts kinds retry|fix-in-place|re-plan|waive; defer exits 1 with a message that defer leaves the park in place; any other kind exits 1"
@@ -266,6 +266,20 @@ tasks:
     size: m
     tier: complex
     depends_on: [t1, t6]
+    report:
+      result: built
+      footprint_actual:
+        - src/escalation.js
+        - bin/spine.js
+        - test/escalation.test.js
+      diff_actual:
+        files: 3
+        insertions: 386
+        deletions: 5
+      deviations:
+        - The declared footprint listed test/spine-cli.test.js for the CLI tests, but that file sits at 348 of its 350-line eslint max-lines budget (skipBlankLines/skipComments) — the exact planning signal t5's and t6's completion reports flagged for whoever plans t7. The escalation-resolve CLI subprocess tests were placed in test/escalation.test.js (in-lease, alongside the pure-function tests) instead of touching spine-cli.test.js; spine-cli.test.js was left byte-identical. footprint_actual therefore omits test/spine-cli.test.js.
+        - Adding the escalation command pushed bin/spine.js's effective line count to 355 (over the 350 max-lines budget) and resolveEscalationCommand's cyclomatic complexity to 13 (over 10); both were resolved without any lint suppression — the flag-parse loop was folded inline into escalationCommand, the phase-resolution guards were extracted into resolveParkPhase, and the pure function's intermediate boolean const was inlined to satisfy unicorn/consistent-boolean-name.
+      summary: "spine escalation resolve — the shared resolution spine — now exists in two layers. The pure planResolution(kind, phase, {reason}) in src/escalation.js holds the kind/phase validation and a flip table: retry/fix-in-place flip a plan park to designed and a build/validate park to building; re-plan flips any phase to designed; waive flips a validate park to validated. It throws on every invalid combination (defer with a 'leaves the park in place' message, an unknown kind or phase, waive off a non-validate park, and retry-on-a-validate-park with no reason), so no caller writes on a bad resolution — proven by two node:test cases (crit 1, 3, 4, 5, 7). bin/spine.js performs the effects: it resolves the park's phase from docs/escalations/<id>.md (or from --phase, the damaged-park escape hatch, refused when a record exists and required when none does — crit 2), guards the feature's design.md status is parked, then runs the contracted order — flip status, run kind-specific extras (re-plan deletes docs/plans/<id>.md when present; retry-on-validate stamps the latest validations entry retried '<today UTC YYYY-MM-DD> — <reason>' via t6's stampRetried), delete the escalation record (skipped under --phase), and re-render the Ledger so What-needs-you drops the entry (crit 5, 6). It never commits — the adjust skill owns the booking commit — and prints JSON naming feature, kind, phase, the new status, every file deleted, and the retried mark when stamped (crit 6). Five CLI subprocess tests cover each kind's happy path (retry on a build park, fix-in-place on a plan park, re-plan and waive on a validate park, retry-on-validate with --reason), the --phase damaged-park path, and every guard's exit-1 with design.md left byte-identical (crit 7). Full suite 152/152, npm run check (spine check + eslint) clean."
   - id: t8
     title: Workflow spawn schemas admit kind-stamped menus
     status: pending
