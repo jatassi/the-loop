@@ -21,6 +21,7 @@ Nothing parked — no open escalations.
 `frame`, `plan`, `workflow-phase-grouping`, `ship`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
+- 2026-07-04 | wf_74be8a1f-77f | completed: executor-delegation
 - 2026-07-03 | wf_dfcca65b-283 | parked: executor-delegation
 - 2026-07-03 | wf_1c210607-7f2 | halted: environment-blocked — Build entry found the tree dirty — untracked directory 1bddab65-fc91-4f88-8117-969eadb754f6/ (a concurrent session's executor-delegation e2e debris: scratchpad/e2e-target/.claude/worktrees/drive-widget-t1.prompt.md); the build agent stopped before touching branch, plan, or code and cleaned nothing. Ship was planned and booked in-run (1bede8d, 605e3f6) before the halt
 - 2026-07-03 | wf_2d4c3940-0e0 | completed: surfacing | budget: undefined/undefined
