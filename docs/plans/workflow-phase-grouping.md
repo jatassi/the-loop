@@ -135,7 +135,7 @@ tasks:
       summary: "workflows/inner-loop.js's five spawn sites now carry coarse SDLC phase names in place of the feature id: runPlan's plan spawn carries 'Plan'; runBuild's ordinary build spawn and spawnDrive's drive spawn each carry 'Build'; runValidationCycle's derive spawn and runValidate's validate spawn each carry 'Validate' — grep confirms no spawn site still reads phase: featureId, and every spawn's label, prompt, schema, agentType, and model/effort opts are byte-identical to before this task. The meta object gained phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] appended to its existing keys, with the export const meta = { ... }; declaration still one physical line ending in ;, verified by grep. The seven opts.phase assertions across the four test files flipped from per-feature strings to the coarse mapping (plan→'Plan', build→'Build', drive→'Build', derive→'Validate', validate→'Validate') applied to each fixture's own spawn order: the one map deepEqual in test/inner-loop-happy.test.js, the two in test/inner-loop-halt.test.js, the three in test/inner-loop-park.test.js, and test/inner-loop-drive.test.js's single phase equality (now 'Build'). Each flip was watched red first (the test files were edited before the source, confirmed failing against the still-per-feature-id script), then the five source literals were changed and the suite watched green. npm test passes 231/232 (the one failure is the pre-existing, out-of-footprint design_version pin noted in t1's own report, reproducing identically), and npx eslint . is clean."
   - id: t3
     title: Label-map assertions carry the feature-attribution proofs the per-feature phase maps used to hold
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - "each of the six coarse phase-map deepEquals (one in test/inner-loop-happy.test.js, two in test/inner-loop-halt.test.js, three in test/inner-loop-park.test.js) is paired with an added deepEqual over `spawns.map((s) => s.opts.label)` pinning that fixture's full expected label list — so each label carries the feature id (and task id where one rides) plus the `[<resolved-model>]` prefix, and the drain/halt proofs (the excluded feature never appears in any label) are observable"
@@ -147,6 +147,19 @@ tasks:
     size: xs
     tier: standard
     depends_on: [t2]
+    report:
+      result: built
+      footprint_actual:
+        - test/inner-loop-halt.test.js
+        - test/inner-loop-happy.test.js
+        - test/inner-loop-park.test.js
+      diff_actual:
+        files: 3
+        insertions: 47
+        deletions: 0
+      deviations:
+        - pre-existing, unrelated failure in test/design-md.test.js (design_version 8 vs pinned 7) reproduces identically with this task's changes stashed out — not touched by this footprint, left red per protocol
+      summary: "Each of the six coarse phase-map deepEquals across the three fixture files (one in test/inner-loop-happy.test.js, two in test/inner-loop-halt.test.js, three in test/inner-loop-park.test.js) now sits paired with an added assert.deepEqual over spawns.map((s) => s.opts.label), pinning that fixture's full expected label list — the feature id (and task id where one rides) plus the [<resolved-model>] prefix. Each expected label list was derived by running the real fixture through the shim before writing the assertion, then confirmed meaningful by temporarily corrupting one entry per assertion, watching it go red, and reverting to green — proving the assertions actually exercise the label values rather than restating them vacuously. The excluded-feature drain/halt proofs are now observable on labels too: delta never appears in the halt suite's env-block-drain or park suite's kind-environment-halt label lists, and beta never appears in the park suite's dependent-of-a-parked-feature drain label list. No existing assertion was removed or edited — the label maps are pure additions alongside the already-flipped phase maps, confirmed by a diff showing only insertions (47 insertions, 0 deletions across 3 files). npm test passes 231/232 (the sole failure is the pre-existing, out-of-footprint test/design-md.test.js design_version pin noted in t1 and t2's own reports, reproducing identically), and npx eslint . is clean."
   - id: t4
     title: Source-shape test pins the meta phases declaration on its single line
     status: pending
