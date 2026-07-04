@@ -333,7 +333,7 @@ tasks:
       summary: agents/plan.md's step-5 bounce menu prose and yaml template, and its step-9 bounce-return shape, now show menu as [{resolution, option}, ...] with the recommended option first, and name the valid resolution kinds for a plan park (retry | fix-in-place | re-plan | defer), explicitly excluding waive (validate-only). agents/build.md's step-5 park menu prose and yaml template, and its step-6 blocked-return shape, carry the identical kind-stamped form and the same excluded-waive note for a build park. Neither file gained an ADR or internal-doc reference (grep confirms zero ADR mentions in both). Both files are prose-only agent surfaces with no automated test coverage in the repo; npm test (155/155) and npm run check (spine check + eslint, 0 errors/0 warnings) both pass unchanged, confirming no regression.
   - id: t10
     title: Validator amendments — retried-aware dedup, deviation-crash healing, waiver consumption, kind-stamped menus
-    status: pending
+    status: built
     covers: [1, 2, 3]
     acceptance:
       - "agents/validate.md's dedup step reads the scan's new retried/latest_result fields: dedup true with latest_result deviation AND the feature's graph status short of parked → complete the missing park booking reconstruction-style (menu authored from the latest entry's recorded findings, escalation record written, set-status parked, ledger render, one `<feature-id>: book parked at validate` commit) before returning; the healed return carries the reconstructed deviation and menu alongside the dedup shape, so the boundary relay surfaces them rather than a bare entry; dedup true otherwise → book nothing, as today"
@@ -347,6 +347,16 @@ tasks:
     size: s
     tier: standard
     depends_on: [t6]
+    report:
+      result: built
+      footprint_actual:
+        - agents/validate.md
+      diff_actual:
+        files: 1
+        insertions: 54
+        deletions: 13
+      deviations: []
+      summary: "agents/validate.md's dedup step (step 1, item 6) now documents the scan's retried and latest_result fields: it states that a retried mark on the latest entry already yields dedup false (all four legs run fresh) and that the run's own fresh entry at step 7 must never copy that mark forward, consuming it by position instead (criterion 2). The same step branches on dedup true: when latest_result is deviation and the feature's graph status is short of parked, the step now walks a reconstruction-style healing path before returning — author the menu from the latest entry's own recorded findings, write the escalation record, set-status parked, render the Ledger, and commit `<feature-id>: book parked at validate`, then return the dedup shape plus the reconstructed deviation and menu; every other dedup-true case still books nothing exactly as before (criterion 1). A new 'Waiver consumption' paragraph opens section 6 (Verdict), run before the checked-order computation: every finding across all four legs is checked against every prior validations entry's waivers, a cites/obligation match is annotated waived (naming the approver) and excluded from every check that follows, so a leg whose contract-breaking findings are all waived counts as PASS and a fully-waived set no longer blocks perfect (criterion 3). Step 7's Deviation menu-authoring instructions and its escalation-record yaml template, and step 8's return-shape menu (both the main shape and the Blocked shape), are now kind-stamped [{resolution, option}] with the recommended option first, naming the five validate-park resolution kinds (retry | fix-in-place | re-plan | waive | defer); the return shape's waivers entries dropped their expiry field, and the <finding> shape gained an optional waived field naming the matching waiver's approver (criterion 4). No ADR or internal-doc reference was introduced anywhere in the file (grep confirms zero ADR mentions), and every edit stays prose the agent can act on with only the file itself and its explicit inputs (criterion 5). agents/validate.md is a prose-only surface with no automated test coverage in the repo (matching t9's own precedent); npm test (155/155, full suite on loop/surfacing) and npm run check (spine check clean; eslint clean on agents/validate.md itself — the only lint errors present live entirely in the unrelated executor-delegation worktree, outside this task's footprint) both confirmed no regression."
   - id: t11
     title: The adjust skill — docket choreography and typed fold-back recipes
     status: pending
