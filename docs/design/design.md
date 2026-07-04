@@ -199,7 +199,7 @@ features:
 
   - id: surfacing
     title: Surfacing / re-entry (run boundary → session → human → fold-back)
-    status: designed
+    status: planned
     depends_on: [inner-loop-workflow]
     interfaces: [escalation-record]
     notes:
