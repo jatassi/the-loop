@@ -246,7 +246,7 @@ tasks:
 
   - id: t7
     title: Marketplace manifest — the static marketplace-on-main seed
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "the file .claude-plugin/marketplace.json exists, parses as JSON, and declares this repo as a single-plugin marketplace: an owner block plus a plugins array with exactly one entry whose name matches .claude-plugin/plugin.json's name (the-loop) and whose source is the string ./ — the static, written-once manifest the recorded marketplace-on-main deploy binding in docs/ports/ports.md consumes; no other file changes"
@@ -256,6 +256,16 @@ tasks:
     size: xs
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - .claude-plugin/marketplace.json
+      diff_actual:
+        files: 1
+        insertions: 13
+        deletions: 0
+      deviations: []
+      summary: "Added .claude-plugin/marketplace.json declaring this repo as a single-plugin marketplace: a top-level name (\"the-loop\"), an owner block ({name: \"Jackson Atassi\", email: \"jackson.atassi@outlook.com\"}), and a plugins array with exactly one entry ({name: \"the-loop\", source: \"./\"}) whose name matches .claude-plugin/plugin.json's name and whose source is the literal string './' — the static, written-once manifest the marketplace-on-main deploy binding (docs/ports/ports.md) consumes. Verified the file parses as JSON and the owner/plugins shape via a scripted assertion (not committed, per the criterion's 'no other file changes'); npm test (197/197) and npm run check both pass clean, confirming no regression."
 
   - id: t8
     title: Ship skill, first half — entry gates, healing scan, evidence package, approval + freshness
