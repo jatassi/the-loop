@@ -162,7 +162,7 @@ tasks:
       summary: "Each of the six coarse phase-map deepEquals across the three fixture files (one in test/inner-loop-happy.test.js, two in test/inner-loop-halt.test.js, three in test/inner-loop-park.test.js) now sits paired with an added assert.deepEqual over spawns.map((s) => s.opts.label), pinning that fixture's full expected label list — the feature id (and task id where one rides) plus the [<resolved-model>] prefix. Each expected label list was derived by running the real fixture through the shim before writing the assertion, then confirmed meaningful by temporarily corrupting one entry per assertion, watching it go red, and reverting to green — proving the assertions actually exercise the label values rather than restating them vacuously. The excluded-feature drain/halt proofs are now observable on labels too: delta never appears in the halt suite's env-block-drain or park suite's kind-environment-halt label lists, and beta never appears in the park suite's dependent-of-a-parked-feature drain label list. No existing assertion was removed or edited — the label maps are pure additions alongside the already-flipped phase maps, confirmed by a diff showing only insertions (47 insertions, 0 deletions across 3 files). npm test passes 231/232 (the sole failure is the pre-existing, out-of-footprint test/design-md.test.js design_version pin noted in t1 and t2's own reports, reproducing identically), and npx eslint . is clean."
   - id: t4
     title: Source-shape test pins the meta phases declaration on its single line
-    status: pending
+    status: built
     covers: [2]
     acceptance:
       - "a new test/inner-loop-meta.test.js reads the workflows/inner-loop.js source text, extracts the `export const meta` declaration from its single physical line, evaluates that declaration as JavaScript without executing the rest of the script, and asserts the resulting object's `phases` deep-equals [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] — order and title-only shape both pinned by the deepEqual"
@@ -174,6 +174,16 @@ tasks:
     size: xs
     tier: standard
     depends_on: [t2]
+    report:
+      result: built
+      footprint_actual:
+        - test/inner-loop-meta.test.js
+      diff_actual:
+        files: 1
+        insertions: 26
+        deletions: 0
+      deviations: []
+      summary: "Added test/inner-loop-meta.test.js, which reads workflows/inner-loop.js's source text, matches the `export const meta = { ... };` declaration with a regex anchored to a single physical line (no `s` flag, so `.` cannot cross a newline, and the match requires a trailing `;` before end-of-line), evaluates only that matched line via `new Function` (stripping the leading `export`), and asserts the resulting object's `phases` deep-equals [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] — pinning both order and title-only shape. Confirmed the extraction's discriminating power directly: temporarily split the meta line across two physical lines in workflows/inner-loop.js (uncommitted), watched the new test go red (no regex match, clear assertion failure), then restored the file and watched it go green again, with git diff on the source file showing no residual change. npm test now runs 233 tests, 232 passing including the new file; the sole failure is the pre-existing, out-of-footprint test/design-md.test.js design_version pin (8 vs 7) already noted in t1/t2/t3's own reports, reproducing identically with this task's change stashed out. npx eslint . is clean."
   - id: t5
     title: The relay and adjust surfaces name the stalled field agent
     status: pending
