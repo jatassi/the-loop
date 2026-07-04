@@ -21,6 +21,7 @@ Nothing parked — no open escalations.
 `frame`, `plan`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
+- 2026-07-04 | ship-2 | rolled-back | features: workflow-phase-grouping | rollback_verified: false
 - 2026-07-04 | wf_1fd47acf-f94 | completed: workflow-phase-grouping | budget: undefined/undefined
 - 2026-07-04 | ship-1 | deployed | features: artifact-spine, the-loop-entry, build, craft-baseline, validate, inner-loop-workflow, ledger-title-preservation, model-selection, executor-delegation, surfacing, ship
 - 2026-07-04 | wf_bcf2df42-2a7 | completed: ship

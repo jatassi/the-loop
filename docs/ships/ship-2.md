@@ -48,4 +48,6 @@ evidence:
 approval:
   approver: Jackson Atassi
   date: 2026-07-04
+outcome: rolled-back
+rollback_verified: false
 ```
