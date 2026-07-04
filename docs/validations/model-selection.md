@@ -454,3 +454,32 @@ exercise:
 spec_ambiguities: []
 waivers: []
 ```
+
+## Resolution — patch_id `116191601b26d859314ce554be0722c89358faa2` (human authority)
+
+Not a verdict and not a waiver — no obligation is excused. The deviation entry
+above (this same patch_id) carried exactly one contract-breaking finding:
+`test/design-md.test.js`'s stale `designVersion == 5` pin, delta-proved to
+belong to the surfacing design-finalize commit (`01c6a10`), not to any of this
+feature's nine tasks. That finding was fixed by a main-side maintenance commit,
+after which re-validation could never re-judge this diff: the branch diff is
+byte-identical to the already-judged entry, so `spine validate scan` returned
+`dedup: true` and the run booked nothing (run `wf_9efd8be6`). The systemic fix
+is surfacing's retry-despite-dedup resolution kind (ADR-0032); this record is
+its bootstrap-era hand bridge.
+
+The merge rests on run `wf_97851563` (pass 4): readiness clean (zero-conflict
+rebase), forensics PASS (5 hits triaged, all declared footprints), conformance
+PASS (every pinned convention verbatim, zero standards findings), acceptance
+PASS (120/120 twice), runtime PASS (probe-pack replay + all four criteria
+exercised live and delta-proved against the merge-base) — a would-be-perfect
+verdict blocked only by a concurrent worktree holding `main`, then never
+re-bookable through the dedup rule.
+
+```yaml
+resolution: human-merge
+patch_id: 116191601b26d859314ce554be0722c89358faa2
+approver: Jackson Atassi (session directive, 2026-07-03)
+evidence: [run wf_97851563 four-leg would-be-perfect, run wf_afab57bd delta-proof isolating the finding to 01c6a10, run wf_9efd8be6 dedup + 120/120 preconditions]
+design_version: 6
+```

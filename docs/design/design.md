@@ -154,7 +154,7 @@ features:
 
   - id: model-selection
     title: Model selection framework — per-role model/effort bindings at every spawn surface
-    status: building
+    status: validated
     depends_on: [inner-loop-workflow]
     interfaces: [model-binding]
     notes:
