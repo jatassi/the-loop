@@ -282,7 +282,7 @@ tasks:
       summary: "spine escalation resolve — the shared resolution spine — now exists in two layers. The pure planResolution(kind, phase, {reason}) in src/escalation.js holds the kind/phase validation and a flip table: retry/fix-in-place flip a plan park to designed and a build/validate park to building; re-plan flips any phase to designed; waive flips a validate park to validated. It throws on every invalid combination (defer with a 'leaves the park in place' message, an unknown kind or phase, waive off a non-validate park, and retry-on-a-validate-park with no reason), so no caller writes on a bad resolution — proven by two node:test cases (crit 1, 3, 4, 5, 7). bin/spine.js performs the effects: it resolves the park's phase from docs/escalations/<id>.md (or from --phase, the damaged-park escape hatch, refused when a record exists and required when none does — crit 2), guards the feature's design.md status is parked, then runs the contracted order — flip status, run kind-specific extras (re-plan deletes docs/plans/<id>.md when present; retry-on-validate stamps the latest validations entry retried '<today UTC YYYY-MM-DD> — <reason>' via t6's stampRetried), delete the escalation record (skipped under --phase), and re-render the Ledger so What-needs-you drops the entry (crit 5, 6). It never commits — the adjust skill owns the booking commit — and prints JSON naming feature, kind, phase, the new status, every file deleted, and the retried mark when stamped (crit 6). Five CLI subprocess tests cover each kind's happy path (retry on a build park, fix-in-place on a plan park, re-plan and waive on a validate park, retry-on-validate with --reason), the --phase damaged-park path, and every guard's exit-1 with design.md left byte-identical (crit 7). Full suite 152/152, npm run check (spine check + eslint) clean."
   - id: t8
     title: Workflow spawn schemas admit kind-stamped menus
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - "the PLAN, BUILD, and VALIDATE spawn schemas in workflows/inner-loop.js accept menu items that are either bare strings or { resolution, option } objects (option required, resolution a string), using only standard JSON Schema keywords, with both object keys described in properties so the harness's schema-as-template behavior preserves them"
@@ -295,6 +295,17 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - workflows/inner-loop.js
+        - test/inner-loop-park.test.js
+      diff_actual:
+        files: 2
+        insertions: 95
+        deletions: 3
+      deviations: []
+      summary: "workflows/inner-loop.js gains a menuArray schema fragment (items: anyOf[{type:'string'}, {type:'object', properties:{resolution:{type:'string'}, option:{type:'string'}}, required:['option']}]) — only standard JSON Schema keywords, both object keys named in properties per the schema-as-template rule — and PLAN_SCHEMA, BUILD_SCHEMA, and VALIDATE_SCHEMA's own `menu` field now points at it instead of the old bare stringArray. meta stays on its single pinned line, and parkEntry/the rest of the script are untouched: menus still relay via `menu: r.menu` verbatim, so no transformation was added. test/inner-loop-park.test.js gains three new tests — a plan bounce, a feature-kind build block, and a validate deviation, each scripted with a [{resolution, option}, ...] menu — asserting both that the corresponding spawn's own opts.schema.properties.menu accepts a kind-stamped object (watched red against the pre-change stringArray schema, confirmed green after the schema edit) and that BoundaryResult.parked carries the scripted menu array verbatim; the five pre-existing bare-string-menu tests are untouched and still pass. npm test (155/155, full suite) and npm run check (0 errors, 0 warnings) both pass."
   - id: t9
     title: Plan and build agents author kind-stamped menus
     status: pending
