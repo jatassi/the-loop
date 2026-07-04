@@ -495,7 +495,7 @@ tasks:
       summary: "commands/the-loop.md's launch leg gains a new step 4, \"Pre-flight the executor bindings\", inserted between step 3 (assemble args) and what is now step 5 (agent resolution): it computes the distinct via set across every role in the step-3 models table (every via other than the literal agent or absent; an empty set skips the step entirely), reads the executor registry via node \"$CLAUDE_PLUGIN_ROOT/bin/spine.js\" executors, and for each distinct via runs the playbook's availability command then its auth_smoke.run command, confirming the output contains auth_smoke.expect — any failure stops the launch right here exactly like the clean-tree gate, telling the human what failed with nothing run, and the step states plainly that the smoke re-runs at every launch since cached auth state is not state the stateless loop keeps. Step 5 (formerly step 4, \"Check plugin-agent resolution\") now lists drive as a fifth agentType to confirm and symlink unconditionally alongside plan, build, derive, validate — the existing unconditional confirm-or-symlink logic applies identically to all five, with no special-casing for drive. The old steps 4-6 (agent resolution, launch, relay) renumbered to 5-7; the one internal cross-reference elsewhere in the file (\"step 2\" inside step 3) still resolves correctly since step 2 itself didn't move. The file stays self-contained: grep for \"ADR\" yields zero hits. Verified by inspection (no test file, per the pure-prose precedent noted in deviations); the full repo test suite (153 tests: 152 pass, 1 pre-existing unrelated failure in test/spine-cli.test.js already recorded by t4/t5/t6/t7, outside this task's footprint) and eslint over the whole tree both ran clean; node bin/spine.js plan check executor-delegation (0 errors, the pre-existing t6 size-at-ceiling warning already justified in the plan narrative) and node bin/spine.js check (25 features, 11 contracts, 0 errors/warnings) both stay green."
   - id: t9
     title: Probe — grok native worktree flags (--worktree/--worktree-ref) on a throwaway repo
-    status: pending
+    status: built
     covers: [1]
     acceptance:
       - a probe record exists at docs/research/2026-07-03-grok-native-worktree.md stating the question (do grok's --worktree/--worktree-ref flags produce a usable isolated worktree run?), the exact commands run against a throwaway git repo outside this checkout, and either the observed behavior with captured evidence or the concrete reason no observation is possible in this environment (CLI absent, unauthenticated, or the flags failing) — never a guess presented as an observation
@@ -506,4 +506,15 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - docs/research/2026-07-03-grok-native-worktree.md
+      diff_actual:
+        files: 1
+        insertions: 128
+        deletions: 0
+      deviations:
+        - "No new test file: this task's footprint is a single prose research record with no parser or executable behavior (matching t3/t5/t6's pure-prose precedent already noted in the plan narrative). Each acceptance criterion was verified by live execution instead of an automated test: the question, setup, and exact commands are quoted verbatim from the real shell session; the observed behavior (direct commits landing on the throwaway repo's own main branch, git worktree list and grok worktree list never gaining a new entry, and a zero-hit grep for \"worktree\" in --debug output) was captured across four independent runs in two throwaway repos outside this checkout, confirming grok --version, auth, and the flags themselves are all real and reachable in this environment before drawing any conclusion."
+      summary: "docs/research/2026-07-03-grok-native-worktree.md records a live, reproduced probe of grok's --worktree/--worktree-ref flags run four times against two throwaway git repos outside this checkout, in the exact headless/single-turn/--always-approve/--no-subagents invocation shape the shipped playbook uses: every run committed directly onto the passed-in checkout's own main branch, with git worktree list and grok's own worktree list never gaining a new entry and a --debug run showing zero worktree-related log lines, so the flags are observed to be no-ops in this invocation shape rather than guessed at from --help text (criterion 1). The record's closing section states the standing consequence either way: executors/grok.md's shipped worktree: driver-made stays as-is (this observation confirms rather than changes it), and flipping to native mode remains a follow-up playbook amendment gated on a future clean observation that contradicts today's negative result (criterion 2)."
 ```
