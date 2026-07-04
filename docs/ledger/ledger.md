@@ -8,8 +8,8 @@ Total: 25 (design_version 6)
 
 - designed: 13
 - planned: 0
-- building: 4
-- validated: 8
+- building: 3
+- validated: 9
 - shipped: 0
 - parked: 0
 - drifted: 0
@@ -18,7 +18,7 @@ Total: 25 (design_version 6)
 Nothing parked — no open escalations.
 
 ## What's next
-`frame`, `plan`, `executor-delegation`, `workflow-phase-grouping`, `surfacing`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
+`frame`, `plan`, `executor-delegation`, `workflow-phase-grouping`, `ship`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
 **2026-07-03 · runs wf_81a89a5d / wf_16bdf774 / wf_97851563 / wf_9efd8be6 — model-selection, passes 2–5 to validated** — the fix-in-place cycle after the pass-1 park: pass 2 halted on a dirty tree (an uncommitted session dictionary edit — clean-tree gate save #1), pass 3 halted on the harness's own agent worktree at .claude/worktrees/ (save #2; now gitignored), pass 4 ran all four legs to a would-be-PERFECT verdict blocked only by a concurrent session's worktree holding main, pass 5 parked on surfacing's design_version bump breaking the test pin (delta-proved unrelated to this diff; fixed as main-side maintenance), and pass 6 hit the patch-id dedup rule against the stale deviation entry — surfacing's retry-despite-dedup criterion (ADR-0032) observed live before the feature is built. Resolved by the recorded human-merge in docs/validations/model-selection.md; squash 37af221, booked validated. The hand-rolled binding fork is retired: workflows/inner-loop.js on main now reads args.models for real. Also landed post-merge: the halted.detail reconciliation fix (54f98f2, Opus subagent in an isolated worktree, session-reviewed).
