@@ -8,8 +8,8 @@ Total: 25 (design_version 7)
 
 - designed: 12
 - planned: 0
-- building: 4
-- validated: 9
+- building: 3
+- validated: 10
 - shipped: 0
 - parked: 0
 - drifted: 0
@@ -18,7 +18,7 @@ Total: 25 (design_version 7)
 Nothing parked — no open escalations.
 
 ## What's next
-`frame`, `plan`, `executor-delegation`, `workflow-phase-grouping`, `ship`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
+`frame`, `plan`, `executor-delegation`, `workflow-phase-grouping`, `system-map`, `worktree-parallelism`, `configure-step-full`, `research-tiers`
 
 ## Run history
 - 2026-07-03 | wf_1c210607-7f2 | halted: environment-blocked — Build entry found the tree dirty — untracked directory 1bddab65-fc91-4f88-8117-969eadb754f6/ (a concurrent session's executor-delegation e2e debris: scratchpad/e2e-target/.claude/worktrees/drive-widget-t1.prompt.md); the build agent stopped before touching branch, plan, or code and cleaned nothing. Ship was planned and booked in-run (1bede8d, 605e3f6) before the halt
