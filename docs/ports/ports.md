@@ -216,12 +216,40 @@ budgets and import-direction architecture lint in `eslint.config.js`; zero findi
 wired into `npm run check`); craft-baseline → the bundled pack (`skills/craft/` — constitution, design
 principles, review catalog; bound 2026-07-02), with project standards seeded at
 `docs/standards/` (derived-artifacts, pure-core, loop-surfaces);
-deploy-target → **marketplace-on-main** (bound 2026-07-03, ADR-0033): the repo's own
-`.claude-plugin/marketplace.json` (`source: "./"`, static) added once via
-`claude plugin marketplace add`; deploy = snapshot the installed tree, then
-`claude plugin marketplace update the-loop` + `claude plugin update the-loop` at the
-commit-1 tip (pull-at-ship — the installed cache is the deployed state between ships);
-rollback = restore the snapshot; smoke = `claude plugin list` asserts version
-`0.<N>.0`, then a headless `claude -p` exercises the installed plugin on a cold-start
-fixture repo; security-review → the harness `/security-review` skill (the in-box
+deploy-target → **marketplace-on-main** (bound 2026-07-03, ADR-0033; made executable
+2026-07-04 at ship-1): the repo's own `.claude-plugin/marketplace.json`
+(`source: "./"`, static) is the marketplace, the installed plugin cache
+(`~/.claude/plugins/`) is the deployed state, and future sessions load the-loop
+system-wide from it. The three corridor commands are recorded literally in the block
+below so `spine ship corridor` excerpts them verbatim — they run from the repo root via
+`/bin/sh`, and each is **idempotent** so every ship (the bootstrap and every update
+after) runs the same commands:
+
+- **deploy** ensures the marketplace is registered (`marketplace add` is a no-op exit-0
+  when already present), refreshes it from the working tree (`marketplace update`), then
+  installs the plugin at the version `.claude-plugin/plugin.json` now carries
+  (`plugin install <id>` installs a fresh version, or is a no-op exit-0 when that version
+  is already installed — this is the pull-at-ship). `plugin update <bare-name>` is **not**
+  used: it fails on a not-yet-installed plugin, whereas version-aware `install` covers
+  bootstrap and update alike.
+- **rollback** uninstalls the plugin. For the bootstrap that restores the exact pre-ship
+  state (absent); for a later ship it removes the just-deployed version rather than
+  reverting to the prior one — the safe, consistent state (a half-applied bad version is
+  indistinguishable from a good one), leaving recovery to the human-verify-by-hand full
+  stop the corridor already mandates.
+- **smoke** is a forward health check: the plugin is installed, `enabled`, at exactly the
+  version `plugin.json` carries, and its component surface enumerates
+  (`claude plugin details`). The corridor reuses it as the post-rollback `smoke-verify`;
+  because rollback removes the plugin, that verify **fails by design**, yielding
+  `rollback_verified: false` — the correct signal that a failed ship needs human eyes, not
+  a claim that the new version survived.
+
+```yaml
+deploy-target:
+  deploy: claude plugin marketplace add "$PWD" && claude plugin marketplace update the-loop && claude plugin install the-loop@the-loop --scope user
+  rollback: claude plugin uninstall the-loop@the-loop --scope user
+  smoke: node -e 'const cp=require("child_process");const v=require("./.claude-plugin/plugin.json").version;const l=JSON.parse(cp.execSync("claude plugin list --json",{encoding:"utf8"}));const e=l.find(x=>x.id==="the-loop@the-loop");if(!(e&&e.enabled&&e.version===v))process.exit(1);cp.execSync("claude plugin details the-loop@the-loop",{stdio:"ignore"})'
+```
+
+security-review → the harness `/security-review` skill (the in-box
 default, ADR-0014); observability-backend → unbound until Operate nears the frontier.
