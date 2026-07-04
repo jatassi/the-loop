@@ -4,7 +4,7 @@
 the-loop: an owned, composable agentic dev loop built from native Claude Code primitives, shipped as a plugin. It moves an idea through the full SDLC and — by design — its first job is to build itself. Full design in [design.md](../design/design.md); the *why* of every choice in [the ADRs](../adr/).
 
 ## Where we are
-Total: 25 (design_version 6)
+Total: 25 (design_version 7)
 
 - designed: 13
 - planned: 0

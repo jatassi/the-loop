@@ -43,7 +43,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 - **Build** — concurrent tasks in **per-task worktrees** (Plan keeps them file-disjoint); tasks produce diffs and defer testing to Validate. Work lands one-commit-per-task on a per-feature branch (`loop/<feature-id>`) cut from the **integration target** (a bound ref, default `main`, set at Design; ADR-0026). Builders build under the **craft baseline**: the build constitution always, plus the task's `standards:` selection (ADR-0027).
 - **Validate** — the **independent validator** under the ADR-0028 protocol. A cheap **blind deriver** first writes the **expectation sheet** from the contract slice alone (its inputs are its blindfold). The validator then readies the feature branch (rebase + task-branch fold-in; **trivial conflicts** union-resolve and are evidence-recorded, **semantic conflicts** park) and runs four legs — **integrity forensics** (the `spine validate scan` tripwire scanner + justified triage), two-axis **conformance** (ADR-0027), **acceptance** on the project's harness, and **runtime observation** (full probe-pack replay + the new exercise + the **delta proof**: red on merge-base, green on merged tree). Per-leg verdicts (PASS/FAIL/BLOCKED/SKIP, fail-closed) compose mechanically — perfect iff readiness clean and every leg PASS or sanctioned-SKIP; findings carry two severities by the **citation test**; a confirmed forensics hit short-circuits. Only a perfect verdict squash-merges into the integration target (ADR-0026); a **waiver** is a typed human resolution, never a verdict value. Verdicts persist append-only at `docs/validations/` (patch-id dedup); validated exercises pin into the **probe pack** (`docs/probes/`), which Ship replays at full scope.
 - **Adjust** — the adjust skill walks the parked docket in graph order: kind-stamped recommendation menus presented recommended-first, typed resolutions folded back mechanically (ADR-0032); drift via each feature's `design_version`; impact-scoped re-validation.
-- **Ship** — human-gated; evidence package (full-system integration via the runtime probe + a baseline security-review port + changelog); **health-gated, delegated rollback**.
+- **Ship** — human-gated, session-side; evidence package pinned to `ship_sha` (all-packs probe replay + security-review port + changelog + live waivers) → approval → the autonomous **corridor** (deploy → user-defined smoke → conclude-or-rollback), booked as a **ship record** at `docs/ships/` (ADR-0033); **health-gated, delegated rollback**.
 - **Operate** — **on-demand** ops/debug tooling, plus an **observability solution** that apprises the human; never a scheduled agent.
 - **Evolve** — the engine on a bug-shaped intake; same gates.
 
@@ -65,7 +65,7 @@ All artifacts are hybrid (Markdown narrative + structured blocks only for machin
 The v1 build order (ADR-0020, amended by ADR-0023): the walking skeleton — including the System Map and brownfield comprehension it needs to dogfood its own repo — reaches self-hosting; everything after is built *by* the loop. Schema per ADR-0003.
 
 ```yaml
-design_version: 6
+design_version: 7
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -219,7 +219,21 @@ features:
     title: Ship (human-gated, evidence package, health-gated delegated rollback)
     status: designed
     depends_on: [validate, surfacing]
-    acceptance: a validated frontier deploys behind a human gate; a failed post-deploy health check rolls back
+    interfaces: [ship-record]
+    notes:
+      - designed 2026-07-03 by grilling (ADR-0033) — the ship skill (skills/ship/) realizes Ship session-side; control policy whose swappable parts are its three ports (runtime-probe, security-review, deploy-target); no new agents or binding roles — ship is human-initiated and human-present, every evidence leg runs inline in the session; routes in via the-loop.md's ship proposal and the /the-loop ship jump
+      - record-as-truth — docs/ships/ship-<N>.md pins ship_sha, design_version, features, evidence, approval, outcome; the loop/ship/<N> tag is refs-last convenience, created on deployed outcomes only; diff range = previous record's ship_sha..tip (root for ship-1); whole-frontier only — ship deploys the target's tip, never a subset (ADR-0026's trunk posture)
+      - evidence at a pinned sha — ship_sha = target tip after the clean-tree gate; integration check = every pinned pack in docs/probes/ replayed on the tip tree via the recorded probe binding (ADR-0028 masking + flake protocol verbatim), verdict leg-shaped; red blocks hard — no record, no gate, no in-loop override, remedy is Evolve-shaped; security review over the diff range via the port, findings verbatim severity-ranked inform-only (the human gate is the sole authority); changelog record-resident — squash commits in range are the skeleton (bookkeeping excluded by construction), session prose per feature; live waivers on frontier features listed (ADR-0032)
+      - freshness — approval binds the pin ({approver, date} beside ship_sha; approver = git user.name, the gate is synchronous); commits since ship_sha beyond this ship's own bookings void the evidence — say so and reassemble, never a stale deploy
+      - the corridor — commit 1 (pre-deploy booking: record with evidence + approval, plus the plugin version bump) lands before any prod-touching command; then deploy → smoke → conclude with no further prompts (the one post-gate autonomy re-grant); smoke fail → the binding's rollback → one smoke re-run verifying restoration; outcomes deployed | rolled-back | deploy-failed (rollback still invoked — half-applied is indistinguishable from bad); a failed rollback verification is the loudest line and a full stop — never a second autonomous swing at prod; commit 2 (post-corridor) appends the outcome, and on deployed only flips the frontier validated→shipped via spine ship book + Ledger re-render; every outcome gets one newest-first Ledger history line (the shared run-boundary stream); tag last
+      - smoke suite is user-defined — a component of the deploy-target binding {deploy, rollback, smoke}, recorded at Design/Configure and excerpted verbatim like the probe binding; may cite probe-pack steps or be something else entirely (softens ADR-0014's probe-smoke letter to a default suggestion; no pin-time smoke flags); absent smoke suite = no mechanical health signal = auto-rollback off for that ship, surfaced never silent
+      - healing — a ship record carrying approval but no outcome surfaces as interrupted-mid-corridor at re-entry, verify-prod-by-hand; never auto-resumed
+      - self-hosting binding, marketplace-on-main — the repo's own .claude-plugin/marketplace.json (source "./", static, written once) added via claude plugin marketplace add; consumption is pull-at-ship (claude plugin marketplace update + plugin update at the commit-1 tip — the installed cache is the deployed state between ships, so main-tracking stays gate-safe); rollback = snapshot-restore of the installed tree, snapshotted by the deploy step (cache retention across updates is a build-time probe, not a design assumption); smoke = claude plugin list asserts version 0.<N>.0 (↔ ship-N) + headless claude -p exercising the installed plugin on a cold-start fixture (restart-required means the live session runs old code — the self-hosting code-swap rule); corridor tests ride a scripted fixture deploy target with injectable outcomes — the real plugin CLI never enters the suite
+    acceptance:
+      - on a non-empty frontier, ship assembles the evidence package (all-packs replay, security findings verbatim, changelog, live waivers) pinned to ship_sha, and a red integration check blocks before any approval is solicited
+      - after approval the corridor runs deploy → smoke → conclude without further prompts; a failed smoke triggers the binding's rollback and a verification re-run; all three outcomes land in the ship record with commit 2 booked, flips and Ledger only on deployed
+      - a target tip moved past ship_sha beyond this ship's own bookings voids the evidence and forces reassembly — never a stale deploy
+      - a ship record carrying approval but no outcome surfaces as interrupted at re-entry and is never auto-resumed
 
   # ── dogfood-readiness (ADR-0023): brownfield support lands before self-hosting ──
   - id: system-map
@@ -410,6 +424,24 @@ contracts:
                                         #   `kind` above means feature|environment; ADR-0032);
                                         #   parsers lenient to pre-amendment bare strings
         branch }                        # the loop/<feature-id> ref, when one exists
+
+  - id: ship-record
+    body: |
+      # docs/ships/ship-<N>.md — narrative + one structured block (ADR-0033);
+      # written by the ship skill: commit 1 books evidence + approval pre-deploy,
+      # commit 2 appends the outcome post-corridor
+      { ship: N, ship_sha,                 # the evidence tree: target tip at assembly
+        design_version,
+        features: [feature-id],            # the frontier this ship deploys
+        evidence: { integration,           # all-packs replay verdict, leg-shaped (ADR-0028)
+                    security: [finding],   # verbatim, severity-ranked — inform-only
+                    changelog,             # squash-commit skeleton + session prose
+                    waivers },             # live waivers on the frontier (ADR-0032)
+        approval: { approver, date },      # binds to ship_sha — "I approved this tree"
+        outcome?: deployed|rolled-back|deploy-failed,  # absent = corridor never concluded:
+                                           #   surfaced as interrupted, never auto-resumed
+        rollback_verified? }               # the post-rollback smoke re-run's observation
+      # tag loop/ship/<N> refs-last, deployed outcomes only
 
   - id: runtime-probe
     body: |

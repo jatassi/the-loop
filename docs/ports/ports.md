@@ -112,8 +112,8 @@ ports:
   - id: deploy-target
     tier: required
     required_by: [ship]
-    requires: [deploy the shippable frontier, native rollback (delegated, ADR-0014), post-deploy health-checkable by the runtime probe]
-    default_adapter: { kind: command, ref: none universal — bound per-project via the Configure/Design nudges }
+    requires: [deploy the shippable frontier at its pinned tip, rollback (delegated — native or binding-scripted, ADR-0014/0033), a user-defined smoke suite as the post-deploy health signal (may cite probe-pack steps; absent = surfaced downgrade, auto-rollback off for that ship)]
+    default_adapter: { kind: command, ref: none universal — bound per-project via the Configure/Design nudges as {deploy, rollback, smoke} (ADR-0033) }
     consumers: [Ship deploy + delegated rollback]
 
   - id: observability-backend
@@ -215,5 +215,13 @@ as floor — @eslint/js + unicorn recommended + eslint-plugin-n — plus complex
 budgets and import-direction architecture lint in `eslint.config.js`; zero findings,
 wired into `npm run check`); craft-baseline → the bundled pack (`skills/craft/` — constitution, design
 principles, review catalog; bound 2026-07-02), with project standards seeded at
-`docs/standards/` (derived-artifacts, pure-core, loop-surfaces); everything
-phase-scoped beyond Validate → unbound until those phases near the frontier.
+`docs/standards/` (derived-artifacts, pure-core, loop-surfaces);
+deploy-target → **marketplace-on-main** (bound 2026-07-03, ADR-0033): the repo's own
+`.claude-plugin/marketplace.json` (`source: "./"`, static) added once via
+`claude plugin marketplace add`; deploy = snapshot the installed tree, then
+`claude plugin marketplace update the-loop` + `claude plugin update the-loop` at the
+commit-1 tip (pull-at-ship — the installed cache is the deployed state between ships);
+rollback = restore the snapshot; smoke = `claude plugin list` asserts version
+`0.<N>.0`, then a headless `claude -p` exercises the installed plugin on a cold-start
+fixture repo; security-review → the harness `/security-review` skill (the in-box
+default, ADR-0014); observability-backend → unbound until Operate nears the frontier.
