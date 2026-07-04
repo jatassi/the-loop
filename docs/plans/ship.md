@@ -77,7 +77,7 @@ design_version: 7
 tasks:
   - id: t1
     title: Ship-record core — parse, apply-outcome, interrupted and record-set helpers (src/ship.js)
-    status: pending
+    status: built
     covers: [2, 4]
     acceptance:
       - "src/ship.js exports parseShipRecord(text) returning a model with the ship-record contract's fields (ship, ship_sha, design_version, features, evidence, approval, and outcome / rollback_verified when present) read from the first fenced yaml block under the exact heading `## Ship record`, retaining the yaml Document and span in model._blocks so src/render.js round-trips — render(text, parseShipRecord(text)) equals text byte-for-byte, proven by a test whose record fixture carries narrative prose above and below the block"
@@ -91,6 +91,17 @@ tasks:
     size: s
     tier: standard
     depends_on: []
+    report:
+      result: built
+      footprint_actual:
+        - src/ship.js
+        - test/ship.test.js
+      diff_actual:
+        files: 2
+        insertions: 226
+        deletions: 0
+      deviations: []
+      summary: "src/ship.js now exports the ship-record core: parseShipRecord(text) locates the first fenced yaml block under the exact heading '## Ship record' via the existing yamlBlockAfter helper, normalizes the contract's fields (ship, ship_sha, design_version, features, evidence, approval, outcome/rollback_verified when present), and retains the yaml Document + span in model._blocks so render(text, parseShipRecord(text)) is byte-identical, proven against a fixture carrying narrative prose above and below the block. applyOutcome(model, {outcome, rollback_verified}) mutates both the JS model and the retained document (doc.setIn) so render persists exactly the new outcome, with rollback_verified only written when supplied; it throws with the model untouched for an outcome outside deployed|rolled-back|deploy-failed and for a record that already carries an outcome, each proven by its own test. isInterrupted(record) returns true exactly when a record carries approval and no outcome, false when approval is absent and when an outcome is already present, proven over all three shapes. summarizeShips(records) returns {count, latest, next, previous_ship_sha} from an array of parsed records in any order, proven for zero, one, and several unordered records. The module imports only 'yaml' and the local blocks.js helper (no node:fs/node:child_process); npm test (164 passing, including the 9 new ship.js tests) and npm run check (25 features, 12 contracts, 0 errors/warnings) both pass."
 
   - id: t2
     title: Corridor decision core — retry-free state machine (src/corridor.js)
