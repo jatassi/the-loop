@@ -42,9 +42,12 @@ downstream agent. Three artifacts come out (ADR-0037):
    exists, you are amending it: fold new features into the graph, bump
    `design_version`.
 2. **Interview the architecture into shape** with the `grilling` skill. Survey before
-   you invent — cite what exists before proposing custom builds. For a contested,
-   hard-to-reverse choice, sketching 2–3 alternatives with subagents is available —
-   a judgment call, not a mandate.
+   you invent — cite what exists before proposing custom builds. On a repo with
+   existing code, ground the design in the code that's there: feature docs quote
+   real interfaces from the source, never imagined shapes — the design artifacts are
+   where comprehension of the existing system is paid once and cached. For a
+   contested, hard-to-reverse choice, sketching 2–3 alternatives with subagents is
+   available — a judgment call, not a mandate.
 3. **Slice features — the human owns the knife.** A feature is a vertical slice:
    independently validatable and shippable. Order for a walking skeleton — any prefix
    of the build order is a viable system. Extra is a failure like missing.

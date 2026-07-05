@@ -8,7 +8,7 @@ branches, task commits) is derived from git at launch time. Narrative lives in
 ## Feature graph
 
 ```yaml
-design_version: 8
+design_version: 9
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -122,21 +122,6 @@ features:
     depends_on: [validate, surfacing]
     acceptance:
       - ship replays the probe packs and suite at a pinned tip, holds the human gate, deploys per the recorded recipe, verifies health, and records the outcome
-
-  # ── dogfood-readiness: brownfield support lands before wider intakes ─────
-  - id: system-map
-    title: System Map artifact (per-module nodes, fingerprints, self-maintenance)
-    status: designed
-    depends_on: [artifact-spine]
-    acceptance:
-      - built features update their map node + fingerprint in the same commit; stale nodes are detected
-
-  - id: brownfield-comprehension
-    title: Brownfield intake — comprehension seeding of the System Map
-    status: designed
-    depends_on: [system-map, design]
-    acceptance:
-      - pointing the loop at an existing repo seeds a fingerprinted System Map, demand-driven
 
   # ── deferred: built BY self-hosting ─────────────────────────────────────
   - id: worktree-parallelism
