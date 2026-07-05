@@ -128,6 +128,17 @@ never a silent fallback under degraded conditions.
 Fix nodes are transient (pruned from the graph in the ship commit); RCA docs are
 permanent — the accumulating, greppable corpus for issue-class pattern recognition.
 
+### Naming law (ADR-0044)
+
+Every name below the brand tier — terms, files, CLI verbs, statuses, identifiers —
+must let an engineer who has never seen the-loop infer its purpose from the name
+and its grammatical role alone. The standard's clauses (outsider bar, brand-tier
+exemption for `the-loop` itself, composed-from-standard-words, coined-proper-noun
+ban, blind generation, plain speech) live in the dictionary's rules section — the
+sharpened ADR-0037 ratchet. Historical records are never rewritten; renamed terms
+carry `(historical)` aliases. The clean-slate application to the existing repo is
+the `naming-map` → `rename-sweep` feature pair.
+
 ## Key interface contracts
 
 Cross-feature shapes, in prose (per-feature detail lives in the feature docs):

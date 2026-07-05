@@ -17,14 +17,27 @@ Prose definition — precise enough to check usage against.
 *See:* ADR-00x / doc §y                                          (optional provenance)
 ```
 
-**Rules:**
-- **Prefer standard industry terms.** Before adding any entry, ask: *does a standard
-  industry term already name this?* If yes, use that term and add nothing — a model
-  already knows what "blocked", "queue", or "test plan" mean, and every invented word
-  forfeits that prior. A made-up term is a documented exception that must name what
-  the standard term fails to capture. (ADR-0037's ratchet.)
-- **Use canonical terms verbatim**; register a new proper noun here only when it
-  clears the ratchet.
+**Rules (the naming standard, ADR-0044 — sharpening ADR-0037's ratchet):**
+- **The outsider bar.** A name passes when an engineer who has never seen the-loop,
+  shown the name plus only its grammatical role (a CLI subcommand, a status value,
+  a file path), correctly infers what the named thing is for. This governs every
+  name below the brand tier — terms, files, CLI verbs, statuses, identifiers — not
+  just dictionary entries.
+- **Brand tier.** `the-loop` itself is the one allowed non-descriptive name.
+  Nothing beneath it may lean on metaphor or brand.
+- **Prefer standard industry terms.** Before adding any entry, ask: *does a
+  standard industry term already name this?* If yes, use that term and add nothing
+  — a model already knows what "blocked", "queue", or "test plan" mean, and every
+  invented word forfeits that prior. When no standard term exists, compose a
+  self-explanatory name from standard words. **Coined proper nouns are banned** —
+  the documented-exception escape hatch is closed.
+- **Name blind.** Generate candidate names from a jargon-free purpose line plus the
+  family's sibling names — never by mutating an existing name, which anchors.
+- **Plain speech.** Loop-authored surfaces (skills, prompts, CLI and ledger output)
+  phrase things in plain SDLC English; a compliant noun doesn't license dense
+  prose.
+- **Use canonical terms verbatim.** A renamed term keeps its old name as a
+  `(historical)` alias so records stay legible.
 - Entries are fetched on demand — never assume an agent has read the whole file.
 
 ---
