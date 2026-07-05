@@ -134,6 +134,15 @@ The ref validated features merge into — `main` unless the design narrative nam
 another. Validators publish to it by fast-forward from a dedicated integration
 worktree, serialized. *See:* ADR-0026/0038.
 
+### compose-and-prove
+**aliases:** — · **status:** active
+The one merge posture at every merge point (sibling merge, integration merge,
+publish-rebase): the merging agent may resolve a textual conflict only when it can
+state both sides' intents and write a resolution serving both, proven by the merged
+suite — both branches' tests ride the merged tree — going green. Can't compose it,
+or tests stay red → semantic conflict → `blocked` naming the paths. Judgment does
+the resolving; tests do the deciding. *See:* ADR-0042.
+
 ### model binding
 **aliases:** — · **status:** active
 `{ <role>: {model | "session", effort?, via?} }` — the per-role model table

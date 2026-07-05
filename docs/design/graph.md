@@ -8,7 +8,7 @@ branches, task commits) is derived from git at launch time. Narrative lives in
 ## Feature graph
 
 ```yaml
-design_version: 9
+design_version: 10
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -125,13 +125,15 @@ features:
 
   # ── deferred: built BY self-hosting ─────────────────────────────────────
   - id: worktree-parallelism
-    title: Worktree parallelism — remaining scope past the v2 substrate (hub-file chaining)
+    title: Worktree parallelism — trivial-merge relaxation (compose-and-prove at every merge point)
     status: designed
     depends_on: [build]
     notes:
-      - the v2 rebuild (ADR-0038) landed the substrate — worktrees everywhere, ready-set feature/task concurrency; what remains is the hub-file story — file-disjointness fails routinely on barrel exports, route registration, shared types; design hub-file task chaining and a trivial-merge relaxation so only semantic conflicts surface (2026-07-01 review)
+      - ADR-0038 landed the substrate (worktrees everywhere, ready-set concurrency); ADR-0042 closes the hub-file remainder declaration-free — the unordered-overlap lint dies, disjointness becomes plan bias, and all three merge points (sibling merge, integration merge, publish-rebase) resolve textual conflicts compose-and-prove
     acceptance:
-      - hub-file-sharing tasks chain mechanically or merge trivially; only semantic conflicts surface
+      - a plan whose unordered tasks share a footprint file passes plan check clean
+      - no loop surface still promises conflict-free merges — build and validate carry the compose-and-prove posture (resolve only with a resolution serving both sides' stated intents, proven by the merged suite including both branches' tests going green; otherwise blocked naming the conflicting paths)
+      - in a two-branch fixture scenario editing the same file, a composable conflict lands both edits with the suite green, and a non-composable conflict returns blocked naming the paths
 
   - id: evolve
     title: Evolve (bug-shaped intake; RCA + fix-design at the Design gate)

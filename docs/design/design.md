@@ -50,8 +50,10 @@ brain, agents = hands. The script has no filesystem — it consumes the snapshot
 spawns agents; every repo-touching action is an agent's. It runs a **ready-set walk**
 over the scoped subgraph: every feature whose dependencies are satisfied runs
 concurrently; as each validates and merges, newly-ready dependents launch. Tasks
-inside a feature schedule the same way — unordered tasks are footprint-disjoint by
-plan-check construction and run in parallel worktrees.
+inside a feature schedule the same way — unordered tasks run in parallel worktrees;
+footprint disjointness is the plan's bias, not law, and a textual conflict at any
+merge point is resolved compose-and-prove — both sides' intents served, proven by
+the merged suite going green — with only semantic conflicts blocking (ADR-0042).
 
 **Three lanes** (chosen by the plan agent's sizing judgment): *small* — the whole
 feature fits one agent comfortably; one build + one validate, no plan artifact.
