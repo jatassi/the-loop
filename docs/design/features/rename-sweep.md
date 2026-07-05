@@ -17,11 +17,14 @@ zero on living surfaces and the loop runs end to end under the new vocabulary.
 
 `docs/` (except the historical set), `skills/`, `agents/`, `commands/`,
 `workflows/`, `bin/`, `src/`, `test/`, `config/`, `executors/`, README, CLAUDE.md,
-plugin manifest. The **historical set** — byte-identical before/after: `docs/adr/`,
+plugin manifest. The **historical set** — content untouched: `docs/adr/`,
 `docs/ships/`, `docs/rca/`, `docs/research/`,
 `docs/agentic-dev-loop-design-intent.md`, `docs/agentic-dev-loop-design-decisions.md`,
 `docs/briefs/` (records of past intent), and the frozen map itself (append the
-`swept: <date>` header line; nothing else changes).
+`swept: <date>` header line; nothing else changes). One approved exception (map
+mechanics note 2): `docs/ships/*` and `docs/rca/*` move content-identical — git mv,
+filenames preserved, bytes unchanged — into `docs/releases/` and `docs/bugs/`; the
+grep-zero exclusion set is therefore the *post-move* record homes.
 
 ## Bootstrap posture (a loop renaming its own conventions)
 
@@ -36,16 +39,34 @@ plugin manifest. The **historical set** — byte-identical before/after: `docs/a
      `` `loop/${featureId}--${taskId}` `` (`src/launch.js`) must agree with how the
      workflow and worktree commands cut branches *on the post-sweep tree*;
    - the commit-subject prefix (`src/launch.js`) must agree with what build agents
-     are told to write.
+     are told to write;
+   - artifact-path constants — everywhere code or a prompt names an artifact home
+     (the graph, per-feature design docs, plans, runbooks, RCA lookups including
+     the `features/`-then-`rca/` fallback becoming `designs/`-then-`bugs/`, the
+     glossary) must agree with the moved files on the post-sweep tree.
 3. **Never rename the in-flight subtree**: `naming-map` and `rename-sweep` rows are
    `keep` by construction; graph ids of all other nodes rename freely, and their
    feature-doc and probe-pack filenames follow (`docs/design/features/<id>.md`,
    `docs/probes/<id>.md`).
 4. **Quiet graph**: launched alone in scope, nothing else in flight. The launch leg
    re-checks this.
+5. **Launch from the target branch's checkout**: `naming-map`'s validated status
+   lands on the integration target, not on `main` — a launch run from the `main`
+   checkout would refuse this feature's dependency gate. Run the launch leg from a
+   worktree of the target branch (the CLI reads artifacts from its working
+   directory).
 
 ## Mechanics
 
+- **The approved map's `## Sweep mechanics (human-approved at the boundary)`
+  section is binding input**, alongside the row verdicts — five notes: the
+  orient+ledger collapse into one `status` subcommand (human summary default,
+  `--json` machine orientation); the record moves (above); label-vs-literal
+  convention rows (literal `loop/<id>`, `loop/<id>--<task>`, commit-subject, and
+  `fix-` patterns stay; future release tags use `v<version-number>`); the
+  interview port's binding id stays `/grilling` (user-level skill outside this
+  repo); and the deferred feature-status expansion, which the sweep must NOT
+  implement (filed in the actions log for a post-sweep amendment).
 - **Coverage re-check first**: diff the name inventory at this feature's branch
   point against the map's `enumerated_at` tip. A name born in between is applied
   if the map's family pattern decides it mechanically and it passes the standard;
@@ -72,8 +93,13 @@ remains.
 ## Validator brief
 
 On the merged tree: for each `rename → X` row, old name greps to zero outside the
-historical set (run it; don't trust the report); historical set byte-identical
-(`git diff --stat` against the base for those paths is empty); aliases present for
-renamed dictionary terms; `npm test` and `npm run check` green; probe the loop from
-outside — `orient` reads the swept graph, `launch --scope` (dry against a ready
-feature or the fixture repo) assembles a valid snapshot naming the new vocabulary.
+post-move historical set (run it; don't trust the report); historical content
+untouched — `git diff` against the base for in-place record paths is empty, and
+the two moved corpora are rename-only (`git log --follow --find-renames` shows
+100% similarity, no content delta); aliases present for renamed terms in the
+swept glossary; the map's five mechanics notes implemented (exercise the status
+collapse: default output is the human summary, `--json` the machine orientation);
+`npm test` and `npm run check` green; probe the loop from outside — the machine
+orientation reads the swept graph and the renamed run-preparation subcommand
+assembles a valid execution context naming the new vocabulary (dry, against a
+ready feature or the sample repo).
