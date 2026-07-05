@@ -26,10 +26,13 @@ Cut tasks that are each comfortably small (`size: xs|s`; `m` is the ceiling and 
 its wiring note to justify why it can't split). Every task carries: `id`, `title`,
 `covers` (1-based indexes into the feature's criteria — every criterion must be
 covered by some task), its own testable `acceptance`, `footprint` (expected files —
-tasks sharing a file must be chained via `depends_on`; unordered tasks run in
-parallel worktrees), `size`, `tier` (`rote` = correctness fully captured by tests+lint,
-`complex` = judgment-heavy, else `standard`), and a one-sentence `wiring` note saying
-how it connects to the rest. Prefer wide, shallow dependency graphs — unordered tasks
+disjointness is a bias, not a rule: chain via `depends_on` only when two tasks'
+edits to a shared file genuinely interact; registration-shaped sharing — a line or
+two in a barrel export, a route table — is fine left unordered, since the merge
+point resolves it compose-and-prove), `size`, `tier` (`rote` = correctness fully
+captured by tests+lint, `complex` = judgment-heavy, else `standard`), and a
+one-sentence `wiring` note saying how it connects to the rest. Prefer wide, shallow
+dependency graphs — unordered tasks
 run concurrently.
 
 ## 3 · Persist on the feature branch

@@ -13,10 +13,13 @@ machine-readable JSON only (shapes below).
 ## 1 · Assemble
 
 Create the integration worktree your prompt names and work only there. Merge the
-listed branches in order. A merge conflict is a real finding — abort, return
-`blocked` with kind `feature`, naming the conflicting paths. If
-`docs/plans/<feature>.md` exists in the tree, `git rm` it — plans never land on the
-target.
+listed branches in order, compose-and-prove any textual conflict: resolve only when
+you can state both sides' intents and write a resolution that serves both, then
+prove it — both branches' tests must ride the merged tree, and the resolution counts
+only if the suite goes green. Can't compose it, or the suite stays red: that's a
+semantic conflict — abort, return `blocked` with kind `feature`, naming the
+conflicting paths. If `docs/plans/<feature>.md` exists in the tree, `git rm` it —
+plans never land on the target.
 
 ## 2 · Judge
 
@@ -39,7 +42,8 @@ target.
 2. Collapse to one commit: `git reset --soft <target-tip-at-start>` then
    `git commit -m "<feature>: <title>"`.
 3. Publish fast-forward: `git fetch . <integration-branch>:<target>`. If the target
-   moved since you started, rebase onto its new tip and retry once.
+   moved since you started, rebase onto its new tip — same compose-and-prove posture
+   for any conflict — and retry once.
 4. Delete the feature's `loop/<feature>*` branches and your integration branch;
    remove the worktree.
 
@@ -52,8 +56,8 @@ nothing; leave every branch for inspection; remove only your worktree. Return:
       "findings": ["<criterion or defect>: <what you observed>", …],
       "options": ["<recommended way forward>", …] }
 
-**Blocked** — `feature` kind for the merge conflict above; `environment` kind for
-anything broken around you. Include `detail`.
+**Blocked** — `feature` kind for a semantic conflict per the merge posture above;
+`environment` kind for anything broken around you. Include `detail`.
 
 Fail closed: when you cannot tell whether a criterion is met, that is a deviation,
 not a pass.

@@ -13,10 +13,14 @@ Your final message IS your return value: machine-readable JSON only (shapes belo
 
 Run the `the-loop worktree create` command your prompt names and do ALL work inside the
 printed path. The main checkout is the human's — never touch it. If the prompt lists
-sibling branches to merge, merge them first (they are footprint-disjoint, so a clean
-merge is expected; a real conflict means the plan is wrong — return blocked,
-kind `feature`, naming the paths). When you finish — either way — remove your
-worktree: `the-loop worktree remove <path>`. Branches survive; worktrees don't linger.
+sibling branches to merge, merge them first. A textual conflict is not automatically
+the plan being wrong: compose-and-prove it — resolve only when you can state both
+sides' intents and write a resolution that serves both, then prove it by running both
+branches' tests on the merged tree. The resolution counts only if the suite goes
+green; can't compose it, or the suite stays red, and it's a semantic conflict —
+return blocked, kind `feature`, naming the conflicting paths. When you finish —
+either way — remove your worktree: `the-loop worktree remove <path>`. Branches
+survive; worktrees don't linger.
 
 ## Develop — test-driven, contract-bounded
 

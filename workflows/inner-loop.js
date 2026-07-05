@@ -127,7 +127,7 @@ function buildPrompt(f, task, { base, mergeBranches }) {
   return [
     `feature: ${f.id} · task: ${task.id} — ${task.title}`,
     `worktree: ${CLI} worktree create ${taskBranch(f, task.id)} --from ${base}`,
-    ...(mergeBranches.length > 0 ? [`merge these sibling branches first (clean by construction): ${mergeBranches.join(', ')}`] : []),
+    ...(mergeBranches.length > 0 ? [`merge these sibling branches first, compose-and-prove any textual conflict: ${mergeBranches.join(', ')}`] : []),
     `commit subject: "${f.id}/${task.id}: <what landed>"`,
     '',
     'task acceptance (each criterion gets a red-then-green test):',
@@ -268,9 +268,10 @@ function taskOutcome(f, r) {
   return true;
 }
 
-// Build every task in dependency order, concurrent where the DAG allows (unordered
-// tasks are footprint-disjoint by plan-check construction, each in its own worktree
-// on its own branch — ADR-0038). Returns true when every task landed.
+// Build every task in dependency order, concurrent where the DAG allows — unordered
+// tasks may still share a footprint file (disjointness is the plan's bias, not law;
+// a shared-file sibling merge resolves compose-and-prove — ADR-0042), each in its
+// own worktree on its own branch (ADR-0038). Returns true when every task landed.
 async function runBuild(f, tasks) {
   const tasksById = new Map(tasks.map((t) => [t.id, t]));
   const already = new Set(f.builtTasks || []);

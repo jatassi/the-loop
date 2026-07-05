@@ -99,18 +99,13 @@ test('a task may carry multiple acceptance criteria (string | string[])', () => 
   assert.deepEqual(r.errors, []);
 });
 
-test('overlapping footprints without an ordering path are an error', () => {
+test('a plan whose unordered tasks share a footprint file passes plan check clean (ADR-0042: disjointness is bias, not law)', () => {
   const m = model();
-  m.tasks[1].depends_on = []; // both touch src/render.js, now unordered
-  assert.ok(codes(validatePlan(m, DESIGN)).includes('unordered-overlap'));
-});
-
-test('an ordering path through intermediate tasks satisfies overlap serialization', () => {
-  const m = model();
-  m.tasks[1].depends_on = ['t3'];
-  m.tasks.push({ id: 't3', title: 'Mid', covers: [1], acceptance: 'x',
-    footprint: ['src/mid.js'], size: 'xs', depends_on: ['t1'] });
-  assert.ok(!codes(validatePlan(m, DESIGN)).includes('unordered-overlap')); // t2 → t3 → t1
+  m.tasks[1].depends_on = []; // both touch src/render.js, now unordered — no chain declared
+  const r = validatePlan(m, DESIGN);
+  assert.ok(r.ok);
+  assert.deepEqual(r.errors, []);
+  assert.ok(!codes(r).includes('unordered-overlap')); // the rule is gone, not just quiet here
 });
 
 test('task edge integrity: duplicates, dangling, self, cycles', () => {

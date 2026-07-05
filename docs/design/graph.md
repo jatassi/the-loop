@@ -126,7 +126,7 @@ features:
   # ── deferred: built BY self-hosting ─────────────────────────────────────
   - id: worktree-parallelism
     title: Worktree parallelism — trivial-merge relaxation (compose-and-prove at every merge point)
-    status: designed
+    status: validated
     depends_on: [build]
     notes:
       - ADR-0038 landed the substrate (worktrees everywhere, ready-set concurrency); ADR-0042 closes the hub-file remainder declaration-free — the unordered-overlap lint dies, disjointness becomes plan bias, and all three merge points (sibling merge, integration merge, publish-rebase) resolve textual conflicts compose-and-prove
