@@ -185,6 +185,8 @@ features:
     title: Research port (lightweight default + confidence-gate + deep-research escalation)
     status: designed
     depends_on: [inner-loop-workflow]
+    notes:
+      - escalation-prompt prior art (surveyed 2026-07-05) — `research-prompt` in https://github.com/davidondrej/skills; a decision-led single-paragraph prompt with numbered sub-questions, fact-vs-inference separation, and a mandatory self-critique gap round before finishing
     acceptance:
       - low confidence on a consequential decision triggers research; rigor scales with consequence
 
