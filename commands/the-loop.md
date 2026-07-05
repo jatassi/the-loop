@@ -17,12 +17,16 @@ State where the project stands (from the orientation JSON), propose the next act
 as the recommended default, and wait for the human's confirm-or-override. Their
 answer sets the scope; nothing outside it starts.
 
-**Routes** — by proposal kind, or by explicit jump (`/the-loop frame|design|build|ship`):
+**Routes** — by proposal kind, or by explicit jump (`/the-loop frame|design|build|ship|diagnose`):
 
 - `onboard` → the `frame` skill (brain-dump → Brief), then the `design` skill. If a
   Brief already exists, resume at Design.
 - `advance-frontier` / `build` jump → the launch leg below.
 - `ship` → the `ship` skill.
+- `new-intake` → ask what kind of intake this is. A bug — observed behavior
+  deviating from contract, the *why* needing diagnosis — routes to the `diagnose`
+  skill; an idea whose *what* needs sharpening routes to `frame`; an obvious small
+  tweak is a design amendment directly.
 - `repair` / `blocked` → name exactly what the orientation reports missing or
   invalid, propose the repair, and stop. Never guess forward.
 

@@ -20,6 +20,7 @@ import { setStatus } from '../src/status.js';
 const GRAPH = 'docs/design/graph.md';
 const DESIGN = 'docs/design/design.md';
 const FEATURES_DIR = 'docs/design/features';
+const RCA_DIR = 'docs/rca';
 const WORKTREES_DIR = '.claude/worktrees';
 // The plugin's own root: this file's parent directory's parent — never cwd.
 export const PLUGIN_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -186,7 +187,13 @@ function failOnIssues(errors, message) {
 // and the head subjects of its branches (task state).
 function gatherFeatureInputs(id, model) {
   const docFile = path.join(FEATURES_DIR, `${id}.md`);
-  const designDoc = existsSync(docFile) ? readFileSync(docFile, 'utf8') : null;
+  let designDoc = existsSync(docFile) ? readFileSync(docFile, 'utf8') : null;
+  // A fix node has no docs/design/features/ doc — its context slice is its RCA doc
+  // instead (diagnose feature: docs/rca/<id>.md), permanent from birth.
+  if (designDoc == null) {
+    const rcaFile = path.join(RCA_DIR, `${id}.md`);
+    designDoc = existsSync(rcaFile) ? readFileSync(rcaFile, 'utf8') : null;
+  }
   if (designDoc == null) { warn(`no per-feature design doc at ${docFile}`); }
 
   const branchHeads = readBranchHeads(id);

@@ -36,7 +36,10 @@ happened; the release record still gets written, marked rolled-back.
 ## 4 · Record
 
 - Tag the shipped tip `ship-N` (N = previous + 1).
-- Flip each shipped feature: `the-loop set-status <id> shipped`.
+- Flip each shipped feature: `the-loop set-status <id> shipped` — except a shipped
+  `fix-<slug>` node (a diagnose fix): prune its entry from the feature graph
+  entirely instead of flipping it. Its RCA doc survives at `docs/rca/<id>.md`; the
+  graph stays the picture of the system, not its repair log.
 - Write `docs/ships/ship-N.md`: one short block — date, tag, features, outcome,
-  rollback pointer.
+  rollback pointer. List pruned fix ids among the shipped features too.
 - Commit the record + graph flip as one commit (`ship-N: <outcome>`).

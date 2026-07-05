@@ -137,7 +137,7 @@ features:
 
   - id: diagnose
     title: Diagnose — the bug door (RCA → fix node over a permanent RCA corpus)
-    status: designed
+    status: validated
     depends_on: [inner-loop-workflow]
     notes:
       - renamed from `evolve` 2026-07-05 (ADR-0043); bugs only — feature requests route to design amendments, idea-shaped intakes to frame

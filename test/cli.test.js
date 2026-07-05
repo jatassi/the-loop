@@ -258,6 +258,35 @@ test('spine launch emits the snapshot: plan read from the feature branch, builtT
   }
 });
 
+test('spine launch falls back to docs/rca/<id>.md for a fix node\'s design doc when docs/design/features/<id>.md is absent', () => {
+  const FIX_GRAPH = `# Fixture — Feature graph
+
+## Feature graph
+
+\`\`\`yaml
+design_version: 1
+features:
+  - id: fix-widget
+    title: Widget race fix
+    status: designed
+    depends_on: []
+    acceptance: the race no longer drops an update
+\`\`\`
+`;
+  const root = gitFixture({
+    'docs/design/graph.md': FIX_GRAPH,
+    'docs/design/design.md': DESIGN,
+    'docs/rca/fix-widget.md': '# fix-widget — race drops an update\n',
+  });
+  try {
+    assert.ok(!existsSync(path.join(root, 'docs/design/features/fix-widget.md')));
+    const snap = JSON.parse(spine(['launch', '--scope', 'fix-widget'], { cwd: root }));
+    assert.equal(snap.features['fix-widget'].designDoc, '# fix-widget — race drops an update\n');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('spine worktree create adds .claude/worktrees/<branch> and prints {path, branch, created}; create-existing returns created:false; remove removes', () => {
   const root = gitFixture({ 'README.md': '# fixture\n' });
   try {
