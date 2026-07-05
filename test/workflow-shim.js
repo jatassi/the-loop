@@ -66,12 +66,12 @@ export async function runWorkflowScript(scriptPath, options = {}) {
 }
 
 /**
- * Reply router keyed by spawn label, the model prefix stripped:
+ * Reply router keyed by spawn label:
  * `byLabel({'plan:alpha': {returns: …}, …})`. A spawn whose label has no scripted
  * reply resolves to null, which the engine records as a stall — tests assert that
  * explicitly when they mean it.
  * @param {Object<string, ScriptedReply>} table
  */
 export function byLabel(table) {
-  return (_prompt, opts) => table[String(opts.label || '').replace(/^\[[^\]]*\] /, '')];
+  return (_prompt, opts) => table[String(opts.label || '')];
 }

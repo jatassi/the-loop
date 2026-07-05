@@ -154,13 +154,11 @@ test('build spawns route through build.<tier> bindings and every label carries i
 
   const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  const byLabelSuffix = Object.fromEntries(spawns.map((s) => [s.opts.label.replace(/^\[[^\]]*\] /, ''), s.opts]));
-  assert.equal(byLabelSuffix['plan:alpha'].label, '[session] plan:alpha');
-  assert.equal('model' in byLabelSuffix['plan:alpha'], false, 'an unbound role passes no model opt');
-  assert.equal(byLabelSuffix['build:alpha/t1'].label, '[opus] build:alpha/t1');
-  assert.equal(byLabelSuffix['build:alpha/t1'].model, 'opus');
-  assert.equal(byLabelSuffix['build:alpha/t2'].label, '[sonnet] build:alpha/t2');
-  assert.equal(byLabelSuffix['validate:alpha'].effort, 'high', 'a bound effort rides the spawn');
+  const optsByLabel = Object.fromEntries(spawns.map((s) => [s.opts.label, s.opts]));
+  assert.equal('model' in optsByLabel['plan:alpha'], false, 'an unbound role passes no model opt');
+  assert.equal(optsByLabel['build:alpha/t1'].model, 'opus');
+  assert.equal('model' in optsByLabel['build:alpha/t2'], true, 'a tierless task routes build.standard');
+  assert.equal(optsByLabel['validate:alpha'].effort, 'high', 'a bound effort rides the spawn');
   assert.ok(logs.includes('model-selection — role plan unbound, session-model fallback'));
   assert.ok(logs.includes('model-selection — task alpha/t2 has no tier, routing build.standard'));
   assert.deepEqual(result.completed, ['alpha']);

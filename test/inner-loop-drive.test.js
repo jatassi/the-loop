@@ -41,7 +41,7 @@ test('a via-bound tier routes to the drive agent with the executor in the prompt
 
   const drive = spawns.find((s) => s.opts.agentType === 'drive');
   assert.ok(drive, 'the rote task spawned the drive agent');
-  assert.equal(drive.opts.label, '[haiku] drive:alpha/t1 via grok');
+  assert.equal(drive.opts.label, 'drive:alpha/t1 via grok');
   assert.equal(drive.opts.model, 'haiku'); // the driver's binding, never the executor model
   assert.equal(drive.opts.phase, 'Build');
   assert.ok(drive.prompt.startsWith('executor: grok · executor-model: grok-build\n'));
@@ -49,7 +49,7 @@ test('a via-bound tier routes to the drive agent with the executor in the prompt
   assert.ok(logs.includes('model-selection — task alpha/t1 routed via grok/grok-build, driver haiku'));
 
   const ordinary = spawns.find((s) => s.opts.agentType === 'build');
-  assert.equal(ordinary.opts.label, '[sonnet] build:alpha/t2'); // an agent-bound tier is untouched
+  assert.equal(ordinary.opts.model, 'sonnet'); // an agent-bound tier is untouched
   assert.deepEqual(result.completed, ['alpha']);
 });
 
@@ -63,6 +63,6 @@ test('without a drive.<via> sub-role the driver falls back to the drive role bin
   const { spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
   const drive = spawns.find((s) => s.opts.agentType === 'drive');
-  assert.equal(drive.opts.label, '[sonnet] drive:alpha/t1 via grok');
+  assert.equal(drive.opts.model, 'sonnet'); // the drive-role fallback binding, not the executor model
   assert.ok(logs.every((l) => !l.includes('role drive.grok unbound')), 'the sub-role lookup is silent');
 });

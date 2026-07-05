@@ -88,7 +88,7 @@ features:
     depends_on: [inner-loop-workflow]
     acceptance:
       - spine models resolves every registered role by merging plugin defaults with project and local overrides, printing per-role provenance
-      - every workflow spawn passes the model and effort resolved from the bindings riding the snapshot, and spawn labels carry the resolved model
+      - every workflow spawn passes the model and effort resolved from the bindings riding the snapshot (labels carried the model until 2026-07-05 — dropped as duplication; the workflow UI shows it)
       - an unbound role falls back to the session model with a logged, run-boundary-visible fallback line — never silently
       - plan stamps tier on every task, spine plan check validates it, and the workflow routes build tasks through their build.<tier> bindings
 
@@ -106,7 +106,7 @@ features:
     status: shipped
     depends_on: [inner-loop-workflow]
     acceptance:
-      - every workflow spawn's phase opt names its SDLC phase, with the feature id and resolved model riding the label
+      - every workflow spawn's phase opt names its SDLC phase, with the feature id riding the label
       - meta declares phases as three title-only entries in Plan, Build, Validate order on its single line
 
   - id: surfacing

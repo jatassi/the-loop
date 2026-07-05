@@ -29,7 +29,6 @@ function modelOpts(binding) {
   if (binding.effort !== undefined) { opts.effort = binding.effort; }
   return opts;
 }
-const modelLabel = (binding) => `[${binding.model}] `;
 
 // ---- return schemas (the harness validates each agent's structured return; every
 // pinned field must be described or the harness's schema-as-template drops it).
@@ -226,7 +225,7 @@ async function runPlan(f) {
   if (f.plan) { return { lane: 'standard', tasks: f.plan.tasks }; }
   const binding = roleBinding('plan');
   const planned = await spawn(planPrompt(f), {
-    agentType: 'plan', label: `${modelLabel(binding)}plan:${f.id}`, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
+    agentType: 'plan', label: `plan:${f.id}`, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
   }, f.id);
   const flow = signalOf(planned);
   if (flow) { return { flow }; }
@@ -239,7 +238,7 @@ async function runPlan(f) {
 }
 
 function buildSpawnOpts(f, task, binding) {
-  return { agentType: 'build', label: `${modelLabel(binding)}build:${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
+  return { agentType: 'build', label: `build:${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
 }
 
 async function runTask(f, task, prompt) {
@@ -250,7 +249,7 @@ async function runTask(f, task, prompt) {
     const driverBinding = hasRole(`drive.${binding.via}`) ? modelTable[`drive.${binding.via}`] : roleBinding('drive');
     log(`model-selection — task ${f.id}/${task.id} routed via ${binding.via}/${binding.model}, driver ${driverBinding.model}`);
     return spawn(`executor: ${binding.via} · executor-model: ${binding.model}\n${prompt}`, {
-      ...opts, agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${f.id}/${task.id} via ${binding.via}`, ...modelOpts(driverBinding),
+      ...opts, agentType: 'drive', label: `drive:${f.id}/${task.id} via ${binding.via}`, ...modelOpts(driverBinding),
     }, f.id);
   }
   return spawn(prompt, opts, f.id);
@@ -322,7 +321,7 @@ async function runValidate(f, lane, tasks) {
     : [f.branch, ...topoOrder(tasks).map((t) => taskBranch(f, t.id))];
   const binding = roleBinding('validate');
   const verdict = await withValidateLock(() => spawn(validatePrompt(f, branches), {
-    agentType: 'validate', label: `${modelLabel(binding)}validate:${f.id}`, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
+    agentType: 'validate', label: `validate:${f.id}`, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
   }, f.id));
   const flow = signalOf(verdict);
   if (flow) { return flow === 'halt' ? 'halt' : false; }
