@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { findBlocks, replaceBlock } from '../src/blocks.js';
+import { findBlocks, replaceBlock, sectionAfter } from '../src/blocks.js';
 import { parse } from '../src/parse.js';
 
 const DOC = `# Title
@@ -17,62 +17,78 @@ features:
     title: Feature A
     status: designed
     depends_on: []
-    interfaces: [shape-a]
     notes:
       - watch the hub files
     acceptance: does the thing
   - id: b
     title: Feature B
-    status: planned
+    status: validated
     depends_on: [a]
-    interfaces: []
     acceptance: [one, two]
 \`\`\`
 
-## Key interface contracts
+## Closing narrative
 
-\`\`\`yaml
-contracts:
-  - id: shape-a
-    body: |
-      { x, y }
-\`\`\`
+outro prose
 `;
 
-test('parse extracts design version, features, and contracts', () => {
+test('parse extracts design version and features', () => {
   const m = parse(DOC);
   assert.equal(m.designVersion, 1);
   assert.deepEqual(m.features.map((f) => f.id), ['a', 'b']);
   assert.equal(m.features[0].status, 'designed');
-  assert.deepEqual(m.features[0].interfaces, ['shape-a']);
   assert.deepEqual(m.features[1].depends_on, ['a']);
   assert.equal(m.features[0].acceptance, 'does the thing');
   assert.deepEqual(m.features[1].acceptance, ['one', 'two']); // string | string[] both preserved
   assert.deepEqual(m.features[0].notes, ['watch the hub files']); // baked-in design notes carried
   assert.ok(!('notes' in m.features[1])); // absent notes stay absent (faithful view)
-  assert.equal(m.contracts.length, 1);
-  assert.equal(m.contracts[0].id, 'shape-a');
-  assert.match(m.contracts[0].body, /\{ x, y \}/);
 });
 
 test('parse defaults missing edge arrays to []', () => {
   const m = parse('## Feature graph\n\n```yaml\ndesign_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: designed\n    acceptance: x\n```\n');
   assert.deepEqual(m.features[0].depends_on, []);
-  assert.deepEqual(m.features[0].interfaces, []);
 });
 
-test('parse is lenient when blocks are absent', () => {
+test('parse is lenient when the block is absent', () => {
   const m = parse('# just narrative\n');
   assert.deepEqual(m.features, []);
-  assert.deepEqual(m.contracts, []);
   assert.equal(m._blocks.featureGraph, null);
 });
 
-test('findBlocks locates both blocks; replaceBlock is surgical', () => {
+test('findBlocks locates the feature-graph block; replaceBlock is surgical', () => {
   const b = findBlocks(DOC);
-  assert.ok(b.featureGraph && b.contracts);
-  const replaced = replaceBlock(DOC, b.contracts, 'contracts: []');
-  assert.ok(replaced.includes('contracts: []'));
+  assert.ok(b.featureGraph);
+  const replaced = replaceBlock(DOC, b.featureGraph, 'design_version: 2\nfeatures: []');
+  assert.ok(replaced.includes('design_version: 2\nfeatures: []'));
   assert.ok(replaced.startsWith('# Title\n')); // leading narrative preserved
-  assert.ok(replaced.includes('## Feature graph')); // the earlier block is untouched
+  assert.ok(replaced.endsWith('## Closing narrative\n\noutro prose\n')); // trailing narrative too
+});
+
+const DESIGN = `# Design
+
+System narrative.
+
+## Runtime probe
+
+Run \`node bin/app.js ping\` and expect \`pong\` on stdout.
+A second probe line.
+
+## Ship recipe
+
+Tag the release.
+`;
+
+test('sectionAfter excerpts the prose under a heading up to the next "## " heading, trimmed', () => {
+  assert.equal(
+    sectionAfter(DESIGN, '## Runtime probe'),
+    'Run `node bin/app.js ping` and expect `pong` on stdout.\nA second probe line.',
+  );
+});
+
+test('sectionAfter returns null for an absent heading', () => {
+  assert.equal(sectionAfter(DESIGN, '## Rollback drill'), null);
+});
+
+test('sectionAfter on the last section runs to end of text', () => {
+  assert.equal(sectionAfter(DESIGN, '## Ship recipe'), 'Tag the release.');
 });

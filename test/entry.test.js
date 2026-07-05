@@ -1,6 +1,6 @@
 // the-loop-entry's acceptance, executable: a fresh repo routes to onboarding; a
-// configured repo reads its artifacts and proposes the next action. Fixture repos are
-// temp dirs; the last test dogfoods orient() against this very repo.
+// configured repo reads its graph and proposes the next action. Fixture repos are
+// temp dirs — status truth is docs/design/graph.md (ADR-0034).
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,19 +12,18 @@ import { parse } from '../src/parse.js';
 
 const feat = (id, status, deps = []) =>
   `  - id: ${id}\n    title: ${id}\n    status: ${status}\n    depends_on: [${deps.join(', ')}]\n    acceptance: x\n`;
-const design = (...features) =>
+const graph = (...features) =>
   `## Feature graph\n\n\`\`\`yaml\ndesign_version: 1\nfeatures:\n${features.join('')}\`\`\`\n`;
-const model = (...features) => parse(design(...features));
+const model = (...features) => parse(graph(...features));
 
-function repo({ designText, ledgerText, briefText } = {}) {
+function repo({ graphText, designText, briefText } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'loop-entry-'));
-  if (designText != null) {
-    mkdirSync(path.join(root, 'docs/design'), { recursive: true });
-    writeFileSync(path.join(root, 'docs/design/design.md'), designText);
+  mkdirSync(path.join(root, 'docs/design'), { recursive: true });
+  if (graphText != null) {
+    writeFileSync(path.join(root, 'docs/design/graph.md'), graphText);
   }
-  if (ledgerText != null) {
-    mkdirSync(path.join(root, 'docs/ledger'), { recursive: true });
-    writeFileSync(path.join(root, 'docs/ledger/ledger.md'), ledgerText);
+  if (designText != null) {
+    writeFileSync(path.join(root, 'docs/design/design.md'), designText);
   }
   if (briefText != null) {
     mkdirSync(path.join(root, 'docs/briefs'), { recursive: true });
@@ -42,14 +41,12 @@ test('a fresh repo orients to cold-start and proposes onboarding', () => {
 });
 
 // ── acceptance leg 2: configured repo reads its state and proposes the next action ──
-test('a configured repo orients to active with position, frontier, and a proposal', () => {
+test('a repo with a graph orients to active with position, frontier, and a proposal', () => {
   const root = repo({
-    designText: design(feat('a', 'validated'), feat('b', 'designed', ['a']), feat('c', 'designed', ['b'])),
-    ledgerText: '# Ledger — fixture\n',
+    graphText: graph(feat('a', 'validated'), feat('b', 'designed', ['a']), feat('c', 'designed', ['b'])),
   });
   const o = orient(root);
-  assert.equal(o.mode, 'active');
-  assert.equal(o.ledger, path.join(root, 'docs/ledger/ledger.md'));
+  assert.equal(o.mode, 'active'); // active iff graph.md exists — design.md is not required
   assert.equal(o.position.total, 3);
   assert.equal(o.position.byStatus.validated, 1);
   assert.deepEqual(o.frontier, ['b']); // c is dep-blocked behind b
@@ -58,13 +55,13 @@ test('a configured repo orients to active with position, frontier, and a proposa
   });
 });
 
-test('one artifact without the other is partial, proposing repair', () => {
-  const designText = design(feat('a', 'designed'));
-  const o = orient(repo({ designText }));
+test('a design without a graph is partial, proposing repair', () => {
+  const o = orient(repo({ designText: '# Design\nnarrative\n' }));
   assert.equal(o.mode, 'partial');
-  assert.deepEqual(o.missing, ['docs/ledger/ledger.md']);
+  assert.deepEqual(o.missing, ['docs/design/graph.md']);
   assert.equal(o.proposal.kind, 'repair');
-  assert.deepEqual(detectState(repo({ ledgerText: 'x' })), { mode: 'partial', hasDesign: false, hasLedger: true, hasBrief: false });
+  assert.deepEqual(detectState(repo({ designText: 'x' })),
+    { mode: 'partial', hasDesign: true, hasGraph: false, hasBrief: false });
 });
 
 // ── frame's routing seam: a Brief moves onboarding's resume point past Frame ──
@@ -83,34 +80,29 @@ test('cold-start without a Brief still routes onboarding through Frame', () => {
 });
 
 test('an invalid graph orients to repair, never a frontier', () => {
-  const root = repo({
-    designText: design(feat('a', 'designed', ['ghost'])),
-    ledgerText: 'x',
-  });
-  const o = orient(root);
+  const graphText = graph(feat('a', 'designed', ['ghost']));
+  const o = orient(repo({ graphText }));
   assert.equal(o.proposal.kind, 'repair');
   assert.ok(o.graphErrors.some((e) => e.code === 'dangling-dependency'));
   assert.ok(!('frontier' in o));
 });
 
 // ── frontier semantics ──
-test('frontier = actionable features whose deps are all validated/shipped', () => {
+test('frontier = designed features whose deps are all validated/shipped', () => {
   const m = model(
     feat('done', 'shipped'),
-    feat('ready', 'designed', ['done']),
-    feat('inflight', 'building', ['done']),
-    feat('gated', 'designed', ['ready']),   // dep not DONE → excluded
-    feat('parked', 'parked', ['done']),     // needs a human, not the engine → excluded
-    feat('rot', 'drifted', ['done']),       // drifted is actionable (re-validation)
+    feat('landed', 'validated'),
+    feat('ready', 'designed', ['done', 'landed']), // both DONE flavors satisfy
+    feat('gated', 'designed', ['ready']),          // dep still designed → excluded
   );
-  assert.deepEqual(frontier(m).map((f) => f.id), ['ready', 'inflight', 'rot']);
+  assert.deepEqual(frontier(m).map((f) => f.id), ['ready']);
 });
 
 // ── proposal precedence ──
-test('parked escalations outrank a drainable frontier (they wait on the human now present)', () => {
-  const p = propose(model(feat('a', 'parked'), feat('b', 'designed')));
-  assert.equal(p.kind, 'resolve-parked');
-  assert.deepEqual(p.features, ['a']);
+test('a drainable frontier proposes advance-frontier with the ready ids', () => {
+  const p = propose(model(feat('a', 'validated'), feat('b', 'designed', ['a'])));
+  assert.equal(p.kind, 'advance-frontier');
+  assert.deepEqual(p.features, ['b']);
 });
 
 test('all validated proposes ship; all shipped proposes a new intake', () => {
@@ -120,18 +112,8 @@ test('all validated proposes ship; all shipped proposes a new intake', () => {
   assert.equal(propose(allShipped).kind, 'new-intake');
 });
 
-test('an exhausted-but-unfinished graph is blocked (the cycle safety net)', () => {
+test('an exhausted-but-unfinished graph is blocked (the repair safety net)', () => {
   const p = propose(model(feat('a', 'designed', ['b']), feat('b', 'designed', ['a'])));
   assert.equal(p.kind, 'blocked');
   assert.deepEqual(p.features, ['a', 'b']);
-});
-
-// ── the dogfood: this very repo orients ──
-test('orient(".") reads the-loop itself as an active project with a sound proposal', () => {
-  const o = orient('.');
-  assert.equal(o.mode, 'active');
-  assert.ok(!('graphErrors' in o));
-  assert.ok(o.position.total >= 12); // the walking skeleton alone is 12 features
-  assert.ok(['resolve-parked', 'advance-frontier', 'ship', 'new-intake'].includes(o.proposal.kind));
-  assert.ok(o.frontier.every((id) => !o.parked.includes(id)));
 });

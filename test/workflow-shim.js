@@ -1,22 +1,22 @@
 // Executes a workflow script file the way a Claude Code Workflow would, but with stub
-// harness globals in place of the real ones (ADR-0029) — agent/parallel/pipeline/log/
-// args/budget — so inner-loop.js and its siblings are proven against the authored
-// script itself, never a copy of it. No build step: the shipped script is the tested
-// script. This module defines no test() cases itself, so bare `node --test` discovery
-// finding it (it lives under test/) is a no-op pass.
+// harness globals in place of the real ones — agent/parallel/pipeline/log/args/budget —
+// so inner-loop.js and its siblings are proven against the authored script itself,
+// never a copy of it. No build step: the shipped script is the tested script. This
+// module defines no test() cases itself, so bare `node --test` discovery finding it
+// (it lives under test/) is a no-op pass.
 
 import { readFileSync } from 'node:fs';
 
-// A workflow script's only export is this single line (ADR-0029): neutralized to a
-// plain const so the rest of the file runs as an ordinary async-function body, where
-// its top-level `return` — invalid at module scope — becomes the function's own return.
+// A workflow script's only export is this single line: neutralized to a plain const so
+// the rest of the file runs as an ordinary async-function body, where its top-level
+// `return` — invalid at module scope — becomes the function's own return.
 const META_LINE = /^(\s*)export const meta\b/m;
 
 const parallel = () => {
-  throw new Error('parallel() is not used by v1 workflow scripts');
+  throw new Error('parallel() is not used by these workflow scripts');
 };
 const pipeline = () => {
-  throw new Error('pipeline() is not used by v1 workflow scripts');
+  throw new Error('pipeline() is not used by these workflow scripts');
 };
 
 /**
@@ -29,20 +29,29 @@ const pipeline = () => {
  * Run a workflow script file under stub harness globals. Every call builds fresh
  * closures for the `agent`/`log` stubs and their recordings, so repeat runs of the same
  * file, scripted differently, never share state.
+ *
+ * `agentReplies` is either an array replayed in call order (fine for serial scripts),
+ * or a function `(prompt, opts, index) => ScriptedReply` — the concurrency-safe form:
+ * the v2 engine spawns in parallel, so tests key replies off `opts.label` instead of
+ * depending on a call sequence.
  * @param {string} scriptPath
- * @param {{agentReplies?: ScriptedReply[], args?: *, budget?: *}} [options]
+ * @param {{agentReplies?: ScriptedReply[]|((prompt: *, opts: *, index: number) => ScriptedReply), args?: *, budget?: *}} [options]
  * @returns {Promise<{result: *, spawns: Array<{prompt: *, opts: *}>, logs: string[]}>}
  */
 export async function runWorkflowScript(scriptPath, options = {}) {
   const { agentReplies = [], args = {}, budget = {} } = options;
   const spawns = [];
   const logs = [];
+  const replyFor = typeof agentReplies === 'function'
+    ? agentReplies
+    : (_prompt, _opts, index) => agentReplies[index];
 
   let next = 0;
   const agent = async (prompt, opts) => {
-    const scripted = agentReplies[next];
+    const index = next;
     next += 1;
     spawns.push({ prompt, opts });
+    const scripted = replyFor(prompt, opts, index);
     if (scripted?.throws) { throw scripted.throws; }
     return scripted ? scripted.returns : null;
   };
@@ -54,4 +63,15 @@ export async function runWorkflowScript(scriptPath, options = {}) {
 
   const result = await run(agent, parallel, pipeline, log, args, budget);
   return { result, spawns, logs };
+}
+
+/**
+ * Reply router keyed by spawn label, the model prefix stripped:
+ * `byLabel({'plan:alpha': {returns: …}, …})`. A spawn whose label has no scripted
+ * reply resolves to null, which the engine records as a stall — tests assert that
+ * explicitly when they mean it.
+ * @param {Object<string, ScriptedReply>} table
+ */
+export function byLabel(table) {
+  return (_prompt, opts) => table[String(opts.label || '').replace(/^\[[^\]]*\] /, '')];
 }

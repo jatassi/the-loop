@@ -16,7 +16,7 @@ across the loop's phases. Three pieces, each consumed where it bites:
 
 Two rules govern the whole pack:
 
-- **The repo wins.** A documented project standard (`docs/standards/`) overrides
+- **The repo wins.** A documented project standard overrides
   anything here; where the repo endorses a pattern this pack would flag, the
   finding is suppressed.
 - **Unobvious only.** Nothing here restates what the model already knows or a

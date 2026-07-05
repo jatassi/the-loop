@@ -78,15 +78,15 @@ export function builtTaskIds(featureId, plan, branchHeads) {
  * @param {Object} input.models            resolved role → binding table
  * @param {Object<string, {designDoc: string|null, plan: Object|null, branchHeads: Object<string, string>}>} input.inputs
  *        per-feature gathered inputs, keyed by feature id
- * @param {string} [input.spine]  the spine CLI invocation workers should use
+ * @param {string} [input.cli]  the `the-loop` CLI invocation workers should use
  */
-export function assembleSnapshot({ model, scope, target, probe, models, inputs, spine }) {
+export function assembleSnapshot({ model, scope, target, probe, models, inputs, cli }) {
   const byId = new Map((model.features || []).map((f) => [f.id, f]));
   const features = {};
   for (const id of scope) {
     features[id] = featureEntry(byId.get(id), inputs[id] || {});
   }
-  return { target, scope, probe, models, features, ...(spine && { spine }) };
+  return { target, scope, probe, models, features, ...(cli && { cli }) };
 }
 
 function featureEntry(node, { designDoc = null, plan = null, branchHeads = {} }) {

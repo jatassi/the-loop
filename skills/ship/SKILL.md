@@ -36,7 +36,7 @@ happened; the release record still gets written, marked rolled-back.
 ## 4 · Record
 
 - Tag the shipped tip `ship-N` (N = previous + 1).
-- Flip each shipped feature: `spine set-status <id> shipped`.
+- Flip each shipped feature: `the-loop set-status <id> shipped`.
 - Write `docs/ships/ship-N.md`: one short block — date, tag, features, outcome,
   rollback pointer.
 - Commit the record + graph flip as one commit (`ship-N: <outcome>`).

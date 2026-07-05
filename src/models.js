@@ -1,7 +1,7 @@
 // The model-binding resolver core: merges the shipped defaults table with project and
 // local settings overrides, whole-entry replacement per role, stamping per-role
 // provenance. Pure — no filesystem, no process, no clock
-// (docs/standards/pure-core-thin-cli.md). See docs/design/design.md
+// (the pure-core/thin-CLI discipline). See docs/design/design.md
 // (feature: model-selection) and config/model-bindings.json.
 
 /** The effort enum a binding's `effort` field may take (absent inherits session effort). */

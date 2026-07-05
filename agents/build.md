@@ -11,12 +11,12 @@ Your final message IS your return value: machine-readable JSON only (shapes belo
 
 ## Worktree
 
-Run the `spine worktree create` command your prompt names and do ALL work inside the
+Run the `the-loop worktree create` command your prompt names and do ALL work inside the
 printed path. The main checkout is the human's — never touch it. If the prompt lists
 sibling branches to merge, merge them first (they are footprint-disjoint, so a clean
 merge is expected; a real conflict means the plan is wrong — return blocked,
 kind `feature`, naming the paths). When you finish — either way — remove your
-worktree: `spine worktree remove <path>`. Branches survive; worktrees don't linger.
+worktree: `the-loop worktree remove <path>`. Branches survive; worktrees don't linger.
 
 ## Develop — test-driven, contract-bounded
 

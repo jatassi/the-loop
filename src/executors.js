@@ -1,7 +1,7 @@
 // Executor playbooks (executors/<id>.md): narrative operational lore around one
 // fenced yaml machine block under the exact heading "## Machine block" — the same
 // heading-then-fence pattern as the escalation record (blocks.js). Pure — no
-// filesystem, no process (docs/standards/pure-core-thin-cli.md); bin/spine.js reads
+// filesystem, no process (the pure-core/thin-CLI discipline); bin/the-loop.js reads
 // the files and passes text in. See docs/plans/executor-delegation.md ("Pinned
 // conventions") for the field spec this module is the authoritative implementation
 // of. A playbook present in the registry directory is never leniently skipped: any

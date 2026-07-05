@@ -6,7 +6,6 @@
   "private": true,
   "author": "Jackson Atassi <jackson.atassi@outlook.com>",
   "bin": {
-    "spine": "./bin/spine.js",
     "the-loop": "./bin/the-loop.js",
     "probe-fixture": "./bin/probe-fixture.js"
   },
@@ -17,7 +16,7 @@
     "test": "node --test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check": "node bin/spine.js check && eslint ."
+    "check": "node bin/the-loop.js check && eslint ."
   },
   "engines": {
     "node": ">=22.11"

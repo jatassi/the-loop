@@ -1,18 +1,32 @@
-// The halt-and-stall leg of the Workflow's own acceptance (ADR-0029): the shim executes
-// the real workflows/inner-loop.js, scripted with the run-level conditions no live spawn
-// can be reasoned around locally — an environment-kind block from any phase, a thrown
-// budget-exhaustion error, agent death (a null return), and an ordinary throw — and we
-// assert the BoundaryResult's halted/stalled fields plus the spawn sequence each stops at.
+// The run-level halt and feature-level stall legs: a budget-named throw halts the whole
+// run, an environment-shaped block halts it with the blocker's detail, and an ordinary
+// agent error stalls only its own feature — everything else keeps running.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { runWorkflowScript } from './workflow-shim.js';
+import { byLabel, runWorkflowScript } from './workflow-shim.js';
 
 const SCRIPT = 'workflows/inner-loop.js';
 
-// A stand-in for whatever real error identity a budget-exhausted spawn eventually throws
-// (ADR-0029: "confirmed at the first live run") — matches workflow-shim.test.js's own
-// stand-in convention.
+function feature(id, overrides = {}) {
+  return {
+    id, title: `${id} title`, acceptance: [`${id} works`], depends_on: [],
+    designDoc: `design doc for ${id}`, branch: `loop/${id}`, branchHead: null,
+    plan: null, builtTasks: [], ...overrides,
+  };
+}
+
+function snapshotOf(features, overrides = {}) {
+  return {
+    target: 'main', scope: features.map((f) => f.id), probe: null, models: {},
+    features: Object.fromEntries(features.map((f) => [f.id, f])), ...overrides,
+  };
+}
+
+const BUDGET = { spent: 0, remaining: 10 };
+const validated = (id) => ({ returns: { result: 'validated', feature: id } });
+const built = (task) => ({ returns: { result: 'built', task } });
+
 class BudgetExceededError extends Error {
   constructor(message) {
     super(message);
@@ -20,236 +34,55 @@ class BudgetExceededError extends Error {
   }
 }
 
-function featureNode(id, overrides = {}) {
-  return { id, status: 'designed', depends_on: [], interfaces: [], acceptance: [`${id} works`], ...overrides };
-}
+test('a budget-named throw halts the run; the un-started remainder is explained by halted, not reported stalled', async () => {
+  const args = snapshotOf([feature('alpha'), feature('beta', { depends_on: ['alpha'] })]);
+  const replies = byLabel({
+    'plan:alpha': { returns: { result: 'planned', lane: 'small' } },
+    'build:alpha/feature': { throws: new BudgetExceededError('spend cap reached') },
+  });
 
-function slice(id) {
-  return { node: { id, title: id, status: 'designed', acceptance: [`${id} works`] }, contracts: [] };
-}
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-function perfectRun(id) {
-  return [
-    { returns: { result: 'planned', feature: id, tasks: [{ id: `${id}1`, status: 'pending', depends_on: [], size: 'xs' }] } },
-    { returns: { result: 'built', task: `${id}/${id}1` } },
-    { returns: { result: 'derived', feature: id, expectations: [], ambiguities: [] } },
-    { returns: { result: 'perfect', feature: id } },
-  ];
-}
-
-// ── criterion 1: an environment-kind blocked build return halts the run mid-feature,
-// preserving completed and parked work already booked, before an environment-kind block
-// ever fires — and never reaches a feature later in scope ──
-test('an environment-kind blocked build return halts the run, preserving completed and parked booked so far', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha', 'beta', 'gamma', 'delta'],
-    index: {
-      designVersion: 1,
-      features: [featureNode('alpha'), featureNode('beta'), featureNode('gamma'), featureNode('delta')],
-    },
-    slices: { alpha: slice('alpha'), beta: slice('beta'), gamma: slice('gamma'), delta: slice('delta') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 2, remaining: 8 };
-  const bounce = { result: 'bounce', kind: 'feature', feature: 'beta', deviation: 'contradictory contract', menu: ['re-slice'] };
-  const gammaTasks = [
-    { id: 'g1', status: 'pending', depends_on: [], size: 'xs' },
-    { id: 'g2', status: 'pending', depends_on: ['g1'], size: 'xs' },
-  ];
-  const envBlock = { task: 'gamma/g1', result: 'blocked', kind: 'environment', detail: 'test harness precondition failed' };
-  const agentReplies = [
-    ...perfectRun('alpha'),
-    { returns: bounce },
-    { returns: { result: 'planned', feature: 'gamma', tasks: gammaTasks } },
-    { returns: envBlock }, // gamma's g2 never spawns; delta never starts
-  ];
-
-  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
-
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate', 'Plan', 'Plan', 'Build']);
-  assert.deepEqual(spawns.map((s) => s.opts.label), [
-    '[session] plan:alpha',
-    '[session] build:alpha/alpha1',
-    '[session] derive:alpha',
-    '[session] validate:alpha',
-    '[session] plan:beta',
-    '[session] plan:gamma',
-    '[session] build:gamma/g1',
-  ]); // delta never appears — the halt fires before delta's plan spawns
-  assert.deepEqual(result.completed, ['alpha']);
-  assert.deepEqual(result.parked, [{ feature: 'beta', deviation: bounce.deviation, menu: bounce.menu }]);
-  assert.deepEqual(result.halted, { reason: 'environment-blocked', detail: envBlock.detail });
-  assert.deepEqual(result.budget, budget);
-});
-
-// ── criterion 1: a real build environment block names its blocker in `deviations`
-// (plural) and `summary` and carries no `detail` at all — the script reconciles that
-// prose into `halted.detail` so the blocker never drops silently out of the halt ──
-test('a build environment block with prose in deviations, no detail, halts with the reconciled detail', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha'],
-    index: { designVersion: 1, features: [featureNode('alpha')] },
-    slices: { alpha: slice('alpha') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 0, remaining: 10 };
-  const buildBlocked = {
-    task: 'alpha/t1', result: 'blocked', kind: 'environment',
-    deviations: ['git status was dirty before any work began', 'untracked file scratch.txt'],
-    summary: 'stopped before touching the tree',
-  };
-  const agentReplies = [
-    { returns: { result: 'planned', feature: 'alpha', tasks: [{ id: 't1', status: 'pending', depends_on: [], size: 'xs' }] } },
-    { returns: buildBlocked },
-  ];
-
-  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
-
-  assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build']); // derive never spawns
-  assert.deepEqual(result.halted, { reason: 'environment-blocked', detail: buildBlocked.deviations.join('; ') });
+  assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build']);
+  assert.deepEqual(result.halted, { reason: 'budget-exhausted', detail: 'spend cap reached' });
+  assert.deepEqual(result.stalled, [], 'beta is explained by halted, never mislabeled unreachable');
   assert.deepEqual(result.completed, []);
 });
 
-// ── criterion 1: derive's blocked return carries no `kind` field at all — the pinned
-// convention treats any blocked return from derive as environment-shaped regardless ──
-test('a blocked return from derive halts the run even though it carries no kind field', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha'],
-    index: { designVersion: 1, features: [featureNode('alpha')] },
-    slices: { alpha: slice('alpha') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 0, remaining: 10 };
-  const deriveBlocked = { feature: 'alpha', result: 'blocked', detail: 'args construction missing the probe binding' };
-  const agentReplies = [
-    { returns: { result: 'planned', feature: 'alpha', tasks: [{ id: 't1', status: 'pending', depends_on: [], size: 'xs' }] } },
-    { returns: { result: 'built', task: 'alpha/t1' } },
-    { returns: deriveBlocked },
-  ];
+test('an environment-shaped block halts the run carrying the blocker detail', async () => {
+  const args = snapshotOf([feature('alpha')]);
+  const replies = byLabel({
+    'plan:alpha': { returns: { result: 'planned', lane: 'small' } },
+    'build:alpha/feature': { returns: { result: 'blocked', task: 'alpha/feature', kind: 'environment', detail: 'git worktree add failed: disk full' } },
+  });
 
-  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+  const { result } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build', 'derive']); // validate never spawns
-  assert.deepEqual(result.halted, { reason: 'environment-blocked', detail: deriveBlocked.detail });
-  assert.deepEqual(result.completed, []);
+  assert.deepEqual(result.halted, { reason: 'environment-blocked', detail: 'git worktree add failed: disk full' });
+  assert.deepEqual(result.blocked, []);
 });
 
-// ── criterion 2: a thrown error named for budget exhaustion halts the run, retaining
-// prior completions — but an error whose message merely mentions "budget", without a
-// matching name or code, never halts (message text alone is never the signal) ──
-test('a thrown error named for budget exhaustion halts the run; message text alone never does', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha', 'beta'],
-    index: { designVersion: 1, features: [featureNode('alpha'), featureNode('beta')] },
-    slices: { alpha: slice('alpha'), beta: slice('beta') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 5, remaining: 0 };
-  const budgetError = new BudgetExceededError('budget exhausted at spawn 6');
-  const agentReplies = [
-    ...perfectRun('alpha'),
-    { throws: budgetError },
-  ];
+test('an ordinary agent error stalls only its own feature; an independent feature still completes', async () => {
+  const args = snapshotOf([feature('alpha'), feature('beta')]);
+  const replies = byLabel({
+    'plan:alpha': { throws: new Error('api hiccup') },
+    'plan:beta': { returns: { result: 'planned', lane: 'small' } },
+    'build:beta/feature': built('beta/feature'),
+    'validate:beta': validated('beta'),
+  });
 
-  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+  const { result } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate', 'Plan']);
-  assert.deepEqual(spawns.map((s) => s.opts.label), [
-    '[session] plan:alpha',
-    '[session] build:alpha/alpha1',
-    '[session] derive:alpha',
-    '[session] validate:alpha',
-    '[session] plan:beta',
-  ]); // beta never gets past its plan spawn — the budget halt fires there
-  assert.deepEqual(result.completed, ['alpha']);
-  assert.deepEqual(result.halted, { reason: 'budget-exhausted', detail: budgetError.message });
-  assert.deepEqual(result.budget, budget);
-});
-
-test('an error whose message merely mentions budget, but isn\'t named or coded for it, stalls rather than halts', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha', 'beta'],
-    index: { designVersion: 1, features: [featureNode('alpha'), featureNode('beta')] },
-    slices: { alpha: slice('alpha'), beta: slice('beta') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 0, remaining: 10 };
-  const impostor = new Error('ran out of budget');
-  const agentReplies = [
-    { throws: impostor },
-    ...perfectRun('beta'),
-  ];
-
-  const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
-
-  assert.equal(result.halted, undefined);
-  assert.deepEqual(result.stalled, [{ feature: 'alpha', agent: 'plan', note: impostor.message }]);
   assert.deepEqual(result.completed, ['beta']);
-});
-
-// ── criterion 2: agent death (a null return) and any other ordinary throw each stall
-// just their own feature — the run drains onward to the next runnable feature ──
-test('a null return or any other thrown error stalls just that feature, and the run continues', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha', 'beta', 'gamma'],
-    index: { designVersion: 1, features: [featureNode('alpha'), featureNode('beta'), featureNode('gamma')] },
-    slices: { alpha: slice('alpha'), beta: slice('beta'), gamma: slice('gamma') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 0, remaining: 10 };
-  const crash = new Error('subprocess exited unexpectedly');
-  const agentReplies = [
-    { returns: null }, // alpha's plan agent died
-    { throws: crash }, // beta's plan agent crashed with an ordinary error
-    ...perfectRun('gamma'),
-  ];
-
-  const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
-
-  assert.deepEqual(result.stalled, [
-    { feature: 'alpha', agent: 'plan', note: 'agent returned null' },
-    { feature: 'beta', agent: 'plan', note: crash.message },
-  ]);
-  assert.deepEqual(result.completed, ['gamma']);
+  assert.deepEqual(result.stalled, [{ feature: 'alpha', agent: 'plan', note: 'api hiccup' }]);
   assert.equal(result.halted, undefined);
 });
 
-// ── a planned return that carries no task summaries stalls the feature instead of
-// crashing the run (first-live-run finding: a minimal spawn schema elicited a minimal
-// return; the plan itself is booked durable, so the next pass re-enters Build) ──
-test('a planned return without task summaries stalls the feature and the run continues', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha', 'gamma'],
-    index: { designVersion: 1, features: [featureNode('alpha'), featureNode('gamma')] },
-    slices: { alpha: slice('alpha'), gamma: slice('gamma') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 0, remaining: 10 };
-  const agentReplies = [
-    { returns: { result: 'planned', feature: 'alpha' } }, // no tasks field
-    ...perfectRun('gamma'),
-  ];
+test('a null agent return stalls the feature with the pinned note', async () => {
+  const args = snapshotOf([feature('alpha')]);
+  const replies = byLabel({}); // no reply scripted → the stub returns null
 
-  const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+  const { result } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  assert.equal(result.stalled.length, 1);
-  assert.equal(result.stalled[0].feature, 'alpha');
-  assert.equal(result.stalled[0].agent, 'plan');
-  assert.ok(result.stalled[0].note.includes('no task summaries'), 'note names the gap');
-  assert.deepEqual(result.completed, ['gamma']);
-  assert.equal(result.halted, undefined);
+  assert.deepEqual(result.stalled, [{ feature: 'alpha', agent: 'plan', note: 'agent returned null' }]);
 });

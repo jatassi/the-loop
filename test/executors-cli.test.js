@@ -1,4 +1,4 @@
-// bin/spine.js's executor-registry CLI surface (`spine executors`, and `spine
+// bin/the-loop.js's executor-registry CLI surface (`the-loop executors`, and `the-loop
 // models`'s binding-validation pass), exercised as an agent would — spawned as a
 // real subprocess against throwaway fixture dirs and, for the real-registry case,
 // against this plugin's own shipped executors/ dir.
@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const BIN = path.resolve('bin/spine.js');
+const BIN = path.resolve('bin/the-loop.js');
 
 function spine(args, opts = {}) {
   return execFileSync('node', [BIN, ...args], { encoding: 'utf8', ...opts });

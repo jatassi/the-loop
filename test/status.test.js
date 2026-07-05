@@ -17,7 +17,7 @@ features:
     acceptance: renders a widget
   - id: gadget
     title: Gadget
-    status: planned
+    status: designed
     depends_on: [widget]
     acceptance: renders a gadget
 \`\`\`
@@ -25,20 +25,20 @@ features:
 
 test('setStatus flips exactly that feature in the model and the round-tripped text', () => {
   const m = parse(TEXT);
-  setStatus(m, 'widget', 'building');
-  assert.equal(m.features[0].status, 'building');
-  assert.equal(m.features[1].status, 'planned'); // sibling untouched
+  setStatus(m, 'widget', 'validated');
+  assert.equal(m.features[0].status, 'validated');
+  assert.equal(m.features[1].status, 'designed'); // sibling untouched
 
   const text = render(TEXT, m);
-  assert.equal(text, TEXT.replace('status: designed', 'status: building'));
+  assert.equal(text, TEXT.replace('status: designed', 'status: validated'));
   assert.equal(render(text, parse(text)), text); // still round-trips
 });
 
 test('setStatus refuses an unknown feature id or an out-of-enum status, leaving the model untouched', () => {
   const m = parse(TEXT);
-  assert.throws(() => setStatus(m, 'ghost', 'building'), /unknown feature id: ghost/);
-  assert.throws(() => setStatus(m, 'widget', 'launched'), /status must be one of/);
+  assert.throws(() => setStatus(m, 'ghost', 'validated'), /unknown feature id: ghost/);
+  assert.throws(() => setStatus(m, 'widget', 'building'), /status must be one of/); // in-flight states live in git, not the graph
   assert.equal(m.features[0].status, 'designed');
-  assert.equal(m.features[1].status, 'planned');
+  assert.equal(m.features[1].status, 'designed');
   assert.equal(render(TEXT, m), TEXT);
 });

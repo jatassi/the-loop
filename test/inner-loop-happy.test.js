@@ -1,188 +1,167 @@
-// The happy-path leg of the Workflow's own acceptance (ADR-0029): the shim executes the
-// real workflows/inner-loop.js, scripted with replies a live Plan/Build/Derive/Validate
-// spawn would return, and we assert the spawn sequence and the resulting BoundaryResult.
+// The happy-path leg of the Workflow's own acceptance: the shim executes the real
+// workflows/inner-loop.js, scripted with replies live Plan/Build/Validate spawns would
+// return, and we assert the kernels pushed into prompts, the branch DAG, the ready-set
+// scheduling, and the resulting BoundaryResult.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { runWorkflowScript } from './workflow-shim.js';
+import { byLabel, runWorkflowScript } from './workflow-shim.js';
 
 const SCRIPT = 'workflows/inner-loop.js';
 
-function featureNode(id, overrides = {}) {
-  return { id, status: 'designed', depends_on: [], interfaces: [], acceptance: [`${id} works`], ...overrides };
-}
-
-function slice(id) {
-  return { node: { id, title: id, status: 'designed', acceptance: [`${id} works`] }, contracts: [] };
-}
-
-// ── criteria 1–3: frontier + in-memory status updates, the full phase sequence with
-// task ordering by depends_on, and the BoundaryResult echoed on both channels ──
-test('a designed, dependency-linked pair runs Plan→Build→Derive→Validate per feature, in dependency order, to a completed BoundaryResult', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha', 'beta'],
-    index: {
-      designVersion: 1,
-      features: [featureNode('alpha'), featureNode('beta', { depends_on: ['alpha'] })],
-    },
-    slices: { alpha: slice('alpha'), beta: slice('beta') },
-    plans: {},
-    probe: { bringUp: 'npm start' },
-    models: { plan: { model: 'session' }, derive: { model: 'opus', effort: 'low' } }, // build/validate unbound — fallback
+function feature(id, overrides = {}) {
+  return {
+    id, title: `${id} title`, acceptance: [`${id} works`], depends_on: [],
+    designDoc: `design doc for ${id}`, branch: `loop/${id}`, branchHead: null,
+    plan: null, builtTasks: [], ...overrides,
   };
-  const budget = { spent: 1, remaining: 9 };
+}
 
-  const alphaTasks = [ // deliberately out of dependency order — proves depends_on ordering, not array order
-    { id: 't2', status: 'pending', depends_on: ['t1'], size: 's' },
-    { id: 't1', status: 'pending', depends_on: [], size: 's' },
+function snapshotOf(features, overrides = {}) {
+  return {
+    target: 'main',
+    scope: features.map((f) => f.id),
+    probe: 'bring-up: node app · exercise: curl /health · teardown: kill',
+    models: {},
+    cli: 'node /plugin/bin/the-loop.js',
+    features: Object.fromEntries(features.map((f) => [f.id, f])),
+    ...overrides,
+  };
+}
+
+const BUDGET = { spent: 1, remaining: 9 };
+const validated = (id) => ({ returns: { result: 'validated', feature: id } });
+const built = (task) => ({ returns: { result: 'built', task } });
+
+// ── standard + small lanes, dependency scheduling, branch DAG, kernels ──
+test('a dependency-linked pair runs Plan→Build→Validate per feature — standard lane on a task DAG, small lane whole — to a completed BoundaryResult', async () => {
+  const alphaTasks = [ // deliberately out of dependency order — the DAG orders builds, not the array
+    { id: 't2', title: 'wire it', covers: [1], acceptance: ['t2 passes'], footprint: ['src/b.js'], size: 's', depends_on: ['t1'], wiring: 't2 sits atop t1' },
+    { id: 't1', title: 'core', covers: [1], acceptance: ['t1 passes'], footprint: ['src/a.js'], size: 's', depends_on: [] },
   ];
-  const agentReplies = [
-    { returns: { result: 'planned', feature: 'alpha', tasks: alphaTasks } },
-    { returns: { result: 'built', task: 'alpha/t1' } },
-    { returns: { result: 'built', task: 'alpha/t2' } },
-    { returns: { result: 'derived', feature: 'alpha', expectations: [{ criterion: 'alpha works', expect: 'alpha does the thing' }], ambiguities: [] } },
-    { returns: { result: 'perfect', feature: 'alpha' } },
-    { returns: { result: 'planned', feature: 'beta', tasks: [{ id: 'b1', status: 'pending', depends_on: [], size: 'xs' }] } },
-    { returns: { result: 'built', task: 'beta/b1' } },
-    { returns: { result: 'derived', feature: 'beta', expectations: [{ criterion: 'beta works', expect: 'beta does the thing' }], ambiguities: [] } },
-    { returns: { result: 'perfect', feature: 'beta' } },
-  ];
-
-  const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
-
-  const kinds = spawns.map((s) => s.opts.agentType);
-  assert.deepEqual(kinds, ['plan', 'build', 'build', 'derive', 'validate', 'plan', 'build', 'derive', 'validate']);
-  // plan is bound explicitly to the literal session model — no model opt rides, and no
-  // fallback line logs (it's bound, not merely absent from the table).
-  assert.equal(spawns[0].opts.label, '[session] plan:alpha');
-  assert.equal('model' in spawns[0].opts, false, 'a session-bound role passes no model opt');
-  assert.ok(logs.every((l) => !l.includes('role plan unbound')), 'a session-bound role never logs the unbound fallback line');
-  // alpha's build tasks ran t1 then t2, despite the plan return listing t2 first —
-  // untiered, so both fall back to build.standard, unbound (session) in this fixture.
-  assert.equal(spawns[1].opts.label, '[session] build:alpha/t1');
-  assert.equal(spawns[2].opts.label, '[session] build:alpha/t2');
-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Validate', 'Plan', 'Build', 'Validate', 'Validate']);
-  assert.deepEqual(spawns.map((s) => s.opts.label), [
-    '[session] plan:alpha',
-    '[session] build:alpha/t1',
-    '[session] build:alpha/t2',
-    '[opus] derive:alpha',
-    '[session] validate:alpha',
-    '[session] plan:beta',
-    '[session] build:beta/b1',
-    '[opus] derive:beta',
-    '[session] validate:beta',
-  ]);
-  assert.equal(spawns[3].opts.model, 'opus'); // derive resolves the bound model
-  assert.equal(spawns[3].opts.effort, 'low'); // and its bound effort — no longer hardcoded
-  assert.ok(spawns[3].prompt.includes(JSON.stringify(args.probe)), 'derive prompt carries the probe binding');
-  assert.ok(spawns[3].prompt.includes(JSON.stringify(args.slices.alpha)), 'derive prompt carries the feature slice');
-  assert.ok(spawns[4].prompt.includes('alpha does the thing'), 'validate prompt carries the expectation sheet');
-  assert.ok(Array.isArray(spawns[4].opts.schema.properties.result.enum) && spawns[4].opts.schema.properties.result.enum.includes('perfect'), 'validate schema encodes its result enum as JSON Schema');
-
-  assert.deepEqual(result, {
-    completed: ['alpha', 'beta'],
-    parked: [],
-    stalled: [],
-    budget: { spent: 1, remaining: 9 },
+  const args = snapshotOf([feature('alpha'), feature('beta', { depends_on: ['alpha'] })]);
+  const replies = byLabel({
+    'plan:alpha': { returns: { result: 'planned', lane: 'standard', tasks: alphaTasks } },
+    'build:alpha/t1': built('alpha/t1'),
+    'build:alpha/t2': built('alpha/t2'),
+    'validate:alpha': validated('alpha'),
+    'plan:beta': { returns: { result: 'planned', lane: 'small' } },
+    'build:beta/feature': built('beta/feature'),
+    'validate:beta': validated('beta'),
   });
+
+  const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
+
+  const labels = spawns.map((s) => s.opts.label.replace(/^\[[^\]]*\] /, ''));
+  assert.deepEqual(labels, [
+    'plan:alpha', 'build:alpha/t1', 'build:alpha/t2', 'validate:alpha',
+    'plan:beta', 'build:beta/feature', 'validate:beta',
+  ]);
+  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Plan', 'Build', 'Validate']);
+
+  const prompt = (label) => spawns[labels.indexOf(label)].prompt;
+  // plan kernel: criteria numbered, design doc pushed, CLI path carried
+  assert.ok(prompt('plan:alpha').includes('1. alpha works'));
+  assert.ok(prompt('plan:alpha').includes('design doc for alpha'));
+  assert.ok(prompt('plan:alpha').includes('node /plugin/bin/the-loop.js'));
+  // build kernels: the branch DAG — t1 branches from the feature branch, t2 from t1's
+  assert.ok(prompt('build:alpha/t1').includes('worktree create loop/alpha--t1 --from loop/alpha'));
+  assert.ok(prompt('build:alpha/t2').includes('worktree create loop/alpha--t2 --from loop/alpha--t1'));
+  assert.ok(prompt('build:alpha/t2').includes('commit subject: "alpha/t2:'));
+  assert.ok(prompt('build:alpha/t2').includes('footprint (the lease — stay inside it): src/b.js'));
+  assert.ok(prompt('build:alpha/t2').includes('wiring: t2 sits atop t1'));
+  assert.ok(prompt('build:alpha/t2').includes('covers feature criteria: alpha works'));
+  assert.ok(!prompt('build:alpha/t2').includes('design doc for alpha'), 'build kernels menu-reference the design doc, never inline it');
+  // small lane: one whole-feature build straight off the target, design doc pushed
+  assert.ok(prompt('build:beta/feature').includes('small lane'));
+  assert.ok(prompt('build:beta/feature').includes('worktree create loop/beta --from main'));
+  assert.ok(prompt('build:beta/feature').includes('design doc for beta'));
+  // validate kernels: merge order over the branch DAG, probe pushed
+  assert.ok(prompt('validate:alpha').includes('merge, in order: loop/alpha, loop/alpha--t1, loop/alpha--t2'));
+  assert.ok(prompt('validate:alpha').includes('bring-up: node app'));
+  assert.ok(prompt('validate:beta').includes('merge, in order: loop/beta'));
+
+  assert.deepEqual(result, { completed: ['alpha', 'beta'], blocked: [], stalled: [], budget: BUDGET });
   assert.equal(logs.at(-1), JSON.stringify(result)); // the completion channel's belt-and-braces echo
 });
 
-// ── criterion 4a: a feature already planned/building skips Plan, resumes Build from
-// args.plans at the first non-built task, and still derives before validating. args.models
-// is absent entirely here — every role falls back, proving the run still completes with
-// fallback lines (model-selection criterion 2) rather than erroring ──
-test('a building feature skips Plan, resumes Build from args.plans at the first non-built task, and still derives before validating', async () => {
-  const args = {
-    target: 'main',
-    scope: ['gamma'],
-    index: { designVersion: 1, features: [featureNode('gamma', { status: 'building' })] },
-    slices: { gamma: slice('gamma') },
-    plans: { gamma: [
-      { id: 'g1', status: 'built', depends_on: [], size: 'xs' },
-      { id: 'g2', status: 'pending', depends_on: ['g1'], size: 'xs' },
-    ] },
-    probe: {},
-  };
-  const budget = { spent: 0, remaining: 10 };
-  const agentReplies = [
-    { returns: { result: 'built', task: 'gamma/g2' } },
-    { returns: { result: 'derived', feature: 'gamma', expectations: [], ambiguities: [] } },
-    { returns: { result: 'perfect', feature: 'gamma' } },
-  ];
+// ── resume: a snapshot plan skips Plan; git-derived builtTasks skip their builds ──
+test('a feature with a snapshot plan skips Plan and resumes Build at the first task git has not landed', async () => {
+  const plan = { designVersion: 8, tasks: [
+    { id: 'g1', title: 'done already', covers: [1], acceptance: ['g1'], footprint: ['a.js'], size: 'xs', depends_on: [] },
+    { id: 'g2', title: 'remaining', covers: [1], acceptance: ['g2'], footprint: ['b.js'], size: 'xs', depends_on: ['g1'] },
+  ] };
+  const args = snapshotOf([feature('gamma', { plan, builtTasks: ['g1'] })]);
+  const replies = byLabel({
+    'build:gamma/g2': built('gamma/g2'),
+    'validate:gamma': validated('gamma'),
+  });
 
-  const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  assert.deepEqual(spawns.map((s) => s.opts.agentType), ['build', 'derive', 'validate']); // no plan spawn
-  assert.equal(spawns[0].opts.label, '[session] build:gamma/g2'); // resumed at the first non-built task, unbound
-  assert.ok(logs.includes('model-selection — task gamma/g2 has no tier, routing build.standard'), 'the untiered task logs its pinned line');
-  assert.ok(logs.includes('model-selection — role build.standard unbound, session-model fallback'), 'the unbound role logs its pinned line');
-  assert.deepEqual(result.completed, ['gamma']); // args.models absent entirely never errors the run
+  assert.deepEqual(spawns.map((s) => s.opts.agentType), ['build', 'validate']); // no plan spawn, no g1 spawn
+  assert.ok(spawns[0].prompt.includes('worktree create loop/gamma--g2 --from loop/gamma--g1'));
+  assert.ok(spawns[1].prompt.includes('merge, in order: loop/gamma, loop/gamma--g1, loop/gamma--g2'));
+  assert.deepEqual(result.completed, ['gamma']);
 });
 
-// ── criterion 4b: an in-scope feature that isn't runnable is skipped via log(), never
-// an error — here, blocked by an unsatisfied dependency the run never advances ──
-test('an in-scope feature whose dependency is unsatisfied is skipped with a log() line, never an error', async () => {
-  const args = {
-    target: 'main',
-    scope: ['epsilon'],
-    index: {
-      designVersion: 1,
-      features: [featureNode('epsilon', { depends_on: ['zeta'] }), featureNode('zeta')],
-    },
-    slices: { epsilon: slice('epsilon'), zeta: slice('zeta') },
-    plans: {},
-    probe: {},
-  };
-  const budget = { spent: 0, remaining: 10 };
+test('a small-lane feature whose branch head already carries its landing commit skips Build and goes straight to Validate', async () => {
+  const args = snapshotOf([feature('delta', { branchHead: 'delta/feature: landed last run' })]);
+  const replies = byLabel({
+    'plan:delta': { returns: { result: 'planned', lane: 'small' } },
+    'validate:delta': validated('delta'),
+  });
 
-  const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: [], args, budget });
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  assert.equal(spawns.length, 0);
-  assert.ok(logs.some((l) => l.includes('epsilon')));
-  assert.deepEqual(result, { completed: [], parked: [], stalled: [], budget: { spent: 0, remaining: 10 } });
+  assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'validate']);
+  assert.deepEqual(result.completed, ['delta']);
 });
 
-// ── model-selection criteria 1/2/4: build spawns route through build.<tier> per the
-// task summary's stamped tier (a complex task to build.complex's model, an untiered task
-// to build.standard's), every label carries the [<model>] prefix — a bound build spawn
-// and an unbound plan spawn — and TASK_SUMMARY's own schema describes tier so a plan
-// return's stamped tier is never the field the harness silently drops ──
-test('build spawns route through build.<tier> bindings from the task summary, and every label carries its resolved-model prefix', async () => {
-  const args = {
-    target: 'main',
-    scope: ['alpha'],
-    index: { designVersion: 1, features: [featureNode('alpha')] },
-    slices: { alpha: slice('alpha') },
-    plans: {},
-    probe: {},
-    models: { 'build.complex': { model: 'opus' }, 'build.standard': { model: 'sonnet' } }, // plan deliberately unbound
-  };
-  const budget = { spent: 0, remaining: 10 };
+// ── feature-level concurrency: independent features start together ──
+test('independent in-scope features start concurrently — both Plan spawns land before any Build', async () => {
+  const args = snapshotOf([feature('alpha'), feature('beta')]);
+  const replies = byLabel({
+    'plan:alpha': { returns: { result: 'planned', lane: 'small' } },
+    'plan:beta': { returns: { result: 'planned', lane: 'small' } },
+    'build:alpha/feature': built('alpha/feature'),
+    'build:beta/feature': built('beta/feature'),
+    'validate:alpha': validated('alpha'),
+    'validate:beta': validated('beta'),
+  });
+
+  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
+
+  assert.deepEqual(spawns.slice(0, 2).map((s) => s.opts.agentType), ['plan', 'plan'], 'both features planned before either built');
+  assert.deepEqual(result.completed.toSorted((a, b) => a.localeCompare(b)), ['alpha', 'beta']);
+});
+
+// ── model routing: build.<tier> bindings, [model] label prefixes, session fallback ──
+test('build spawns route through build.<tier> bindings and every label carries its resolved-model prefix', async () => {
   const tasks = [
-    { id: 't1', status: 'pending', depends_on: [], size: 's', tier: 'complex' },
-    { id: 't2', status: 'pending', depends_on: ['t1'], size: 's' }, // untiered
+    { id: 't1', title: 'hard', covers: [1], acceptance: ['t1'], footprint: ['a.js'], size: 's', tier: 'complex', depends_on: [] },
+    { id: 't2', title: 'untiered', covers: [1], acceptance: ['t2'], footprint: ['b.js'], size: 's', depends_on: ['t1'] },
   ];
-  const agentReplies = [
-    { returns: { result: 'planned', feature: 'alpha', tasks } },
-    { returns: { result: 'built', task: 'alpha/t1' } },
-    { returns: { result: 'built', task: 'alpha/t2' } },
-    { returns: { result: 'derived', feature: 'alpha', expectations: [], ambiguities: [] } },
-    { returns: { result: 'perfect', feature: 'alpha' } },
-  ];
+  const args = snapshotOf([feature('alpha')], {
+    models: { 'build.complex': { model: 'opus' }, 'build.standard': { model: 'sonnet' }, validate: { model: 'sonnet', effort: 'high' } }, // plan deliberately unbound
+  });
+  const replies = byLabel({
+    'plan:alpha': { returns: { result: 'planned', lane: 'standard', tasks } },
+    'build:alpha/t1': built('alpha/t1'),
+    'build:alpha/t2': built('alpha/t2'),
+    'validate:alpha': validated('alpha'),
+  });
 
-  const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+  const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  assert.deepEqual(spawns[0].opts.schema.properties.tasks.items.properties.tier, { type: 'string' }, 'TASK_SUMMARY describes tier');
-  assert.equal(spawns[0].opts.label, '[session] plan:alpha'); // plan is unbound in this fixture
-  assert.equal(spawns[1].opts.label, '[opus] build:alpha/t1'); // complex tier routes build.complex
-  assert.equal(spawns[1].opts.model, 'opus');
-  assert.equal(spawns[2].opts.label, '[sonnet] build:alpha/t2'); // untiered routes build.standard
-  assert.equal(spawns[2].opts.model, 'sonnet');
+  const byLabelSuffix = Object.fromEntries(spawns.map((s) => [s.opts.label.replace(/^\[[^\]]*\] /, ''), s.opts]));
+  assert.equal(byLabelSuffix['plan:alpha'].label, '[session] plan:alpha');
+  assert.equal('model' in byLabelSuffix['plan:alpha'], false, 'an unbound role passes no model opt');
+  assert.equal(byLabelSuffix['build:alpha/t1'].label, '[opus] build:alpha/t1');
+  assert.equal(byLabelSuffix['build:alpha/t1'].model, 'opus');
+  assert.equal(byLabelSuffix['build:alpha/t2'].label, '[sonnet] build:alpha/t2');
+  assert.equal(byLabelSuffix['validate:alpha'].effort, 'high', 'a bound effort rides the spawn');
   assert.ok(logs.includes('model-selection — role plan unbound, session-model fallback'));
   assert.ok(logs.includes('model-selection — task alpha/t2 has no tier, routing build.standard'));
-  assert.ok(!logs.includes('model-selection — task alpha/t1 has no tier, routing build.standard'), 't1 carries a tier — no untiered line for it');
   assert.deepEqual(result.completed, ['alpha']);
 });

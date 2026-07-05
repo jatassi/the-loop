@@ -30,7 +30,7 @@ answer sets the scope; nothing outside it starts.
 
 1. Confirm the scope: the dependency-ready frontier, or the human's subset.
 2. Assemble and gate in one call:
-   `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" launch --scope <id,id,…> [--target <ref>]`
+   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" launch --scope <id,id,…> [--target <ref>]`
    — it refuses with reasons on any gate failure (invalid graph, bad scope, broken
    model bindings). Don't work around a refusal; fix what it names or tell the human.
 3. Call the Workflow: `scriptPath` = `$CLAUDE_PLUGIN_ROOT/workflows/inner-loop.js`,
@@ -47,5 +47,5 @@ answer sets the scope; nothing outside it starts.
    - `halted` — the run stopped (budget or environment); report the detail.
 
 No status bookkeeping: the validators already updated the graph on the target, and
-`git log` is the run history. `node "$CLAUDE_PLUGIN_ROOT/bin/spine.js" ledger` prints
+`git log` is the run history. `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" ledger` prints
 the status story on demand.

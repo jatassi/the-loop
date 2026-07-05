@@ -34,11 +34,11 @@ run concurrently.
 
 ## 3 · Persist on the feature branch
 
-Create the feature worktree (`spine worktree create loop/<feature> --from <target>`),
+Create the feature worktree (`the-loop worktree create loop/<feature> --from <target>`),
 write `docs/plans/<feature>.md` inside it — a short narrative paragraph, then the
 task contracts as a ```yaml block under `## Tasks` with `feature:` and
 `design_version:` at its top — and lint until clean:
-`spine plan check <feature> docs/plans/<feature>.md`. Commit it alone
+`the-loop plan check <feature> docs/plans/<feature>.md`. Commit it alone
 (`plan: <feature>`), then remove the worktree. The plan lives on the branch only; it
 is never merged to the target.
 

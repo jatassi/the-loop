@@ -1,16 +1,16 @@
 // The inner-loop engine (ADR-0036/0038): script = brain, agents = hands. This file has
-// no filesystem — it consumes the `spine launch` snapshot via `args` and never imports
+// no filesystem — it consumes the `the-loop launch` snapshot via `args` and never imports
 // anything: `agent`, `log`, `args`, `budget` arrive as harness globals (declared for
 // eslint in the workflows/ block of eslint.config.js). It pushes each worker's kernel
 // (contract + refs) into the prompt — workers fetch nothing to start — and schedules a
 // ready-set walk over features and tasks, so anything whose dependencies are satisfied
 // runs concurrently in its own worktree. The completion channel is a bare top-level
 // `return` of the BoundaryResult.
-export const meta = { name: 'inner-loop', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the `spine launch` snapshot as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
+export const meta = { name: 'inner-loop', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the `the-loop launch` snapshot as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
 
 // Some callers deliver args as a JSON-encoded string rather than the parsed snapshot.
 const snapshot = typeof args === 'string' ? JSON.parse(args) : args;
-const SPINE = snapshot.spine || 'node bin/spine.js';
+const CLI = snapshot.cli || 'node bin/the-loop.js';
 
 const asList = (x) => (Array.isArray(x) ? x : [x]);
 
@@ -100,7 +100,7 @@ function menu(f) {
     `- feature design doc: docs/design/features/${f.id}.md`,
     '- system design (architecture, cross-feature contracts): docs/design/design.md',
     `- plan (all task contracts): docs/plans/${f.id}.md on ${f.branch}`,
-    `- graph/status: ${SPINE} ledger`,
+    `- graph/status: ${CLI} ledger`,
   ].join('\n');
 }
 
@@ -111,7 +111,7 @@ function planPrompt(f) {
   return [
     `feature: ${f.id} — ${f.title}`,
     `target: ${snapshot.target} · branch: ${f.branch} · plan file: docs/plans/${f.id}.md`,
-    `spine: ${SPINE}`,
+    `cli: ${CLI}`,
     '',
     'acceptance criteria:',
     criteriaList(f.acceptance),
@@ -126,7 +126,7 @@ function buildPrompt(f, task, { base, mergeBranches }) {
   const coversCriteria = (task.covers || []).map((k) => f.acceptance[k - 1]).filter(Boolean);
   return [
     `feature: ${f.id} · task: ${task.id} — ${task.title}`,
-    `worktree: ${SPINE} worktree create ${taskBranch(f, task.id)} --from ${base}`,
+    `worktree: ${CLI} worktree create ${taskBranch(f, task.id)} --from ${base}`,
     ...(mergeBranches.length > 0 ? [`merge these sibling branches first (clean by construction): ${mergeBranches.join(', ')}`] : []),
     `commit subject: "${f.id}/${task.id}: <what landed>"`,
     '',
@@ -144,7 +144,7 @@ function buildPrompt(f, task, { base, mergeBranches }) {
 function smallBuildPrompt(f) {
   return [
     `feature: ${f.id} — ${f.title} (small lane: the whole feature is one task)`,
-    `worktree: ${SPINE} worktree create ${f.branch} --from ${snapshot.target}`,
+    `worktree: ${CLI} worktree create ${f.branch} --from ${snapshot.target}`,
     `commit subject: "${f.id}/feature: <what landed>"`,
     '',
     'feature acceptance (each criterion gets a red-then-green test):',
@@ -160,9 +160,9 @@ function smallBuildPrompt(f) {
 function validatePrompt(f, branches) {
   return [
     `feature: ${f.id} — ${f.title}`,
-    `target: ${snapshot.target} · integration worktree: ${SPINE} worktree create integrate--${f.id} --from ${snapshot.target}`,
+    `target: ${snapshot.target} · integration worktree: ${CLI} worktree create integrate--${f.id} --from ${snapshot.target}`,
     `merge, in order: ${branches.join(', ')}`,
-    `spine: ${SPINE}`,
+    `cli: ${CLI}`,
     '',
     'acceptance criteria to judge:',
     criteriaList(f.acceptance),
@@ -356,7 +356,7 @@ async function runFeature(id) {
 }
 
 // ---- the run: ready-set over the scoped subgraph (ADR-0038). Deps outside the scope
-// were gated as already-landed by `spine launch`; deps inside it unblock as they land.
+// were gated as already-landed by `the-loop launch`; deps inside it unblock as they land.
 const inScope = new Set(snapshot.scope);
 const depsWithin = (id) => (snapshot.features[id].depends_on || []).filter((d) => inScope.has(d));
 await readySetRun({

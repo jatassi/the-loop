@@ -34,7 +34,7 @@ target.
 
 **Pass** — every criterion met, suite green, lint clean:
 
-1. `spine set-status <feature> validated` (in your worktree) and `git add` the graph
+1. `the-loop set-status <feature> validated` (in your worktree) and `git add` the graph
    and the probe file.
 2. Collapse to one commit: `git reset --soft <target-tip-at-start>` then
    `git commit -m "<feature>: <title>"`.
