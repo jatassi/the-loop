@@ -130,9 +130,10 @@ broken (tooling, auth) → the run halts. *See:* ADR-0029 lineage, ADR-0034.
 
 ### integration target
 **aliases:** target · **status:** active
-The ref validated features merge into — `main` unless the design narrative names
-another. Validators publish to it by fast-forward from a dedicated integration
-worktree, serialized. *See:* ADR-0026/0038.
+The ref validated features merge into — named explicitly at every launch
+(`--target` is required): the branch development is on, unless the design
+narrative names another. Validators publish to it by fast-forward from a
+dedicated integration worktree, serialized. *See:* ADR-0026/0038.
 
 ### compose-and-prove
 **aliases:** — · **status:** active

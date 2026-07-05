@@ -211,10 +211,21 @@ test('spine launch refuses a bad scope — unknown id, not-designed, unsatisfied
       ['gadget', /unsatisfied-dependency/], // widget is neither landed nor in scope
     ];
     for (const [scope, re] of cases) {
-      const error = spineFails(['launch', '--scope', scope], { cwd: root });
+      const error = spineFails(['launch', '--scope', scope, '--target', 'main'], { cwd: root });
       assert.equal(error.stdout, '');
       assert.match(error.stderr, re);
     }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('spine launch refuses a missing --target — exit 1, nothing on stdout, usage on stderr', () => {
+  const root = fixture({ 'docs/design/graph.md': GRAPH, 'docs/design/design.md': DESIGN });
+  try {
+    const error = spineFails(['launch', '--scope', 'widget'], { cwd: root });
+    assert.equal(error.stdout, '');
+    assert.match(error.stderr, /--target <ref>/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -280,7 +291,7 @@ features:
   });
   try {
     assert.ok(!existsSync(path.join(root, 'docs/design/features/fix-widget.md')));
-    const snap = JSON.parse(spine(['launch', '--scope', 'fix-widget'], { cwd: root }));
+    const snap = JSON.parse(spine(['launch', '--scope', 'fix-widget', '--target', 'main'], { cwd: root }));
     assert.equal(snap.features['fix-widget'].designDoc, '# fix-widget — race drops an update\n');
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -144,16 +144,18 @@ function taskCommand(featureId, [taskId, planFile, graphFile]) {
   out(resolveTask(plan, design, taskId));
 }
 
-// spine launch --scope <id,id,…> [--target <ref>] — the one-shot snapshot assembler
+// the-loop launch --scope <id,id,…> --target <ref> — the one-shot snapshot assembler
 // (ADR-0036/0038): gates the graph and the scope, gathers every per-feature input
 // (design doc, plan from the feature branch, task state from git), and prints the
 // snapshot the workflow consumes as `args`. Any gate failure exits 1 with nothing
-// printed to stdout.
+// printed to stdout. No default target: a guessed target can silently diverge from
+// the branch the snapshot's artifacts were read from, and the whole run inherits
+// the mismatch — the caller must name the ref the run integrates into.
 export function launchCommand(argv) {
   const opts = parseFlags(argv, { '--scope': 'scope', '--target': 'target' });
-  if (!opts.scope) { fail('usage: spine launch --scope <id,id,…> [--target <ref>]'); }
+  if (!opts.scope || !opts.target) { fail('usage: the-loop launch --scope <id,id,…> --target <ref>'); }
   const scope = opts.scope.split(',').map((s) => s.trim()).filter(Boolean);
-  const target = opts.target || 'main';
+  const target = opts.target;
 
   const model = parse(read());
   const graphIssues = validate(model);

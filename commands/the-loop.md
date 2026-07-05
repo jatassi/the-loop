@@ -34,9 +34,12 @@ answer sets the scope; nothing outside it starts.
 
 1. Confirm the scope: the dependency-ready frontier, or the human's subset.
 2. Assemble and gate in one call:
-   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" launch --scope <id,id,…> [--target <ref>]`
-   — it refuses with reasons on any gate failure (invalid graph, bad scope, broken
-   model bindings). Don't work around a refusal; fix what it names or tell the human.
+   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" launch --scope <id,id,…> --target <ref>`
+   — `--target` is required: name the integration target explicitly — the branch
+   the session is working on, unless the design narrative names another. Never
+   pass a target the checkout's artifacts didn't come from. The command refuses
+   with reasons on any gate failure (invalid graph, bad scope, broken model
+   bindings). Don't work around a refusal; fix what it names or tell the human.
 3. Call the Workflow: `scriptPath` = `$CLAUDE_PLUGIN_ROOT/workflows/inner-loop.js`,
    `args` = the snapshot JSON, verbatim.
 4. Relay the BoundaryResult in plain prose, plus any `model-selection —` lines from

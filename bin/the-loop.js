@@ -12,7 +12,7 @@
 //                                    (designed|validated|shipped); prints the updated
 //                                    node; exit 1, unwritten, on an unknown id or status
 //   the-loop ledger [graph.md]      print the status story to stdout; writes nothing
-//   the-loop launch --scope <id,…> [--target <ref>]
+//   the-loop launch --scope <id,…> --target <ref>
 //                                    the one-shot launch snapshot (ADR-0036/0038):
 //                                    gates the graph, the scope, and the model table,
 //                                    gathers per-feature design docs + plans (from
@@ -87,7 +87,7 @@ try {
       break;
     }
     default: {
-      process.stdout.write('usage: the-loop <orient|graph|check|set-status <id> <status>|ledger|launch --scope <id,…>|plan <parse|check|task> <id>|worktree <create|remove>|executors [dir]|models [defaults.json] [executors-dir]> [file…]\n');
+      process.stdout.write('usage: the-loop <orient|graph|check|set-status <id> <status>|ledger|launch --scope <id,…> --target <ref>|plan <parse|check|task> <id>|worktree <create|remove>|executors [dir]|models [defaults.json] [executors-dir]> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }
