@@ -2,30 +2,19 @@
 
 Open design/process actions that live nowhere else — not feature work (the feature
 graph's job), not decisions already made (the ADRs' job), and not feature-scoped design
-guidance (that is baked into the relevant feature-graph node's `notes`, which travel
-with the injected slice when the feature is designed). Born in the 2026-07-01
-design-review session. **Delete an item when it lands**; git history is the archive
-(the escalation-record pattern, ADR-0009).
+guidance (that lives in the feature's own design doc). Born in the 2026-07-01
+design-review session. **Delete an item when it lands**; git history is the archive.
 
-- **V2 taming rebuild** — *due: now; branch `taming`; hand-built outside the loop.*
-  Implement ADR-0034 through ADR-0040 (the 2026-07-04 taming session), staged in
-  dependency order, each stage independently verifiable:
-  1. **Spine CLI**: one-shot `launch` snapshot assembler with gates built in;
-     section-addressable fetches; worktree lifecycle (create/setup/prune); unpark;
-     ledger render-on-demand; delete dead subcommands (escalation resolve, validate
-     waive, corridor bookkeeping).
-  2. **Artifact migration**: split design.md (system narrative + graph file +
-     per-feature design docs); reshape plan format; delete `docs/validations/` and
-     `docs/escalations/`; dictionary standard-terms pass; `ports.md` → config.
-  3. **Workflow rewrite**: ready-set scheduler, three lanes, kernel+menu prompts,
-     feature/task concurrency, worktree spawns.
-  4. **Agent & skill rewrites**: role cards (build ~2KB, validate ~2–3KB, plan,
-     simplified drive); front door ~2KB; ship skeleton; delete `adjust` and `derive`.
-  5. **Test-suite reshape** alongside each stage (pure core / thin CLI discipline).
-  6. **Benchmark**: run one real small feature and one real standard feature through
-     the new loop; transcript forensics; judge against the targets below.
-
-  **Acceptance targets (order-of-magnitude commitments, measured not felt):**
+- **V2 benchmark (taming stage 6)** — *due: first fresh session on the `taming`
+  branch.* Stages 1–5 of the ADR-0034..0040 rebuild landed 2026-07-04 (commits
+  `ce0f9bb`, `a18fc70`, `3cc6db5`; net −9,731 lines; 129 tests + `npm run check`
+  green; snapshot→engine round-trip proven via the shim). What remains is the live
+  proof, which needs a fresh session (agent registration is read at session start):
+  1. Open a new session on `taming`, run `/the-loop`, accept a small frontier
+     feature (e.g. `research-tiers`); then a standard-lane feature.
+  2. Re-run the transcript forensics from the 2026-07-04 taming session and judge
+     against the targets below. Numbers within target = tamed; misses get diagnosed,
+     not rationalized. Then merge `taming` → `main` and ship.
 
   | Metric (per feature) | Baseline (measured 2026-07-04) | Target |
   |---|---|---|
@@ -36,8 +25,8 @@ design-review session. **Delete an item when it lands**; git history is the arch
   | Standard-lane wall clock (5 tasks) | ~146 min serial | ≈ slowest task + validate |
   | Launch overhead | 7 steps, 5–12 CLI calls | 1 CLI call + 1 Workflow call |
   | Human interventions per clean run | continuous shepherding | 2 |
-  | Fixed context per build agent | ~66–84KB | ≤ 8KB |
+  | Fixed context per build agent | ~66–84KB | ≤ 8KB (measured now: ~3KB card+kernel) |
 
-  Retired into this item: *Effort-level rigor scaling* (landed as ADR-0038's three
-  lanes) and *Hand-building-only-as-recorded-escalation* (superseded by ADR-0038's
-  bypass lane).
+  Known-stale note: the seven v1 probe packs were deleted with the machinery they
+  pinned; v2 validators pin fresh packs as features validate, so the first few ships
+  lean on the test suite alone — deliberate, not an oversight.
