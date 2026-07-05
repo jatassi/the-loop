@@ -20,11 +20,15 @@ every name is judged through their eyes.
   agent/command names, dictionary terms, artifact and doc filenames, statuses, lanes,
   branch prefixes, feature ids, `src/`/`test/` module filenames, and every code
   identifier that carries a taxonomy term. Prose is rewritten wherever it touches a
-  renamed term or itself coins jargon.
+  renamed term or itself coins jargon. The name inventory is taken from the repo
+  state at the sweep's branch point, not from this Brief's date — features landing
+  in between (e.g., diagnose: its skill, `fix node`, `fix-<slug>`, `docs/rca/`,
+  "bug door" vocabulary) are automatically in scope.
 - **Out:** the product name `the-loop` (brand tier — the one allowed non-descriptive
-  name); historical records (ADRs, ship records, RCAs, founding design docs) stay
-  as-written; purely local code naming that carries no taxonomy term; general
-  copy-editing of prose beyond the term-driven and jargon-driven rewrites.
+  name); historical records (ADRs, ship records, RCAs, research records, founding
+  design docs) stay as-written; purely local code naming that carries no taxonomy
+  term; general copy-editing of prose beyond the term-driven and jargon-driven
+  rewrites.
 - **Later:** nothing deliberately parked — this is a single sweeping pass.
 
 ## Decided
