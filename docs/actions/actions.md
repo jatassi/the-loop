@@ -15,6 +15,18 @@ design-review session. **Delete an item when it lands**; git history is the arch
   orientation proposal surfaces it. Touches: status enum in the schema module,
   graph docs, launch gating, orientation, `/the-loop` route table.
 
+- **Mid-feature human gate vs the built-predicate** — *observed 2026-07-05 on the
+  naming-map runs (wf_54a2f4da).* A build leg that deliberately stops halfway for a
+  human decision (draft-then-block, per naming-map's design) commits with the
+  standard `<feature>/feature:` subject prefix — which satisfies the engine's
+  built-iff-prefix-commit derivation, so the re-run after the human answers skips
+  the build leg entirely and validation fails on the half-done artifact. Repaired
+  manually this time (the session transcribed the verdicts — zero-judgment work).
+  Decide one: a distinct draft-commit subject shape the derivation ignores; or the
+  derivation also requiring the feature doc's completion marker; or a rule that
+  draft-then-block designs name the session (not a build agent) as the recorder of
+  boundary answers. Fold into the post-sweep amendment batch.
+
 - **V2 benchmark (taming stage 6)** — *due: first fresh session on the `taming`
   branch.* Stages 1–5 of the ADR-0034..0040 rebuild landed 2026-07-04 (commits
   `ce0f9bb`, `a18fc70`, `3cc6db5`; net −9,731 lines; 129 tests + `npm run check`
