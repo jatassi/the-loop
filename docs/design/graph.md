@@ -8,7 +8,7 @@ branches, task commits) is derived from git at launch time. Narrative lives in
 ## Feature graph
 
 ```yaml
-design_version: 12
+design_version: 13
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -212,9 +212,10 @@ features:
     status: designed
     depends_on: [naming-map]
     acceptance:
-      - every approved rename is applied across living surfaces (docs, skills, agents, commands, workflows, bin, src, test) and each replaced old name greps to zero outside historical records (docs/adr/, docs/ships/, docs/rca/, docs/research/, the founding design docs) and the frozen map
+      - every approved rename is applied across living surfaces (docs, skills, agents, commands, workflows, bin, src, test) and each replaced old name greps to zero outside historical records (docs/adr/, docs/research/, docs/briefs/, the founding design docs, and the moved record corpora at docs/releases/ and docs/bugs/) and the frozen map
       - a coverage re-check at the sweep's branch point catches names born after the map's enumeration — each is standard-compliant or surfaced as a deviation, never silently skipped
-      - every renamed dictionary term carries its old name as a `(historical)` alias, and historical records are byte-identical to their pre-sweep state
-      - paired data+code renames (status enum values, branch prefix, commit-subject shape) land atomically with npm test and npm run check green on the landed tree
-      - the loop runs end to end under the new vocabulary — orient reads the swept graph and launch --scope assembles a valid snapshot — and the craft baseline carries the distilled naming rule
+      - every renamed term carries its old name as a `(historical)` alias in the swept glossary, and historical records are content-identical to their pre-sweep state — byte-identical in place, except the two approved content-identical moves (docs/ships/* → docs/releases/, docs/rca/* → docs/bugs/)
+      - the approved map's sweep-mechanics notes are implemented — orient and ledger collapse into one status subcommand (human summary by default, --json for the machine orientation); literal branch, commit-subject, and fix- prefixes stay; the /grilling binding id survives; the deferred feature-status expansion is NOT implemented
+      - paired data+code renames (status enum values, branch prefix, commit-subject shape, artifact-path constants) land atomically with npm test and npm run check green on the landed tree
+      - the loop runs end to end under the new vocabulary — the machine orientation reads the swept graph and the run-preparation subcommand assembles a valid execution context — and the craft baseline carries the distilled naming rule
 ```
