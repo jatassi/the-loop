@@ -12,7 +12,9 @@ its token cost.
 
 An owned, composable augmentation layer — built from native Claude Code primitives
 (skills, subagents, commands, a Workflow) — that moves an idea through the full SDLC:
-frame → design → build → validate → ship → operate → evolve. It ships as a
+frame → design → build → validate → ship → operate, with post-ship intakes
+re-entering through three doors (frame, design amendment, diagnose — see Intake
+doors below). It ships as a
 **plugin**; the artifacts it produces live in the **target repo** it operates on. Its
 first job is to build itself (self-hosting: this checkout carries both the engine and
 its artifacts; a run executes the code it launched with, so self-edits take effect on
@@ -95,6 +97,7 @@ says "read this whole file."
 | Feature design docs | `docs/design/features/<id>.md` | one per feature; the context slice agents get |
 | Plans | `docs/plans/<id>.md` **on the feature branch** | task contracts only; never merged — gone when the feature lands |
 | Probe packs | `docs/probes/<id>.md` | written at validation; replayed at ship (their only replay point) |
+| RCA corpus | `docs/rca/<fix-id>.md` | permanent; born at a diagnose intake, doubles as the fix node's context slice |
 | Ship records | `docs/ships/ship-N.md` | one short block per release |
 | ADRs / Dictionary / Brief / research | `docs/adr/` etc. | decision + vocabulary spine; never auto-loaded |
 
@@ -108,6 +111,22 @@ workflow routes `build.<tier>`. A tier bound `via` a registered executor spawns 
 same bar (tests, lint, footprint; one retry). Executors register as
 `executors/<id>.md` playbooks; auth failures at use are ordinary environment halts —
 there is no launch-time pre-flight.
+
+### Intake doors (ADR-0043)
+
+Post-ship change enters through three doors that differ only in the investigation
+that earns the graph amendment, then converge on the same human-gated amendment and
+the unchanged engine: **frame** when the *what* needs sharpening; a **design
+amendment** when what/why are already obvious (bypass lane for trivial maintenance);
+**diagnose** when something is *wrong* and the *why* needs establishing. Diagnose
+runs end to end in one conversation — capture → triage → diagnosis via the
+diagnosing port (`/diagnosing-bugs` unless the project binds another) → RCA doc +
+fix node → gate → launch. Reproduction is best-effort with the waiver recorded; an
+environment-shaped obstacle to diagnosis (missing tooling, access, logs) is
+surfaced to the human with its quality cost — the waiver is the human's grant,
+never a silent fallback under degraded conditions.
+Fix nodes are transient (pruned from the graph in the ship commit); RCA docs are
+permanent — the accumulating, greppable corpus for issue-class pattern recognition.
 
 ## Key interface contracts
 
@@ -124,6 +143,10 @@ Cross-feature shapes, in prose (per-feature detail lives in the feature docs):
 - **BoundaryResult** — `{ completed: [id], blocked: [{feature, reason, options}],
   stalled: [{feature, agent, note}], halted?: {reason: budget-exhausted|
   environment-blocked, detail}, budget: {spent, remaining} }`.
+- **Fix node** — an ordinary feature node, id `fix-<slug>`, whose context slice
+  lives at `docs/rca/fix-<slug>.md` (launch falls back from `features/` to `rca/`);
+  regression-shaped acceptance; pruned from the graph at ship while the RCA doc and
+  ship record remain.
 - **Model binding** — `{ <role>: { model | "session", effort?, via? } }`, resolved
   with provenance by `the-loop models`.
 - **Runtime probe** — `bringUp → exercise(acceptance) → teardown`, recorded per

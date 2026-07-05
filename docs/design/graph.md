@@ -8,7 +8,7 @@ branches, task commits) is derived from git at launch time. Narrative lives in
 ## Feature graph
 
 ```yaml
-design_version: 10
+design_version: 11
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: artifact-spine
@@ -135,19 +135,26 @@ features:
       - no loop surface still promises conflict-free merges — build and validate carry the compose-and-prove posture (resolve only with a resolution serving both sides' stated intents, proven by the merged suite including both branches' tests going green; otherwise blocked naming the conflicting paths)
       - in a two-branch fixture scenario editing the same file, a composable conflict lands both edits with the suite green, and a non-composable conflict returns blocked naming the paths
 
-  - id: evolve
-    title: Evolve (bug-shaped intake; RCA + fix-design at the Design gate)
+  - id: diagnose
+    title: Diagnose — the bug door (RCA → fix node over a permanent RCA corpus)
     status: designed
-    depends_on: [inner-loop-workflow, design]
+    depends_on: [inner-loop-workflow]
+    notes:
+      - renamed from `evolve` 2026-07-05 (ADR-0043); bugs only — feature requests route to design amendments, idea-shaped intakes to frame
+      - the former depends_on design edge was a designs-better-knowing edge, spent when this design completed 2026-07-05; build surfaces are disjoint from the design feature's
     acceptance:
-      - a bug intake runs the engine with the same gates; RCA + fix-design is human-approved
+      - a bug intake yields a human-approved fix node (id fix-<slug>) in the graph and a permanent RCA doc at docs/rca/fix-<slug>.md that leads with the reproduction record (steps, expected vs actual, environment, determinism, regression window), then root cause(s) with evidence (reproduced, or inspection with the waiver recorded) and the fix design
+      - an environment-shaped obstacle to diagnosis (unavailable tooling, access, or logs) is surfaced to the human as a named blocker with its quality cost before proceeding — the inspection waiver is the human's grant, never a silent fallback
+      - the-loop launch --scope fix-<slug> assembles the snapshot with the RCA doc as the fix's designDoc via the features/-then-rca/ lookup fallback, and the fix runs the unmodified engine to a validated merge
+      - a shipped fix node is pruned from the graph in the ship commit while its RCA doc survives; the fix's regression probe rides the affected feature's probe pack, never an orphaned fix pack
+      - /the-loop routes a bug-shaped intake to the diagnose skill, whose diagnosis loop is a port binding (/diagnosing-bugs unless the project binds another)
 
   - id: operate-tooling
     title: Operate (on-demand ops/debug tooling + observability-solution guidance)
     status: designed
-    depends_on: [evolve]
+    depends_on: [diagnose]
     acceptance:
-      - the human invokes ops/debug tooling reactively; a resulting fix files an Evolve intake; never acts on prod unattended
+      - the human invokes ops/debug tooling reactively; a resulting fix files a diagnose intake; never acts on prod unattended
 
   - id: calibration-capture
     title: Calibration Memory (per-project capture, recalled at Plan/Design)
@@ -181,10 +188,10 @@ features:
     acceptance:
       - low confidence on a consequential decision triggers research; rigor scales with consequence
 
-  - id: evolve-severity-tiering
-    title: Evolve severity-tiering (the sev-1 hotfix express lane)
+  - id: severity-tiering
+    title: Severity tiering (the sev-1 hotfix express lane through the diagnose door)
     status: designed
-    depends_on: [evolve]
+    depends_on: [diagnose]
     acceptance:
       - a sev-1 intake takes an expedited, still-gated path
 ```

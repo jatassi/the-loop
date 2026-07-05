@@ -167,3 +167,13 @@ the executor's self-report counts for nothing. *See:* ADR-0040.
 **aliases:** — · **status:** active
 Frame's output (`docs/briefs/brief.md`): the sharpened statement of intent —
 Decided / Deferred / Done-looks-like — sharp enough to design against.
+
+### fix node
+**aliases:** — · **status:** active
+An ordinary feature node born at a diagnose intake — id `fix-<slug>`,
+regression-shaped acceptance, context slice at `docs/rca/fix-<slug>.md` instead of
+`features/` — and **transient**: pruned from the [[feature graph]] in the ship
+commit while its RCA doc and the ship record remain. Its regression probe folds
+into the affected feature's [[probe pack]], never a standalone pack. Passed the
+ratchet because no standard term ("hotfix", "bugfix") names the
+transient-node-over-permanent-RCA lifecycle. *See:* ADR-0043.
