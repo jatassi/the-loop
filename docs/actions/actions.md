@@ -5,6 +5,16 @@ graph's job), not decisions already made (the ADRs' job), and not feature-scoped
 guidance (that lives in the feature's own design doc). Born in the 2026-07-01
 design-review session. **Delete an item when it lands**; git history is the archive.
 
+- **Feature-status enum expansion (pre-designed state)** — *due: design amendment
+  immediately after `rename-sweep` lands; deliberately kept out of the sweep (a
+  semantic change to the three-status durable core, not a rename).* Jackson approved
+  the enum's new name (`feature status`) at the 2026-07-05 naming-map boundary and
+  asked for a state before `designed` (a backlog/proposed stage). The amendment must
+  decide: the new value's name (blind-derived per the naming standard), what creates
+  a pre-designed node, how launch gates it (refuse un-designed scope), and how the
+  orientation proposal surfaces it. Touches: status enum in the schema module,
+  graph docs, launch gating, orientation, `/the-loop` route table.
+
 - **V2 benchmark (taming stage 6)** — *due: first fresh session on the `taming`
   branch.* Stages 1–5 of the ADR-0034..0040 rebuild landed 2026-07-04 (commits
   `ce0f9bb`, `a18fc70`, `3cc6db5`; net −9,731 lines; 129 tests + `npm run check`
