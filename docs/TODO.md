@@ -5,17 +5,6 @@ graph's job), not decisions already made (the ADRs' job), and not feature-scoped
 guidance (that lives in the feature's own design doc). Born in the 2026-07-01
 design-review session. **Delete an item when it lands**; git history is the archive.
 
-- **Feature-status enum expansion (pre-designed state)** — *due: an amendment
-  immediately after `rename-sweep` lands; deliberately kept out of the sweep (a
-  semantic change to the three-status durable core, not a rename).* Jackson approved
-  the enum's new name (`feature status`) at the 2026-07-05 naming-map boundary and
-  asked for a state before `designed` (a backlog/proposed stage). The amendment must
-  decide: the new value's name (blind-derived per the naming standard), what creates
-  a pre-designed record, how the run-preparation step gates it (refuse un-designed
-  scope), and how the status proposal surfaces it. Touches: status enum in the
-  schema module, feature-graph docs, run-preparation gating, status output,
-  `/the-loop` route table.
-
 - **Mid-feature human gate vs the built-predicate** — *observed 2026-07-05 on the
   naming-map runs (wf_54a2f4da).* A build leg that deliberately stops halfway for a
   human decision (draft-then-block, per naming-map's design) commits with the
