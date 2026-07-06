@@ -10,7 +10,6 @@ import { test } from 'node:test';
 
 const root = process.cwd();
 const p = (...parts) => path.join(root, ...parts);
-const byName = (a, b) => (a < b ? -1 : Number(a > b));
 
 // Every old docs/design/features/<id>.md id, mapped to its new design-doc id per the
 // naming-map's Feature identifiers family (renamed ids renamed, keeps kept).
@@ -61,13 +60,10 @@ test('every feature design doc and probe pack landed at its new path, and the ol
   for (const id of RUNBOOK_IDS) {
     assert.ok(existsSync(p('docs/runbooks', id, 'runbook.md')), `missing docs/runbooks/${id}/runbook.md`);
   }
-
-  // No stray directories beyond the ones the map produces.
-  assert.deepEqual(
-    readdirSync(p('docs/designs')).toSorted(byName),
-    Object.values(DESIGN_ID_MAP).toSorted(byName),
-  );
-  assert.deepEqual(readdirSync(p('docs/runbooks')).toSorted(byName), [...RUNBOOK_IDS].toSorted(byName));
+  // Directories beyond the map's are fine: post-sweep features add their own design
+  // docs and runbooks (first: proposed-status, 2026-07-05). The sweep's completeness
+  // claim is the mapped set above plus the vocabulary sweep below, which reads every
+  // design doc present — new dirs included.
 });
 
 test('prose in the moved docs speaks the approved vocabulary, and untouched sentences were not copy-edited', () => {
