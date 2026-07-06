@@ -27,7 +27,7 @@ function repo({ graphText, designText, briefText } = {}) {
   }
   if (briefText != null) {
     mkdirSync(path.join(root, 'docs/briefs'), { recursive: true });
-    writeFileSync(path.join(root, 'docs/briefs/brief.md'), briefText);
+    writeFileSync(path.join(root, 'docs/briefs/fixture-intake.md'), briefText);
   }
   return root;
 }

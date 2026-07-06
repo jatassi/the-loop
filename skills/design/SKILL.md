@@ -41,7 +41,9 @@ downstream agent. Three artifacts come out (ADR-0037):
 
 ## How to get there
 
-1. **Read the brief** (`docs/briefs/brief.md`; run `define` first if none). Deferred
+1. **Read the intake's brief** (`docs/briefs/<slug>.md`, the slug Define chose for
+   this intake; run `define` first if none; if several briefs are plausible, ask
+   the human which intake is being designed). Deferred
    items are your question list; Decided items are settled. If a design already
    exists, you are amending it: fold new features into the graph, bump
    `design_version`.

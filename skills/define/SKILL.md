@@ -5,8 +5,11 @@ description: Define a raw idea into a brief sharp enough to design against. Use 
 
 # Define — brain-dump → brief
 
-Produce a brief at `docs/briefs/brief.md` that the Design phase can consume without
-re-asking anything foundational. Define owns the invitation and the brief; the interview
+Produce a brief at `docs/briefs/<slug>.md` that the Design phase can consume without
+re-asking anything foundational. The slug is the intake's kebab-case name — the
+feature's name for a feature-sized intake, the project's own name for a whole-project
+intake — chosen at capture and reused verbatim by Design.
+Define owns the invitation and the brief; the interview
 between them belongs to the interview port — `/grilling` unless this project's
 configuration binds another interview skill.
 
@@ -17,8 +20,8 @@ goals, fragments, constraints, worries. Don't interrupt and don't impose structu
 structure is produced by the interview, never demanded at capture. If the idea already
 lives in a document or notes, read that instead of asking for a restatement.
 
-If `docs/briefs/brief.md` already exists, ask whether this session sharpens that intake
-or replaces it with a new one — git history keeps the old brief either way.
+If a brief for this intake already exists in `docs/briefs/`, ask whether this session
+sharpens it or replaces it with a new one — git history keeps the old brief either way.
 
 ## 2 · Run the interview
 
@@ -41,7 +44,7 @@ pinned — if any is still fuzzy, keep the interview going.
 
 ## 3 · Write the brief
 
-Write `docs/briefs/brief.md`. Let what the interview surfaced shape the document, but a
+Write `docs/briefs/<slug>.md`. Let what the interview surfaced shape the document, but a
 brief that Design can consume answers all of these, so they are the default sections:
 
 - **Intent** — what this is and why it should exist, in the human's own terms.
@@ -65,4 +68,4 @@ brief that Design can consume answers all of these, so they are the default sect
   appears in the brief — Decided, Deferred, an Assumption, or explicitly out of
   scope. Nothing silently dropped.
 - **Gate.** Present the brief and ask the human to approve it.
-- **Commit** `docs/briefs/brief.md`, then tell the human that Design consumes it next.
+- **Commit** the brief, then tell the human that Design consumes it next.

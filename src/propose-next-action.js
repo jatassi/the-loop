@@ -4,7 +4,7 @@
 // branches, task commits) is git's to answer, at execution-context time, not here
 // (ADR-0034).
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { STATUS, validate } from './feature-schema.js';
@@ -12,7 +12,7 @@ import { parse } from './parse-feature-graph.js';
 
 const DESIGN = 'docs/architecture.md';
 const GRAPH = 'docs/feature-graph.md';
-const BRIEF = 'docs/briefs/brief.md';
+const BRIEFS_DIR = 'docs/briefs';
 
 // Statuses that satisfy a depends_on edge (the work behind it is done).
 const DONE = new Set(['validated', 'shipped']);
@@ -34,7 +34,9 @@ const DONE = new Set(['validated', 'shipped']);
 export function detectState(root = '.') {
   const hasDesign = existsSync(path.join(root, DESIGN));
   const hasGraph = existsSync(path.join(root, GRAPH));
-  const hasBrief = existsSync(path.join(root, BRIEF));
+  const briefsDir = path.join(root, BRIEFS_DIR);
+  const hasBrief = existsSync(briefsDir)
+    && readdirSync(briefsDir).some((f) => f.endsWith('.md'));
   let mode = 'unconfigured';
   if (hasGraph) { mode = 'configured'; }
   else if (hasDesign) { mode = 'partial'; }
@@ -146,7 +148,7 @@ export function machineOrientation(root = '.') {
   if (state.mode === 'unconfigured') {
     return { ...state, proposal: { kind: 'onboard', features: [],
       summary: state.hasBrief
-        ? 'a brief exists (docs/briefs/brief.md) but no design yet — resume onboarding at Design'
+        ? 'a brief exists under docs/briefs/ but no design yet — resume onboarding at Design'
         : 'no design and no graph — nothing to resume; route to onboarding (Define → Design)' } };
   }
   if (state.mode === 'partial') {
