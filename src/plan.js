@@ -1,20 +1,20 @@
-// The plan artifact (docs/plans/<feature-id>.md): parse + validate for the per-feature
+// The plan artifact (docs/plans/<feature-id>/plan.md): parse + validate for the per-feature
 // task-contract block — the Plan → Build handoff. Mirrors the design spine's split of
 // concerns: parsePlan() is lenient and structural; semantics — coverage, sizing,
-// edges — live in validatePlan(); render.js handles the round-trip (its _blocks shape
+// edges — live in validatePlan(); write-feature-graph.js handles the round-trip (its _blocks shape
 // is shared). Footprint overlap is not policed here (ADR-0042): disjointness is the
 // plan agent's bias, not a lint law — a shared file surfaces at the merge point,
 // which classifies it with better evidence than a lint-time guess ever could.
 //
 // A plan carries contracts only — no task status, no folded reports (ADR-0034/0037):
 // a task's state is derived from git (its branch and commit exist or they don't), and
-// the plan file itself lives on the feature branch, never the integration target, so
+// the plan file itself lives on the feature branch, never the target branch, so
 // it disappears when the feature's squash-merge lands.
 
 import YAML from 'yaml';
 
-import { yamlBlockAfter } from './blocks.js';
-import { findCycle } from './schema.js';
+import { findCycle } from './feature-schema.js';
+import { yamlBlockAfter } from './replace-fenced-block.js';
 
 /**
  * Size classes a persisted task may carry. The plan agent over-decomposes until each
@@ -25,18 +25,19 @@ import { findCycle } from './schema.js';
 export const TASK_SIZES = ['xs', 's', 'm'];
 
 /**
- * Decision-density classes a task may be stamped with — how much the task leaves the
+ * Judgment-level classes a task may be stamped with — how much the task leaves the
  * builder to decide, not its size. `rote` additionally requires correctness fully
  * captured by the task's tests + lint; when unsure between `rote` and `standard`,
- * choose `standard`. Selects the `build.<tier>` model binding downstream (ADR-0030).
+ * choose `standard`. Selects the `build.<judgment_level>` model binding downstream
+ * (ADR-0030).
  */
-export const TASK_TIERS = ['rote', 'standard', 'complex'];
+export const JUDGMENT_LEVELS = ['rote', 'standard', 'complex'];
 
 const HEADING = '## Tasks';
 
 /** The conventional location of a feature's plan artifact. */
 export function planPath(featureId, root = 'docs/plans') {
-  return `${root}/${featureId}.md`;
+  return `${root}/${featureId}/plan.md`;
 }
 
 /**
@@ -47,7 +48,7 @@ export function planPath(featureId, root = 'docs/plans') {
  * @property {string|string[]} acceptance  the task's own observable, binary criterion
  * @property {string[]} footprint   expected files created/modified
  * @property {string} size          xs | s | m
- * @property {string} [tier]        rote|standard|complex — decision-density, stamped at Plan
+ * @property {string} [judgment_level] rote|standard|complex — judgment level, stamped at Plan
  * @property {string[]} depends_on  task-ordering edges (chain when shared-file edits genuinely
  *   interact; unordered sharing is fine — ADR-0042)
  * @property {string} [wiring]      short per-task wiring note — how this task connects to the rest
@@ -58,7 +59,7 @@ export function planPath(featureId, root = 'docs/plans') {
  * @property {string} feature        the feature id this plan decomposes
  * @property {number} designVersion  the design_version the plan was cut from (drift stamp)
  * @property {TaskContract[]} tasks
- * @property {{tasks: ({doc: YAML.Document, span: import('./blocks.js').Span}|null)}} _blocks
+ * @property {{tasks: ({doc: YAML.Document, span: import('./replace-fenced-block.js').Span}|null)}} _blocks
  */
 
 /**
@@ -88,7 +89,7 @@ function normalizeTask(t) {
     footprint: t.footprint || [],
     size: t.size,
     depends_on: t.depends_on || [],
-    ...((t.tier != null) && { tier: t.tier }),
+    ...((t.judgment_level != null) && { judgment_level: t.judgment_level }),
     ...((t.wiring != null) && { wiring: t.wiring }),
   };
 }
@@ -98,8 +99,8 @@ function normalizeTask(t) {
  * malformed as a contract); warnings inform — a stale drift stamp or a task at the
  * size ceiling is a signal, not a blocker.
  * @param {PlanModel} plan
- * @param {import('./parse.js').DesignModel} design
- * @returns {{ok: boolean, errors: import('./schema.js').Issue[], warnings: import('./schema.js').Issue[]}}
+ * @param {import('./parse-feature-graph.js').DesignModel} design
+ * @returns {{ok: boolean, errors: import('./feature-schema.js').Issue[], warnings: import('./feature-schema.js').Issue[]}}
  */
 export function validatePlan(plan, design) {
   const errors = [];
@@ -119,7 +120,7 @@ export function validatePlan(plan, design) {
   for (const t of tasks) {
     if (!t.id) { continue; }
     checkTaskFields(t, { err, warn });
-    checkTaskTier(t, { err, warn });
+    checkTaskJudgmentLevel(t, { err, warn });
     checkTaskCovers(t, { err, criteria, covered });
     checkTaskEdges(t, { err, ids });
   }
@@ -182,10 +183,10 @@ function checkTaskFields(t, { err, warn }) {
   if (t.footprint.length === 0) { err('missing-footprint', 'task declares no expected file footprint', t.id); }
 }
 
-// Decision-density tier: enum-checked when present; absence routes build.standard.
-function checkTaskTier(t, { err, warn }) {
-  if (t.tier == null) { warn('missing-tier', 'task has no tier — routes to build.standard downstream', t.id); }
-  else if (!TASK_TIERS.includes(t.tier)) { err('bad-tier', `tier must be one of ${TASK_TIERS.join('|')} (got ${JSON.stringify(t.tier)})`, t.id); }
+// Judgment level: enum-checked when present; absence routes build.standard.
+function checkTaskJudgmentLevel(t, { err, warn }) {
+  if (t.judgment_level == null) { warn('missing-judgment-level', 'task has no judgment_level — routes to build.standard downstream', t.id); }
+  else if (!JUDGMENT_LEVELS.includes(t.judgment_level)) { err('bad-judgment-level', `judgment_level must be one of ${JUDGMENT_LEVELS.join('|')} (got ${JSON.stringify(t.judgment_level)})`, t.id); }
 }
 
 // Per-task coverage claims: each `covers` index lands inside the feature's criteria.
@@ -214,12 +215,12 @@ function checkCoverage({ feature, tasks, criteria, covered, err }) {
 }
 
 /**
- * Resolve one task into the kernel a build agent is handed (ADR-0036): the task
- * contract plus the texts of the feature acceptance criteria it covers. The launch
- * assembler inlines this into the snapshot; the workflow pushes it into the build
- * prompt — the agent fetches nothing to start.
+ * Resolve one task into the task brief a build agent is handed (ADR-0036): the task
+ * contract plus the texts of the feature acceptance criteria it covers. The
+ * execution-context assembler inlines this into the execution context; the workflow
+ * pushes it into the build prompt — the agent fetches nothing to start.
  * @param {PlanModel} plan
- * @param {import('./parse.js').DesignModel} design
+ * @param {import('./parse-feature-graph.js').DesignModel} design
  * @param {string} taskId
  * @returns {{feature: string, design_version: number, task: TaskContract, covers_criteria: string[]}}
  */

@@ -7,7 +7,7 @@
   "author": "Jackson Atassi <jackson.atassi@outlook.com>",
   "bin": {
     "the-loop": "./bin/the-loop.js",
-    "probe-fixture": "./bin/probe-fixture.js"
+    "create-sample-repo": "./bin/create-sample-repo.js"
   },
   "exports": {
     ".": "./src/index.js"

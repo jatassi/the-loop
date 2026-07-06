@@ -1,19 +1,19 @@
 // The artifact spine's public surface: schemas, the parse/render round-trip, and the
-// launch assembler's pure core. See docs/design/design.md.
-export { findBlocks, replaceBlock, sectionAfter, yamlBlockAfter } from './blocks.js';
-export { parse } from './parse.js';
-export { render } from './render.js';
-export { ID_PATTERN, STATUS, validate } from './schema.js';
-// /the-loop's orientation core.
-export { detectState, frontier, orient, propose } from './entry.js';
+// execution-context assembler's pure core. See docs/architecture.md.
+export { parseExecutor, parseExecutors, validateBindings } from './executor-registry.js';
+export { ID_PATTERN, STATUS, validate } from './feature-schema.js';
+export { parse } from './parse-feature-graph.js';
 // The plan artifact — per-feature task contracts, the Plan → Build handoff.
-export { parsePlan, planPath, resolveTask, TASK_SIZES, TASK_TIERS, validatePlan } from './plan.js';
-// The launch assembler's pure core — scope gates, git-derived task state, snapshot shape.
-export { assembleSnapshot, builtTaskIds, checkScope, featureBranch, taskBranch, taskCommitPrefix } from './launch.js';
-// The status story, rendered on demand — never written to disk.
-export { renderLedger } from './ledger.js';
-// The model-binding resolver — role → model/effort/via merge across defaults <
+export { JUDGMENT_LEVELS, parsePlan, planPath, resolveTask, TASK_SIZES, validatePlan } from './plan.js';
+// The execution-context assembler's pure core — scope gates, git-derived task state,
+// execution-context shape.
+export { assembleExecutionContext, builtTaskIds, checkScope, featureBranch, taskBranch, taskCommitPrefix } from './prepare-execution-context.js';
+// /the-loop's orientation core.
+export { detectState, eligibleSet, machineOrientation, propose } from './propose-next-action.js';
+export { findBlocks, replaceBlock, sectionAfter, yamlBlockAfter } from './replace-fenced-block.js';
+// The model-binding resolver — role → model/effort/executor merge across defaults <
 // project < local layers, with provenance.
-export { bindingFor, EFFORTS, resolveModels } from './models.js';
-// Executor playbooks — parsing and binding-validation.
-export { parseExecutor, parseExecutors, validateBindings } from './executors.js';
+export { bindingFor, EFFORTS, resolveModels } from './resolve-model-bindings.js';
+// The status story, rendered on demand — never written to disk.
+export { renderStatusSummary } from './status-summary.js';
+export { render } from './write-feature-graph.js';

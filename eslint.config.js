@@ -104,7 +104,7 @@ export default defineConfig([
     // `return` needs script/commonjs scope with `globalReturn`, and no sourceType grants
     // both at once (checked directly against espree — there is no parserOptions
     // combination that does). The harness resolves this by running the file's body as an
-    // async function; test/workflow-shim.js mirrors that at runtime, and this processor
+    // async function; test/execution-pipeline-harness.js mirrors that at runtime, and this processor
     // mirrors it at parse time only, so every other rule below still runs against the
     // real code, just shifted one function deeper (postprocess below un-shifts line
     // numbers by the one line the wrapper adds).

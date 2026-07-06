@@ -2,7 +2,7 @@
 
 ## Open actions
 
-Design/process actions that live nowhere else are tracked in `docs/actions/actions.md`.
+Design/process actions that live nowhere else are tracked in `docs/TODO.md`.
 Delete an item when it lands — git history is the archive.
 
 ## Subagents

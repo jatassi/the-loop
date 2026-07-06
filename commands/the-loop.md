@@ -9,7 +9,7 @@ allowed-tools: Bash(node *), Bash(git *), Read, Workflow
 - Requested jump (may be empty): `$ARGUMENTS`
 - Orientation — machine truth from the feature graph:
 
-!`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" orient 2>&1`
+!`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status --json 2>&1`
 
 ## /the-loop
 
@@ -17,32 +17,33 @@ State where the project stands (from the orientation JSON), propose the next act
 as the recommended default, and wait for the human's confirm-or-override. Their
 answer sets the scope; nothing outside it starts.
 
-**Routes** — by proposal kind, or by explicit jump (`/the-loop frame|design|build|ship|diagnose`):
+**Routes** — by proposal kind (fed by the status's `unconfigured` / `partial` /
+`configured` project state), or by explicit jump (`/the-loop define|design|build|release|diagnose`):
 
-- `onboard` → the `frame` skill (brain-dump → Brief), then the `design` skill. If a
-  Brief already exists, resume at Design.
-- `advance-frontier` / `build` jump → the launch leg below.
-- `ship` → the `ship` skill.
+- `onboard` → the `define` skill (brain-dump → brief), then the `design` skill. If a
+  brief already exists, resume at Design.
+- `advance-eligible-set` / `build` jump → the prepare-execution-context leg below.
+- `release` → the `release` skill.
 - `new-intake` → ask what kind of intake this is. A bug — observed behavior
   deviating from contract, the *why* needing diagnosis — routes to the `diagnose`
-  skill; an idea whose *what* needs sharpening routes to `frame`; an obvious small
-  tweak is a design amendment directly.
+  skill; an idea whose *what* needs sharpening routes to `define`; an obvious small
+  tweak is an amendment directly.
 - `repair` / `blocked` → name exactly what the orientation reports missing or
   invalid, propose the repair, and stop. Never guess forward.
 
-## The launch leg
+## The prepare-execution-context leg
 
-1. Confirm the scope: the dependency-ready frontier, or the human's subset.
+1. Confirm the scope: the dependency-ready eligible set, or the human's subset.
 2. Assemble and gate in one call:
-   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" launch --scope <id,id,…> --target <ref>`
-   — `--target` is required: name the integration target explicitly — the branch
+   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" prepare-execution-context --features <id,id,…> --target-branch <ref>`
+   — `--target-branch` is required: name the target branch explicitly — the branch
    the session is working on, unless the design narrative names another. Never
-   pass a target the checkout's artifacts didn't come from. The command refuses
+   pass a target branch the checkout's artifacts didn't come from. The command refuses
    with reasons on any gate failure (invalid graph, bad scope, broken model
    bindings). Don't work around a refusal; fix what it names or tell the human.
-3. Call the Workflow: `scriptPath` = `$CLAUDE_PLUGIN_ROOT/workflows/inner-loop.js`,
-   `args` = the snapshot JSON, verbatim.
-4. Relay the BoundaryResult in plain prose, plus any `model-selection —` lines from
+3. Call the Workflow: `scriptPath` = `$CLAUDE_PLUGIN_ROOT/workflows/execution-pipeline.js`,
+   `args` = the execution context JSON, verbatim.
+4. Relay the run summary in plain prose, plus any `model-selection —` lines from
    the run log:
    - `completed` — merged and validated; nothing more to do.
    - `blocked` — each needs a human decision. Present the reason and options as
@@ -53,6 +54,6 @@ answer sets the scope; nothing outside it starts.
    - `stalled` — infrastructure hiccups; nothing recorded. A relaunch retries them.
    - `halted` — the run stopped (budget or environment); report the detail.
 
-No status bookkeeping: the validators already updated the graph on the target, and
-`git log` is the run history. `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" ledger` prints
-the status story on demand.
+No status bookkeeping: the validators already updated the graph on the target branch,
+and `git log` is the run history. `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" status`
+prints the status story on demand.

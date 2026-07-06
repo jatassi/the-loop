@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parse } from '../src/parse.js';
+import { parse } from '../src/parse-feature-graph.js';
 import * as planModule from '../src/plan.js';
-import { render } from '../src/render.js';
+import { render } from '../src/write-feature-graph.js';
 
-const { parsePlan, planPath, resolveTask, TASK_SIZES, TASK_TIERS, validatePlan } = planModule;
+const { JUDGMENT_LEVELS, parsePlan, planPath, resolveTask, TASK_SIZES, validatePlan } = planModule;
 
 const DESIGN = parse(`## Feature graph
 
@@ -61,15 +61,15 @@ test('parsePlan extracts feature, drift stamp, and normalized contract-only task
   assert.deepEqual(m.tasks[0].footprint, ['src/render.js', 'test/render.test.js']);
   assert.equal(m.tasks[1].wiring, 'save() feeds render() through the widget model');
   assert.ok(!('wiring' in m.tasks[0])); // absent wiring stays absent
-  assert.ok(!('tier' in m.tasks[0])); // absent tier stays absent
+  assert.ok(!('judgment_level' in m.tasks[0])); // absent judgment_level stays absent
   assert.ok(!('status' in m.tasks[0])); // contracts only — no task status field
   assert.ok(!('report' in m.tasks[0])); // and no folded reports
 });
 
-test('normalizeTask carries tier through when present, straight off a real parse', () => {
-  const withTier = parsePlan(PLAN.replace('    covers: [1]', '    tier: rote\n    covers: [1]'));
-  assert.equal(withTier.tasks[0].tier, 'rote'); // carried through when present
-  assert.ok(!('tier' in withTier.tasks[1])); // sibling task untouched — still absent
+test('normalizeTask carries judgment_level through when present, straight off a real parse', () => {
+  const withLevel = parsePlan(PLAN.replace('    covers: [1]', '    judgment_level: rote\n    covers: [1]'));
+  assert.equal(withLevel.tasks[0].judgment_level, 'rote'); // carried through when present
+  assert.ok(!('judgment_level' in withLevel.tasks[1])); // sibling task untouched — still absent
 });
 
 test('parsePlan is lenient when the block is absent', () => {
@@ -80,7 +80,7 @@ test('parsePlan is lenient when the block is absent', () => {
 
 test('a well-formed plan validates clean and round-trips byte-for-byte', () => {
   const r = validatePlan(model(), DESIGN);
-  assert.deepEqual(r.errors, []); // the base fixture carries no tier — grandfathered to warnings only
+  assert.deepEqual(r.errors, []); // the base fixture carries no judgment_level — grandfathered to warnings only
   assert.ok(r.ok);
   assert.equal(render(PLAN, model()), PLAN);
 });
@@ -127,25 +127,25 @@ test('per-task contract fields are enforced', () => {
   m.tasks[0].title = '';
   m.tasks[0].acceptance = '';
   m.tasks[0].footprint = [];
-  m.tasks[0].tier = 'urgent'; // out-of-enum tier
+  m.tasks[0].judgment_level = 'urgent'; // out-of-enum judgment_level
   m.tasks[1].size = 'xl'; // not representable: split or bounce
   const got = codes(validatePlan(m, DESIGN));
-  for (const c of ['missing-task-title', 'missing-task-acceptance', 'missing-footprint', 'bad-size', 'bad-tier']) {
+  for (const c of ['missing-task-title', 'missing-task-acceptance', 'missing-footprint', 'bad-size', 'bad-judgment-level']) {
     assert.ok(got.includes(c), c);
   }
 });
 
-test('an absent tier warns without blocking — a plan cut before tiers still checks', () => {
-  const r = validatePlan(model(), DESIGN); // base fixture carries no tier anywhere
+test('an absent judgment_level warns without blocking — a plan cut before judgment levels still checks', () => {
+  const r = validatePlan(model(), DESIGN); // base fixture carries no judgment_level anywhere
   assert.ok(r.ok);
-  assert.ok(r.warnings.some((w) => w.code === 'missing-tier' && w.where === 't1'));
-  assert.ok(r.warnings.some((w) => w.code === 'missing-tier' && w.where === 't2'));
+  assert.ok(r.warnings.some((w) => w.code === 'missing-judgment-level' && w.where === 't1'));
+  assert.ok(r.warnings.some((w) => w.code === 'missing-judgment-level' && w.where === 't2'));
 });
 
-test('a fully tiered plan checks clean — no missing-tier warning once every task is stamped', () => {
+test('a fully leveled plan checks clean — no missing-judgment-level warning once every task is stamped', () => {
   const m = model();
-  m.tasks[0].tier = 'standard';
-  m.tasks[1].tier = 'complex';
+  m.tasks[0].judgment_level = 'standard';
+  m.tasks[1].judgment_level = 'complex';
   const r = validatePlan(m, DESIGN);
   assert.ok(r.ok);
   assert.deepEqual(r.warnings, []);
@@ -158,7 +158,7 @@ test('size m passes but warns — the comfort ceiling needs narrative justificat
   assert.ok(r.ok);
   assert.ok(r.warnings.some((w) => w.code === 'size-at-ceiling'));
   assert.deepEqual(TASK_SIZES, ['xs', 's', 'm']);
-  assert.deepEqual(TASK_TIERS, ['rote', 'standard', 'complex']);
+  assert.deepEqual(JUDGMENT_LEVELS, ['rote', 'standard', 'complex']);
 });
 
 test('coverage: both directions between tasks and feature criteria', () => {
@@ -187,12 +187,12 @@ test('a drift-stamp mismatch warns but does not block', () => {
 });
 
 test('planPath is the conventional artifact location', () => {
-  assert.equal(planPath('widget'), 'docs/plans/widget.md');
+  assert.equal(planPath('widget'), 'docs/plans/widget/plan.md');
 });
 
-test('resolveTask hands a builder its kernel: feature, drift stamp, contract, covered criteria texts', () => {
+test('resolveTask hands a builder its task brief: feature, drift stamp, contract, covered criteria texts', () => {
   const m = model();
-  m.tasks[1].tier = 'complex';
+  m.tasks[1].judgment_level = 'complex';
   const s = resolveTask(m, DESIGN, 't2');
   assert.deepEqual(Object.keys(s).toSorted((a, b) => a.localeCompare(b)),
     ['covers_criteria', 'design_version', 'feature', 'task']);
@@ -200,7 +200,7 @@ test('resolveTask hands a builder its kernel: feature, drift stamp, contract, co
   assert.equal(s.design_version, 2);
   assert.equal(s.task.id, 't2');
   assert.deepEqual(s.covers_criteria, ['persists a widget']);
-  assert.equal(s.task.tier, 'complex'); // stamped tier rides the kernel
+  assert.equal(s.task.judgment_level, 'complex'); // stamped judgment_level rides the task brief
   assert.equal(s.task.wiring, 'save() feeds render() through the widget model'); // wiring too
 });
 

@@ -1,21 +1,21 @@
 ---
 name: diagnose
-description: Run a bug report through root-cause diagnosis to a human-gated fix node and a permanent RCA doc. Use when the user reports a bug or asks to investigate one, or /the-loop routes a bug-shaped intake here.
+description: Run a bug report through root-cause diagnosis to a human-gated fix and a permanent RCA doc. Use when the user reports a bug or asks to investigate one, or /the-loop routes a bug-shaped intake here.
 ---
 
 # Diagnose — the bug door
 
 A bug is observed behavior deviating from contract, where the *why* still needs
 establishing before a fix can be trusted. Diagnose runs one conversation, end to
-end: capture the report, diagnose the cause, write the RCA doc and a fix node, gate
-with the human, commit. No pipeline of its own — a fix node is an ordinary feature
+end: capture the report, diagnose the cause, write the RCA doc and a fix, gate
+with the human, commit. No pipeline of its own — a fix is an ordinary feature
 to everything downstream (Plan sizes it, Build lands it test-first, Validate merges
 it); the amendment you commit at the end is the same human-gated amendment every
 design change passes.
 
 Two other doors handle everything that isn't a bug: an idea whose *what* still needs
-sharpening belongs to the `frame` skill; a tweak whose what and why are already
-obvious is a design amendment directly.
+sharpening belongs to the `define` skill; a tweak whose what and why are already
+obvious is an amendment directly.
 
 ## 1 · Capture
 
@@ -31,10 +31,10 @@ Take the bug report as given, then fill in whatever it didn't already cover:
 These four are the floor, not a form: don't impose structure on the narrative
 around them, and don't re-ask what the report already answered.
 
-## 2 · Triage the lane
+## 2 · Triage the workflow path
 
 Judge the report against two questions: is the fix trivial, and is the cause already
-obvious without digging? Both yes → the bypass lane: fix it, commit it, stop — file
+obvious without digging? Both yes → bypass: fix it, commit it, stop — file
 an RCA doc only if the little diagnosis you did taught something worth remembering
 later, your call, never a default. Either question "no" → this is loop-worthy,
 continue to step 3.
@@ -64,14 +64,14 @@ Diagnosis is done when you can name the root cause(s) — not just the symptom t
 led you to them — and say how each was established: reproduced, or inspected with
 the waiver explicit. No fix design before that; move to step 4 once you're there.
 
-## 4 · Write the RCA doc and the fix node
+## 4 · Write the RCA doc and the fix
 
-`docs/rca/` is born with its first entry — don't pre-create the directory, just
-write into it. The doc is permanent from birth and doubles as the fix node's context
+`docs/bugs/` is born with its first entry — don't pre-create the directory, just
+write into it. The doc is permanent from birth and doubles as the fix's context
 slice, the document Plan, Build, and Validate read once the fix launches — write it
 self-contained enough that none of them need to have sat in this conversation.
 
-### The RCA doc — `docs/rca/fix-<slug>.md`
+### The RCA doc — `docs/bugs/fix-<slug>.md`
 
 ```markdown
 # fix-<slug> — <one-line defect statement>
@@ -90,19 +90,19 @@ never worked | unknown
 ## Actual result       ← the observed behavior, verbatim output where useful
 ## Root cause(s)       ← the why, not the symptom; plural when honest — separate the
                          trigger (what set it off) from the underlying cause(s), cite
-                         file:line evidence, and say why no existing test or probe
+                         file:line evidence, and say why no existing test or runbook
                          caught it
 ## Evidence            ← the diagnosis trail: logs, instrumentation, bisection, or
                          the inspection path that established the cause
 ## Fix design          ← the approach, interfaces touched, constraints for the builder
-## Regression          ← what the fix's acceptance criteria pin (mirrors the node)
-## Probe               ← which affected feature's probe pack gains this as an
-                         exercise step — never a standalone pack for the fix itself
+## Regression          ← what the fix's acceptance criteria pin (mirrors the record)
+## Runbook             ← which affected feature's runbook gains this as an
+                         exercise step — never a standalone runbook for the fix itself
 ```
 
-### The fix node — for `docs/design/graph.md`
+### The fix — for `docs/feature-graph.md`
 
-An ordinary, transient feature node:
+An ordinary, transient feature record:
 
 ```yaml
 - id: fix-<slug>            # branch loop/fix-<slug> falls out for free
@@ -122,8 +122,8 @@ passes — nothing lands ahead of it.
 
 ## 6 · Commit and hand off
 
-One commit: the RCA doc plus the graph amendment (the fix node, `design_version`
-bumped). Then offer the launch leg: `the-loop launch --scope fix-<slug>`.
+One commit: the RCA doc plus the graph amendment (the fix, `design_version`
+bumped). Then offer the prepare-execution-context leg: `the-loop prepare-execution-context --features fix-<slug>`.
 
 ## The fallback discipline (no diagnosis skill bound)
 
@@ -140,8 +140,8 @@ bumped). Then offer the launch leg: `the-loop launch --scope fix-<slug>`.
    targeted instrumentation — never log-everything.
 7. **Root cause(s), not symptom.** No fix design until the why is explained;
    separate the trigger from the underlying cause(s); note why no existing test or
-   probe caught it.
-8. **Pin the regression before the fix.** The minimal repro becomes the fix node's
+   runbook caught it.
+8. **Pin the regression before the fix.** The minimal repro becomes the fix's
    first acceptance criterion and the RCA doc's Regression section — the builder
    derives the failing test from it; diagnosis pins what must fail, building it is
    the engine's job.

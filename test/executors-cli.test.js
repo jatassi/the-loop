@@ -1,7 +1,7 @@
-// bin/the-loop.js's executor-registry CLI surface (`the-loop executors`, and `the-loop
-// models`'s binding-validation pass), exercised as an agent would — spawned as a
-// real subprocess against throwaway fixture dirs and, for the real-registry case,
-// against this plugin's own shipped executors/ dir.
+// bin/the-loop.js's executor-registry CLI surface (`the-loop executors-list`, and
+// `the-loop models-list`'s binding-validation pass), exercised as an agent would —
+// spawned as a real subprocess against throwaway fixture dirs and, for the
+// real-registry case, against this plugin's own shipped docs/executors/ dir.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -74,16 +74,16 @@ function playbook(id, { models = ['model-a', 'model-b'], concurrency = 1 } = {})
   ].join('\n');
 }
 
-test('spine executors with no dir argument reads the real plugin executors/ dir: grok appears with worktree driver-made and the pinned models list', () => {
-  const registry = JSON.parse(spine(['executors']));
+test('spine executors-list with no dir argument reads the real plugin docs/executors/ dir: grok appears with worktree driver-made and the pinned models list', () => {
+  const registry = JSON.parse(spine(['executors-list']));
   assert.equal(registry.grok.worktree, 'driver-made');
   assert.deepEqual(registry.grok.models, ['grok-build', 'grok-composer-2.5-fast']);
 });
 
-test('spine executors with an explicit dir argument reads a fixture dir, printing the registry keyed by id', () => {
+test('spine executors-list with an explicit dir argument reads a fixture dir, printing the registry keyed by id', () => {
   const root = fixture({ 'playbooks/widget.md': playbook('widget') });
   try {
-    const registry = JSON.parse(spine(['executors', path.join(root, 'playbooks')]));
+    const registry = JSON.parse(spine(['executors-list', path.join(root, 'playbooks')]));
     assert.deepEqual(Object.keys(registry), ['widget']);
     assert.equal(registry.widget.command, 'widget');
   } finally {
@@ -91,10 +91,10 @@ test('spine executors with an explicit dir argument reads a fixture dir, printin
   }
 });
 
-test('spine executors against a malformed fixture playbook exits 1 with stderr naming the file and the offending field', () => {
+test('spine executors-list against a malformed fixture playbook exits 1 with stderr naming the file and the offending field', () => {
   const root = fixture({ 'playbooks/widget.md': playbook('widget').replace('command: widget\n', '') });
   try {
-    const error = spineFails(['executors', path.join(root, 'playbooks')]);
+    const error = spineFails(['executors-list', path.join(root, 'playbooks')]);
     assert.match(error.stderr, /widget\.md/);
     assert.match(error.stderr, /"command"/);
   } finally {
@@ -102,25 +102,25 @@ test('spine executors against a malformed fixture playbook exits 1 with stderr n
   }
 });
 
-test('spine executors against an absent dir prints {}', () => {
+test('spine executors-list against an absent dir prints {}', () => {
   const root = fixture({});
   try {
-    assert.equal(spine(['executors', path.join(root, 'nonexistent')]).trim(), '{}');
+    assert.equal(spine(['executors-list', path.join(root, 'nonexistent')]).trim(), '{}');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('spine models hard-fails a via naming an unregistered executor, or a model outside its playbook, exiting 1 with every error on stderr and no table on stdout', () => {
+test('spine models-list hard-fails an executor naming an unregistered executor, or a model outside its playbook, exiting 1 with every error on stderr and no table on stdout', () => {
   const root = fixture({
     'playbooks/custom.md': playbook('custom', { models: ['model-a'] }),
     'defaults.json': JSON.stringify({
-      'build.rote': { model: 'session', via: 'ghost' }, // no registry id "ghost"
-      'build.standard': { model: 'model-z', via: 'custom' }, // model-z not in custom's models list
+      'build.rote': { model: 'session', executor: 'ghost' }, // no registry id "ghost"
+      'build.standard': { model: 'model-z', executor: 'custom' }, // model-z not in custom's models list
     }),
   });
   try {
-    const error = spineFails(['models', 'defaults.json', path.join(root, 'playbooks')], { cwd: root });
+    const error = spineFails(['models-list', 'defaults.json', path.join(root, 'playbooks')], { cwd: root });
     assert.match(error.stderr, /unregistered-executor.*\(build\.rote\)/);
     assert.match(error.stderr, /model-outside-playbook.*\(build\.standard\)/);
     assert.equal(error.stdout, ''); // no table
@@ -132,20 +132,20 @@ test('spine models hard-fails a via naming an unregistered executor, or a model 
 // One test per warn case: each prints exactly the pinned stderr line, and the table
 // still prints to stdout with exit 0.
 const WARN_CASES = [
-  ['no-routing-surface', { 'design.reader': { model: 'model-a', via: 'custom' } }],
-  ['off-rubric-tier', { 'build.standard': { model: 'model-a', via: 'custom' } }],
-  ['ignored-effort', { 'build.rote': { model: 'model-a', via: 'custom', effort: 'high' } }],
+  ['no-routing-surface', { 'design.reader': { model: 'model-a', executor: 'custom' } }],
+  ['off-rubric-tier', { 'build.standard': { model: 'model-a', executor: 'custom' } }],
+  ['ignored-effort', { 'build.rote': { model: 'model-a', executor: 'custom', effort: 'high' } }],
 ];
 
 for (const [code, bindings] of WARN_CASES) {
-  test(`spine models warns ${code} in the pinned format to stderr, never failing — the table still prints to stdout and the exit stays 0`, () => {
+  test(`spine models-list warns ${code} in the pinned format to stderr, never failing — the table still prints to stdout and the exit stays 0`, () => {
     const [role] = Object.keys(bindings);
     const root = fixture({
       'playbooks/custom.md': playbook('custom', { models: ['model-a'] }),
       'defaults.json': JSON.stringify(bindings),
     });
     try {
-      const { stdout, stderr } = spineOk(['models', 'defaults.json', path.join(root, 'playbooks')], { cwd: root });
+      const { stdout, stderr } = spineOk(['models-list', 'defaults.json', path.join(root, 'playbooks')], { cwd: root });
       assert.equal(JSON.parse(stdout)[role].model, 'model-a');
       assert.match(stderr, new RegExp(String.raw`^warn ${code}: .+\(${role}\)\n$`));
     } finally {
@@ -154,8 +154,8 @@ for (const [code, bindings] of WARN_CASES) {
   });
 }
 
-test('the usage string names both new command forms: "executors [dir]" and "models [defaults.json] [executors-dir]"', () => {
+test('the usage string names both new command forms: "executors-list [dir]" and "models-list [defaults.json] [executors-dir]"', () => {
   const usage = spine([]);
-  assert.match(usage, /executors \[dir]/);
-  assert.match(usage, /models \[defaults\.json] \[executors-dir]/);
+  assert.match(usage, /executors-list \[dir]/);
+  assert.match(usage, /models-list \[defaults\.json] \[executors-dir]/);
 });

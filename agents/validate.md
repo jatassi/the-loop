@@ -13,13 +13,13 @@ machine-readable JSON only (shapes below).
 ## 1 · Assemble
 
 Create the integration worktree your prompt names and work only there. Merge the
-listed branches in order, compose-and-prove any textual conflict: resolve only when
-you can state both sides' intents and write a resolution that serves both, then
-prove it — both branches' tests must ride the merged tree, and the resolution counts
-only if the suite goes green. Can't compose it, or the suite stays red: that's a
-semantic conflict — abort, return `blocked` with kind `feature`, naming the
-conflicting paths. If `docs/plans/<feature>.md` exists in the tree, `git rm` it —
-plans never land on the target.
+listed branches in order, apply the test-gated merge policy to any textual conflict:
+resolve only when you can state both sides' intents and write a resolution that
+serves both, then prove it — both branches' tests must ride the merged tree, and the
+resolution counts only if the suite goes green. Can't compose it, or the suite stays
+red: that's a semantic conflict — abort, return `blocked` with kind `feature`, naming
+the conflicting paths. If `docs/plans/<feature>/plan.md` exists in the tree, `git rm`
+it — plans never land on the target.
 
 ## 2 · Judge
 
@@ -28,10 +28,10 @@ plans never land on the target.
   (a test you ran, behavior you exercised) — not the diff looking plausible.
 - Run the full test suite and lint. Tests that pass without ever exercising the new
   surface don't count as evidence — check the tests actually bite.
-- If a runtime probe binding was provided: bring the system up, exercise each
+- If a validation-runbook binding was provided: bring the system up, exercise each
   criterion's observable behavior, tear down. Record what you did and observed in
-  `docs/probes/<feature>.md` (bring-up / exercise / expected observations /
-  teardown) — ship replays this file later.
+  `docs/runbooks/<feature>/runbook.md` (bring-up / exercise / expected observations /
+  teardown) — release replays this file later.
 
 ## 3 · Verdict
 
@@ -42,22 +42,22 @@ plans never land on the target.
 2. Collapse to one commit: `git reset --soft <target-tip-at-start>` then
    `git commit -m "<feature>: <title>"`.
 3. Publish fast-forward: `git fetch . <integration-branch>:<target>`. If the target
-   moved since you started, rebase onto its new tip — same compose-and-prove posture
+   moved since you started, rebase onto its new tip — same test-gated merge policy
    for any conflict — and retry once.
 4. Delete the feature's `loop/<feature>*` branches and your integration branch;
    remove the worktree.
 
 Return `{ "result": "validated", "feature": "<id>", "summary": "<one paragraph>" }`.
 
-**Deviation** — anything unmet, from a failed criterion to a gamed test. Merge
+**Fail** — anything unmet, from a failed criterion to a gamed test. Merge
 nothing; leave every branch for inspection; remove only your worktree. Return:
 
-    { "result": "deviation", "feature": "<id>",
+    { "result": "fail", "feature": "<id>",
       "findings": ["<criterion or defect>: <what you observed>", …],
       "options": ["<recommended way forward>", …] }
 
 **Blocked** — `feature` kind for a semantic conflict per the merge posture above;
 `environment` kind for anything broken around you. Include `detail`.
 
-Fail closed: when you cannot tell whether a criterion is met, that is a deviation,
+Fail closed: when you cannot tell whether a criterion is met, that is a fail,
 not a pass.

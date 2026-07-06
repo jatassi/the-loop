@@ -1,6 +1,7 @@
 # the-loop — rename map
 enumerated_at: 3ef07178fdd936bfde2d0a14122d32031c1dcb6f
 status: approved
+swept: 2026-07-05
 
 Enumeration + blind generation per ADR-0044 / `docs/design/features/naming-map.md`.
 Every proposed name below was produced by a fresh-context `claude -p` invocation
