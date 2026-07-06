@@ -10,8 +10,8 @@ function model(featuresYaml) {
 }
 const codes = (issues) => issues.map((i) => i.code);
 
-test('STATUS holds the three durable lifecycle states', () => {
-  assert.deepEqual(STATUS, ['designed', 'validated', 'shipped']);
+test('STATUS holds the four durable lifecycle states, proposed leading', () => {
+  assert.deepEqual(STATUS, ['proposed', 'designed', 'validated', 'shipped']);
 });
 
 test('a clean model validates ok', () => {
@@ -26,6 +26,18 @@ test('bad status, duplicate id, and missing acceptance are errors', () => {
   assert.ok(codes(v.errors).includes('duplicate-id'));
   assert.ok(codes(v.errors).includes('missing-acceptance')); // the second 'a' has none
   assert.equal(v.ok, false);
+});
+
+test('a proposed feature needs no acceptance, but a designed feature missing acceptance still fails', () => {
+  // proposed: id + title is enough — acceptance is Design's output, not intake's.
+  const proposed = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: proposed'));
+  assert.equal(proposed.ok, true);
+  assert.deepEqual(proposed.errors, []);
+
+  // designed, same shape, no acceptance: the existing gate still holds.
+  const designed = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: designed'));
+  assert.ok(codes(designed.errors).includes('missing-acceptance'));
+  assert.equal(designed.ok, false);
 });
 
 test('self and dangling dependencies are errors', () => {

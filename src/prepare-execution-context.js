@@ -19,6 +19,14 @@ export function taskCommitPrefix(featureId, taskId) {
   return `${featureId}/${taskId}: `;
 }
 
+// The not-designed refusal's wording: a proposed feature reads as recorded intent
+// waiting on Design; every other non-designed status keeps the generic wording.
+function notDesignedMessage(status) {
+  return status === 'proposed'
+    ? 'feature is proposed, not designed — it must be designed first'
+    : `feature is ${status}, not designed — nothing to run`;
+}
+
 /**
  * Gate a requested scope against the graph: every id known, still `designed`, and
  * every dependency either already landed or satisfiable within this same scope (the
@@ -36,7 +44,7 @@ export function checkScope(model, scope) {
   for (const id of scope) {
     const node = byId.get(id);
     if (!node) { err('unknown-feature', `scope names unknown feature "${id}"`, id); continue; }
-    if (node.status !== 'designed') { err('not-designed', `feature is ${node.status}, not designed — nothing to run`, id); }
+    if (node.status !== 'designed') { err('not-designed', notDesignedMessage(node.status), id); }
     const deps = node.depends_on || [];
     for (const dep of deps) {
       const depNode = byId.get(dep);

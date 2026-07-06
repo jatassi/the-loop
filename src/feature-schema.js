@@ -3,11 +3,13 @@
 // contract (block); warnings inform but don't block.
 
 /**
- * The durable lifecycle a feature record moves through (ADR-0034): what has *landed*.
- * Everything in-flight — planned, building, blocked-on-a-question — is derived from
- * git (branches, plan files, task commits) at execution-context time, never stored here.
+ * The durable lifecycle a feature record moves through (ADR-0034/0045): `proposed`
+ * is the backlog stage — recorded intent with no design doc yet, not "landed" but
+ * durable all the same. Everything in-flight — planned, building,
+ * blocked-on-a-question — is derived from git (branches, plan files, task commits)
+ * at execution-context time, never stored here.
  */
-export const STATUS = ['designed', 'validated', 'shipped'];
+export const STATUS = ['proposed', 'designed', 'validated', 'shipped'];
 
 /**
  * Ids become git refs (`loop/<id>`) and file paths (`docs/plans/<id>/plan.md`)
@@ -76,11 +78,13 @@ function collectIds(items, err, codes) {
   return ids;
 }
 
-// Per-feature field checks: title, status, acceptance.
+// Per-feature field checks: title, status, acceptance. Acceptance is Design's
+// output, not intake's — a `proposed` record (recorded intent, not yet designed)
+// is exempt; every other status still requires it.
 function checkFeatureFields(f, err) {
   if (!f.title) { err('missing-title', 'feature has no title', f.id); }
   if (!STATUS.includes(f.status)) { err('bad-status', `status must be one of ${STATUS.join('|')} (got ${JSON.stringify(f.status)})`, f.id); }
-  if (!hasAcceptance(f.acceptance)) { err('missing-acceptance', 'feature has no acceptance criterion', f.id); }
+  if (f.status !== 'proposed' && !hasAcceptance(f.acceptance)) { err('missing-acceptance', 'feature has no acceptance criterion', f.id); }
 }
 
 // Per-feature reference checks: depends_on edges.

@@ -23,11 +23,15 @@ answer sets the scope; nothing outside it starts.
 - `onboard` → the `define` skill (brain-dump → brief), then the `design` skill. If a
   brief already exists, resume at Design.
 - `advance-eligible-set` / `build` jump → the prepare-execution-context leg below.
+- `design` → the `design` skill, amending the design for the named ids (a proposed
+  feature blocking stuck work, or the whole proposed backlog when nothing else is
+  actionable) — write their design docs and acceptance, flipping them to designed.
 - `release` → the `release` skill.
 - `new-intake` → ask what kind of intake this is. A bug — observed behavior
   deviating from contract, the *why* needing diagnosis — routes to the `diagnose`
   skill; an idea whose *what* needs sharpening routes to `define`; an obvious small
-  tweak is an amendment directly.
+  tweak is an amendment directly; an idea worth keeping but not designing now is
+  parked as a `proposed` record by amendment instead.
 - `repair` / `blocked` → name exactly what the orientation reports missing or
   invalid, propose the repair, and stop. Never guess forward.
 

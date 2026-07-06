@@ -22,12 +22,16 @@ downstream agent. Three artifacts come out (ADR-0037):
   features:
     - id: kebab-case-stable-handle
       title: one line
-      status: designed          # designed | validated | shipped — durable states only
+      status: designed          # proposed | designed | validated | shipped — durable states only
       depends_on: [other-id]    # build-order edges; also draw one when a feature
                                 # designs better knowing another's final shape
       acceptance:
         - an observable, binary criterion (Given/When/Then is the default shape)
   ```
+
+  A `proposed` record — recorded intent parked on the backlog, not yet designed —
+  needs only `id` and `title`; acceptance is Design's output, not intake's, so it's
+  optional (a sketch is welcome, not demanded) until you promote it here.
 
 - `docs/designs/<id>/design.md` — one design doc per feature, written for the
   stateless agent who wasn't in the room: what it is, how it fits the architecture,

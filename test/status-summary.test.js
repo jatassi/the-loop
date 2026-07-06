@@ -22,6 +22,7 @@ const EXPECTED = `# Status — projected from docs/feature-graph.md
 
 Total: 4 feature(s) at design_version 3
 
+- proposed: 0
 - designed: 2
 - validated: 1
 - shipped: 1
@@ -39,6 +40,19 @@ Total: 4 feature(s) at design_version 3
 test('renderStatusSummary renders counts, the dependency-ready Next line, and the feature table — deterministically', () => {
   assert.equal(renderStatusSummary(MODEL), EXPECTED);
   assert.equal(renderStatusSummary(MODEL), renderStatusSummary(MODEL)); // same model, same bytes
+});
+
+test('the four-stage counts render, proposed included', () => {
+  const withBacklog = {
+    designVersion: 1,
+    features: [
+      { id: 'backlog-item', title: 'Backlog item', status: 'proposed', depends_on: [] },
+      { id: 'widget', title: 'Widget', status: 'designed', depends_on: [], acceptance: 'x' },
+      { id: 'gadget', title: 'Gadget', status: 'validated', depends_on: [], acceptance: 'x' },
+      { id: 'sprocket', title: 'Sprocket', status: 'shipped', depends_on: [], acceptance: 'x' },
+    ],
+  };
+  assert.match(renderStatusSummary(withBacklog), /- proposed: 1\n- designed: 1\n- validated: 1\n- shipped: 1/);
 });
 
 test('with nothing dependency-ready, the Next line says so', () => {

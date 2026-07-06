@@ -10,8 +10,8 @@
 //   the-loop list   [feature-graph.md]  the parsed feature graph (minus internals)
 //   the-loop check  [feature-graph.md]  validate + round-trip; report; exit 1 on failure
 //   the-loop set-status <id> <status>  flip one feature's durable status in feature-graph.md
-//                                    (designed|validated|shipped); prints the updated
-//                                    node; exit 1, unwritten, on an unknown id or status
+//                                    (proposed|designed|validated|shipped); prints the
+//                                    updated node; exit 1, unwritten, on an unknown id or status
 //   the-loop plan parse <id> [plan.md]              the parsed plan model
 //   the-loop plan check <id> [plan.md] [feature-graph.md]   validate against the graph + round-trip
 //   the-loop plan task <id> <task-id> [plan.md] [feature-graph.md]  one build task's task brief

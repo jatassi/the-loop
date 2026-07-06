@@ -64,10 +64,11 @@ boundaries. *See:* ADR-0034/0038.
 
 ### feature graph
 **aliases:** the graph · **status:** active
-The durable state machine (`docs/feature-graph.md`): feature records with the three
-durable statuses — `designed | validated | shipped` — plus dependency edges and
-acceptance criteria. Everything in-flight is derived from git at run start, never
-stored. *See:* ADR-0034/0037.
+The durable state machine (`docs/feature-graph.md`): feature records with the four
+durable statuses — `proposed | designed | validated | shipped` — plus dependency
+edges and acceptance criteria (optional only at `proposed`, the backlog stage).
+Everything in-flight is derived from git at run start, never stored. *See:*
+ADR-0034/0037/0045.
 
 ### the-loop CLI
 **aliases:** spine (historical) · **status:** active

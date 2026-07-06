@@ -20,12 +20,13 @@ on. Its first job is to build itself (self-hosting: this checkout carries both t
 execution pipeline and its artifacts; a run executes the code it started with, so
 self-edits take effect on the next run, and a bad self-edit is a git revert away).
 
-## Operating model (ADR-0034)
+## Operating model (ADR-0034/0045)
 
 **Kick off and check back.** The loop is autonomous *within* a run and assumes the
 human is reachable at run boundaries. Durable state is exactly two things: **code
-commits** and the **feature graph's status field** (`designed | validated |
-shipped`). Everything in-flight — plans, task progress, blockage — is derived from
+commits** and the **feature graph's status field** (`proposed | designed |
+validated | shipped` — `proposed` is the backlog stage: recorded intent, not yet
+designed). Everything in-flight — plans, task progress, blockage — is derived from
 git at run start (a plan is a file on the feature branch; a built task is a commit
 with its subject prefix; a blocked feature is a question in the chat, answered and
 re-run). There are no bookkeeping commits, no committed status projections, no filed
@@ -149,9 +150,10 @@ the `naming-map` → `rename-sweep` feature pair.
 
 Cross-feature shapes, in prose (per-feature detail lives in the feature docs):
 
-- **Feature record** — `{ id, title, status: designed|validated|shipped, depends_on,
-  acceptance: [criterion], notes? }`. Ids are lowercase slugs; they become refs
-  (`loop/<id>`) and paths.
+- **Feature record** — `{ id, title, status: proposed|designed|validated|shipped,
+  depends_on, acceptance: [criterion], notes? }`. Ids are lowercase slugs; they
+  become refs (`loop/<id>`) and paths. `acceptance` is optional only at `proposed`
+  (recorded intent, pre-design) — required from `designed` onward.
 - **Task contract** — `{ id, title, covers: [criterion-index], acceptance, footprint,
   size: xs|s|m, judgment_level: rote|standard|complex, depends_on, wiring? }` in the
   plan's `## Tasks` yaml block with `feature:` and `design_version:`. No status, no

@@ -1,10 +1,10 @@
 # the-loop — Feature graph
 
-The durable state machine (ADR-0034/0037): each feature record carries the three
-durable statuses only — `designed | validated | shipped`. Everything in-flight
-(plans, branches, task commits) is derived from git at launch time. Narrative
-lives in [architecture.md](architecture.md) (system) and [designs/](designs/)
-(per feature).
+The durable state machine (ADR-0034/0037/0045): each feature record carries the
+four durable statuses — `proposed | designed | validated | shipped`, the backlog
+stage first. Everything in-flight (plans, branches, task commits) is derived from
+git at launch time. Narrative lives in [architecture.md](architecture.md) (system)
+and [designs/](designs/) (per feature).
 
 ## Feature graph
 
@@ -223,7 +223,7 @@ features:
   # ── post-sweep amendments ────────────────────────────────────────────────
   - id: proposed-status
     title: "`proposed` backlog stage — feature status enum expansion"
-    status: designed
+    status: validated
     depends_on: [document-foundation, the-loop-entry]
     notes:
       - born from the naming-map's deferred feature-status expansion (the docs/TODO.md item this amendment deletes); value name blind-derived and human-approved 2026-07-05 per the naming standard

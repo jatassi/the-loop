@@ -16,14 +16,14 @@ test('populated fixture: a committed repo on main whose feature-graph.md passes 
   try {
     assert.ok(existsSync(path.join(root, '.git')));
     const check = execSync(`node bin/the-loop.js check ${path.join(root, 'docs/feature-graph.md')}`, { encoding: 'utf8' });
-    assert.match(check, /^OK +2 features/);
+    assert.match(check, /^OK +3 features/);
 
     const o = machineOrientation(root);
     assert.equal(o.mode, 'configured');
     assert.deepEqual(o.proposal, {
       kind: 'advance-eligible-set', features: ['greet-cli'],
       summary: '1 feature(s) are dependency-ready to advance',
-    }); // greet-core validated, greet-cli designed behind it
+    }); // greet-core validated, greet-cli designed behind it; greet-farewell (proposed) is unrelated backlog
 
     assert.ok(existsSync(path.join(root, 'docs/designs/greet-core/design.md')));
     assert.ok(existsSync(path.join(root, 'docs/designs/greet-cli/design.md')));

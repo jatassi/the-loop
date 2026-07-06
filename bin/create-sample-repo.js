@@ -16,8 +16,10 @@ import path from 'node:path';
 
 const GRAPH = `# Fixture project — Feature graph
 
-A two-feature target repository for probe exercises: one validated feature, one designed
-behind it.
+A three-feature target repository for probe exercises: one validated feature, one
+designed behind it, and one proposed record (backlog stage, no design doc yet) so
+the validation runbook can exercise the not-designed and missing-acceptance gates
+against it.
 
 ## Feature graph
 
@@ -34,6 +36,9 @@ features:
     status: designed
     depends_on: [greet-core]
     acceptance: [running the CLI prints a greeting to stdout, an empty name exits 1 with a usage line]
+  - id: greet-farewell
+    title: Farewell command
+    status: proposed
 \`\`\`
 `;
 

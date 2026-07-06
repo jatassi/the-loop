@@ -19,7 +19,7 @@ const DONE = new Set(['validated', 'shipped']);
 
 /**
  * @typedef {Object} Proposal
- * @property {'onboard'|'repair'|'advance-eligible-set'|'release'|'new-intake'|'blocked'} kind
+ * @property {'onboard'|'repair'|'advance-eligible-set'|'design'|'release'|'new-intake'|'blocked'} kind
  * @property {string[]} features  the ids the proposal concerns
  * @property {string} summary     one sentence; the command surface expands it
  */
@@ -55,11 +55,51 @@ export function eligibleSet(model) {
   );
 }
 
+// A node's depends_on ids that aren't already DONE — the edges that could block it.
+function unsatisfiedDeps(node, satisfied) {
+  return (node.depends_on || []).filter((dep) => !satisfied(dep));
+}
+
+// One node's unsatisfied deps: a `proposed` one is a terminal blocker, anything
+// else unresolved (a `designed` dep, typically) re-queues the chain.
+function queueBlockers(node, { byId, satisfied, queue, blockers }) {
+  for (const dep of unsatisfiedDeps(node, satisfied)) {
+    const depNode = byId.get(dep); // a dangling dep is reported by validate() elsewhere
+    if (depNode?.status === 'proposed') { blockers.add(dep); }
+    else if (depNode) { queue.push(dep); }
+  }
+}
+
+// The proposed features a stuck designed feature is blocked behind, transitively:
+// walk each stuck feature's unsatisfied depends_on edges (DONE deps aren't
+// blocking); a `proposed` dep is a terminal blocker, a `designed` dep keeps the
+// chain going. Visited-tracking makes this safe over a cycle (which yields no
+// proposed blocker at all — the `blocked` safety net's job).
+function blockingProposedIds(model, stuckIds) {
+  const byId = new Map((model.features || []).map((f) => [f.id, f]));
+  const satisfied = (id) => { const d = byId.get(id); return !!d && DONE.has(d.status); };
+  const blockers = new Set();
+  const visited = new Set();
+  const queue = [...stuckIds];
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (visited.has(id)) { continue; }
+    visited.add(id);
+    const node = byId.get(id);
+    if (node) { queueBlockers(node, { byId, satisfied, queue, blockers }); }
+  }
+  return [...blockers];
+}
+
 /**
  * The next-action proposal /the-loop opens with. Precedence: the drainable eligible
- * set, then Release, then a fresh intake. `blocked` is the safety net: unreachable on a
- * validate-clean graph (acyclic + no dangling edges ⇒ some designed feature has a
- * satisfied eligible set), so seeing it means the graph needs repair.
+ * set; then, if designed work is stuck, `design` naming the proposed dependencies
+ * that explain the stall; then Release; then `design` again to drain a proposed-only
+ * backlog; then a fresh intake. `blocked` is the true safety net: on a validate-clean
+ * graph (acyclic + no dangling edges), the base case that used to make it
+ * unreachable now has exactly one exception — a stall bottoming out at proposed
+ * dependencies reads as `design`, not `blocked` — so seeing `blocked` still means
+ * the graph needs repair (e.g. a dependency cycle among designed features).
  * @param {import('./parse-feature-graph.js').DesignModel} model
  * @returns {Proposal}
  */
@@ -74,6 +114,11 @@ export function propose(model) {
   }
   const stuck = withStatus('designed');
   if (stuck.length > 0) {
+    const blocking = blockingProposedIds(model, stuck);
+    if (blocking.length > 0) {
+      return { kind: 'design', features: blocking,
+        summary: `${blocking.length} proposed feature(s) block the stuck designed set — design them first` };
+    }
     return { kind: 'blocked', features: stuck,
       summary: 'designed features exist but none are actionable — the graph needs repair' };
   }
@@ -81,6 +126,11 @@ export function propose(model) {
   if (validated.length > 0) {
     return { kind: 'release', features: validated,
       summary: 'everything buildable is validated — ready to release' };
+  }
+  const proposed = withStatus('proposed');
+  if (proposed.length > 0) {
+    return { kind: 'design', features: proposed,
+      summary: `${proposed.length} proposed feature(s) are the whole remaining backlog — design them next` };
   }
   return { kind: 'new-intake', features: [],
     summary: 'everything is shipped — bring the next intake' };

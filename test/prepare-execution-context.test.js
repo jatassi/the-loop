@@ -51,6 +51,17 @@ test('a dependency is satisfied by DONE status — validated and shipped alike',
   assert.equal(checkScope(MODEL, ['ready']).ok, true); // deps: one validated, one shipped
 });
 
+test('a proposed feature in scope is refused with a message naming it must be designed first', () => {
+  const model = { designVersion: 1, features: [feature('backlog-item', 'proposed')] };
+  const { ok, errors } = checkScope(model, ['backlog-item']);
+  assert.equal(ok, false);
+  assert.deepEqual(errors, [{
+    code: 'not-designed',
+    message: 'feature is proposed, not designed — it must be designed first',
+    where: 'backlog-item',
+  }]);
+});
+
 // ── builtTaskIds ──
 const PLAN = { tasks: [{ id: 't1' }, { id: 't2' }, { id: 't3' }] };
 

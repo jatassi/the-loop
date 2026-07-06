@@ -24,10 +24,10 @@ doc per feature), [`docs/adr/`](docs/adr/) (the *why*),
 - The **execution pipeline Workflow** runs Plan → Build → Validate per feature,
   concurrent where dependencies allow. Every unit of work runs in its own worktree
   under `.claude/worktrees/` — the main checkout is yours and is never touched.
-- Durable state is code commits + the graph's three statuses
-  (`designed | validated | shipped`); plans live on feature branches and vanish when
-  the feature's squash-merge lands; a blocked feature is a question in the chat at
-  the run boundary.
+- Durable state is code commits + the graph's four statuses
+  (`proposed | designed | validated | shipped`, `proposed` the backlog stage);
+  plans live on feature branches and vanish when the feature's squash-merge lands;
+  a blocked feature is a question in the chat at the run boundary.
 - **`/the-loop release`** replays the runbooks, holds the one human gate, and runs
   the project's recorded release runbook.
 

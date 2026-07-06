@@ -117,3 +117,30 @@ test('an exhausted-but-unfinished graph is blocked (the repair safety net)', () 
   assert.equal(p.kind, 'blocked');
   assert.deepEqual(p.features, ['a', 'b']);
 });
+
+// ── proposed-status: eligible-set exclusion, and the `design` proposal ──
+test('a designed feature depending on a proposed one is excluded from the eligible set; the machine orientation proposes kind design naming the blocking proposed id, direct or transitive', () => {
+  const direct = repo({ graphText: graph(feat('backlog', 'proposed'), feat('blocked-feature', 'designed', ['backlog'])) });
+  const o = machineOrientation(direct);
+  assert.deepEqual(o.eligibleSet, []); // never enters the eligible set
+  assert.equal(o.proposal.kind, 'design');
+  assert.deepEqual(o.proposal.features, ['backlog']);
+
+  // transitive: chained depends on gate, which depends on the proposed backlog item —
+  // the proposal names only the proposed root cause, not the intermediate designed link.
+  const chainedRoot = repo({
+    graphText: graph(
+      feat('backlog', 'proposed'),
+      feat('gate', 'designed', ['backlog']),
+      feat('chained', 'designed', ['gate']),
+    ),
+  });
+  assert.deepEqual(machineOrientation(chainedRoot).proposal.features, ['backlog']);
+});
+
+test('on a graph whose only unshipped features are proposed, the machine orientation proposes kind design naming them, never new-intake', () => {
+  const root = repo({ graphText: graph(feat('done', 'shipped'), feat('next-up', 'proposed'), feat('later', 'proposed')) });
+  const o = machineOrientation(root);
+  assert.equal(o.proposal.kind, 'design');
+  assert.deepEqual(o.proposal.features, ['next-up', 'later']);
+});
