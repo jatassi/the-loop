@@ -1,6 +1,6 @@
 # research-tiers — research port with confidence-gate escalation
 
-**Status:** designed.
+**Status:** proposed.
 
 Research is a first-class cross-cutting primitive: a lightweight cited web search by
 default; `deep-research` is the escalation tier a confidence gate reaches for — low

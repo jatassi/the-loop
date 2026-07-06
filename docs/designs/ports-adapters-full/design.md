@@ -1,6 +1,6 @@
 # ports-adapters-full — swapping + capability-contract enforcement
 
-**Status:** designed; **deliberately parked behind a second adopter** (ADR-0037).
+**Status:** proposed; **deliberately parked behind a second adopter** (ADR-0037).
 
 v1 maintained a typed port inventory (`docs/ports/ports.md`, ADR-0016/0024:
 capability contracts, guarantee flags, tiered required/optional). The v2 taming

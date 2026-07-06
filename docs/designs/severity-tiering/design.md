@@ -1,6 +1,6 @@
 # severity-tiering — the sev-1 hotfix express workflow path
 
-**Status:** designed. Renamed from `evolve-severity-tiering` 2026-07-05 with the
+**Status:** proposed. Renamed from `evolve-severity-tiering` 2026-07-05 with the
 evolve → diagnose rename (ADR-0043).
 
 A sev-1 production intake takes an expedited, still-gated path through the diagnose

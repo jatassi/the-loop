@@ -1,6 +1,6 @@
 # configure-step-full — /loop-config
 
-**Status:** designed.
+**Status:** proposed.
 
 The full configure step: bindings (test harness, probe, release runbook, model
 overrides, notification) set via recommended-answer interview and persisted to

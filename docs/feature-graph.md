@@ -152,14 +152,14 @@ features:
 
   - id: operate-tooling
     title: Operate (on-demand ops/debug tooling + observability-solution guidance)
-    status: designed
+    status: proposed
     depends_on: [diagnose]
     acceptance:
       - the human invokes ops/debug tooling reactively; a resulting fix files a diagnose intake; never acts on prod unattended
 
   - id: calibration-capture
     title: Calibration Memory (per-project capture, recalled at Plan/Design)
-    status: designed
+    status: proposed
     depends_on: [plan, design]
     notes:
       - capture must separate loop-overhead tokens (validator, orchestration) from build tokens, so "earns its context" is measured against the founding thesis, not assumed (2026-07-01 review); the v2 benchmark forensics (docs/TODO.md) are the seed methodology
@@ -168,14 +168,14 @@ features:
 
   - id: configure-step-full
     title: Full configure step (/loop-config — user/global + project scopes)
-    status: designed
+    status: proposed
     depends_on: [the-loop-entry]
     acceptance:
       - bindings are set via recommended-answer interview and persisted to harness-native layers
 
   - id: ports-adapters-full
     title: Full ports/adapters (swapping + capability-contract enforcement)
-    status: designed
+    status: proposed
     depends_on: [configure-step-full]
     notes:
       - the v1 port inventory (docs/ports/ports.md) was retired by ADR-0037 — the abstraction waits for a second adopter; reconstruct the inventory from git history if this feature nears the eligible set
@@ -184,7 +184,7 @@ features:
 
   - id: research-tiers
     title: Research port (lightweight default + confidence-gate + deep-research escalation)
-    status: designed
+    status: proposed
     depends_on: [execution-pipeline]
     notes:
       - escalation-prompt prior art (surveyed 2026-07-05) — `research-prompt` in https://github.com/davidondrej/skills; a decision-led single-paragraph prompt with numbered sub-questions, fact-vs-inference separation, and a mandatory self-critique gap round before finishing
@@ -193,7 +193,7 @@ features:
 
   - id: severity-tiering
     title: Severity tiering (the sev-1 hotfix express workflow path through the diagnose channel)
-    status: designed
+    status: proposed
     depends_on: [diagnose]
     acceptance:
       - a sev-1 intake takes an expedited, still-gated path

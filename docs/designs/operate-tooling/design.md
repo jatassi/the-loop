@@ -1,6 +1,6 @@
 # operate-tooling — on-demand ops/debug tooling
 
-**Status:** designed.
+**Status:** proposed.
 
 Operate is **on-demand, never scheduled**: the human invokes ops/debug tooling
 reactively; an observability solution (bound per project at Design) apprises the
