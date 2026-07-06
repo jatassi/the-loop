@@ -28,30 +28,3 @@ design-review session. **Delete an item when it lands**; git history is the arch
   marker; or a rule that draft-then-block designs name the session (not a build
   agent) as the recorder of boundary answers. Fold into the post-sweep amendment
   batch.
-
-- **V2 benchmark (taming stage 6)** — *due: first fresh session on the `taming`
-  branch.* Stages 1–5 of the ADR-0034..0040 rebuild landed 2026-07-04 (commits
-  `ce0f9bb`, `a18fc70`, `3cc6db5`; net −9,731 lines; 129 tests + `npm run check`
-  green; execution context→execution-pipeline round-trip proven via the harness).
-  What remains is the live proof, which needs a fresh session (agent registration is
-  read at session start):
-  1. Open a new session on `taming`, run `/the-loop`, accept a small, eligible
-     feature (e.g. `research-tiers`); then a standard-workflow-path feature.
-  2. Re-run the transcript forensics from the 2026-07-04 taming session and judge
-     against the targets below. Numbers within target = tamed; misses get diagnosed,
-     not rationalized. Then merge `taming` → `main` and release.
-
-  | Metric (per feature) | Baseline (measured 2026-07-04) | Target |
-  |---|---|---|
-  | Small-workflow-path agents | 8 | 2 |
-  | Small-workflow-path wall clock | 61 min + session ceremony | ≤ 15 min |
-  | Small-workflow-path cache-read tokens | ~20M | ≤ 2M |
-  | Commits landed per feature | 15 (1 code) | ≤ 3 |
-  | Standard-workflow-path wall clock (5 tasks) | ~146 min serial | ≈ slowest task + validate |
-  | Run-preparation overhead | 7 steps, 5–12 CLI calls | 1 CLI call + 1 Workflow call |
-  | Human interventions per clean run | continuous shepherding | 2 |
-  | Fixed context per build agent | ~66–84KB | ≤ 8KB (measured now: ~3KB card+task brief) |
-
-  Known-stale note: the seven v1 runbooks were deleted with the machinery they
-  pinned; v2 validators pin fresh runbooks as features validate, so the first few
-  releases lean on the test suite alone — deliberate, not an oversight.
