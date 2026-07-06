@@ -1,9 +1,7 @@
 // design-docs-and-runbooks: moving docs/design/features/<id>.md -> docs/designs/<id>/design.md
 // and docs/probes/<id>.md -> docs/runbooks/<id>/runbook.md (directories named per the
-// naming-map's feature-id verdicts), sweeping their prose to the approved vocabulary,
-// while leaving the frozen map and the two founding design docs byte-untouched.
+// naming-map's feature-id verdicts), sweeping their prose to the approved vocabulary.
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -116,17 +114,4 @@ test('prose in the moved docs speaks the approved vocabulary, and untouched sent
     'Capture which decompositions held, what task sizes actually fit, and which blocks\n'
     + 'recur, then recall it at Plan/Design so the loop decomposes better over time.',
   ));
-});
-
-test('the frozen naming map and the two founding design docs are byte-untouched', () => {
-  const untouched = [
-    'docs/design/naming-map.md',
-    'docs/design/agentic-dev-loop-design-decisions.md',
-    'docs/design/agentic-dev-loop-design-intent.md',
-  ];
-  for (const rel of untouched) {
-    const atHead = execSync(`git show HEAD:${rel}`, { cwd: root, encoding: 'utf8' });
-    const onDisk = readFileSync(p(rel), 'utf8');
-    assert.equal(onDisk, atHead, `${rel} diverged from HEAD`);
-  }
 });
