@@ -38,15 +38,21 @@ answer sets the scope; nothing outside it starts.
 ## The prepare-execution-context leg
 
 1. Confirm the scope: the dependency-ready eligible set, or the human's subset.
-2. Assemble and gate in one call:
-   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" prepare-execution-context --features <id,id,…> --target-branch <ref>`
+2. Assemble, gate, and splice in one call:
+   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" prepare-execution-context --features <id,id,…> --target-branch <ref> --script-out <session-scratch path>`
    — `--target-branch` is required: name the target branch explicitly — the branch
    the session is working on, unless the design narrative names another. Never
-   pass a target branch the checkout's artifacts didn't come from. The command refuses
-   with reasons on any gate failure (invalid graph, bad scope, broken model
-   bindings). Don't work around a refusal; fix what it names or tell the human.
-3. Call the Workflow: `scriptPath` = `$CLAUDE_PLUGIN_ROOT/workflows/execution-pipeline.js`,
-   `args` = the execution context JSON, verbatim.
+   pass a target branch the checkout's artifacts didn't come from. `--script-out`
+   names any writable session-scratch path; the command writes a launch-ready copy
+   of the canonical `workflows/execution-pipeline.js` there, its `meta` description
+   spliced to name this run's scope and target (the harness persists each
+   invocation's own script for resume, so the scratch copy needs no teardown). The
+   command refuses with reasons on any gate failure (invalid graph, bad scope,
+   broken model bindings, or a malformed canonical script). Don't work around a
+   refusal; fix what it names or tell the human.
+3. Call the Workflow: `scriptPath` = the `--script-out` path from step 2 — never
+   the canonical `workflows/execution-pipeline.js` directly, since its description
+   is spliced fresh per run — `args` = the execution context JSON, verbatim.
 4. Relay the run summary in plain prose, plus any `model-selection —` lines from
    the run log:
    - `completed` — merged and validated; nothing more to do.

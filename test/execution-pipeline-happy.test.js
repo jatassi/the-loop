@@ -52,10 +52,16 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
 
   const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  const labels = spawns.map((s) => s.opts.label.replace(/^\[[^\]]*\] /, ''));
+  const labels = spawns.map((s) => `${s.opts.agentType}:${s.opts.label}`);
   assert.deepEqual(labels, [
     'plan:alpha', 'build:alpha/t1', 'build:alpha/t2', 'validate:alpha',
     'plan:beta', 'build:beta/feature', 'validate:beta',
+  ]);
+  // run-presentation: no spawn label itself carries a phase/agentType prefix — the phase
+  // box (asserted right below) is the sole disambiguator, so plan and validate on the
+  // same feature share one bare label, `<feature>`.
+  assert.deepEqual(spawns.map((s) => s.opts.label), [
+    'alpha', 'alpha/t1', 'alpha/t2', 'alpha', 'beta', 'beta/feature', 'beta',
   ]);
   assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Plan', 'Build', 'Validate']);
 
@@ -154,7 +160,9 @@ test('build spawns route through build.<judgment_level> bindings and every label
 
   const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  const optsByLabel = Object.fromEntries(spawns.map((s) => [s.opts.label, s.opts]));
+  // Bare labels alone no longer disambiguate plan from validate on the same feature
+  // (run-presentation dropped the agentType prefix) — key on agentType + label instead.
+  const optsByLabel = Object.fromEntries(spawns.map((s) => [`${s.opts.agentType}:${s.opts.label}`, s.opts]));
   assert.equal('model' in optsByLabel['plan:alpha'], false, 'an unbound role passes no model opt');
   assert.equal(optsByLabel['build:alpha/t1'].model, 'opus');
   assert.equal('model' in optsByLabel['build:alpha/t2'], true, 'an unrated task routes build.standard');

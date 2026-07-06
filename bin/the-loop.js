@@ -16,12 +16,18 @@
 //   the-loop plan check <id> [plan.md] [feature-graph.md]   validate against the graph + round-trip
 //   the-loop plan task <id> <task-id> [plan.md] [feature-graph.md]  one build task's task brief
 //   the-loop prepare-execution-context --features <id,…> --target-branch <ref>
+//                                    [--script-out <path>]
 //                                    the one-shot execution context (ADR-0036/0038):
 //                                    gates the graph, the scope, and the model table,
 //                                    gathers per-feature design docs + plans (from
 //                                    feature branches) + git-derived task state, and
 //                                    prints the workflow's `args`. exit 1, nothing
-//                                    printed, on any gate failure
+//                                    printed, on any gate failure. --script-out also
+//                                    writes a launch-ready copy of the canonical
+//                                    workflow script, its meta description spliced to
+//                                    name this run's scope and target
+//                                    (run-presentation); a shape-gate refusal exits 1
+//                                    with nothing written
 //   the-loop worktree-create <branch> [--base-branch <ref>]  add .claude/worktrees/<branch>,
 //                                    creating the branch from <ref> (default main) when
 //                                    new; links node_modules for node projects; prints
@@ -87,7 +93,7 @@ try {
       break;
     }
     default: {
-      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref>|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path>|executors-list [dir]|models-list [defaults.json] [executors-dir]> [file…]\n');
+      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path>|executors-list [dir]|models-list [defaults.json] [executors-dir]> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }

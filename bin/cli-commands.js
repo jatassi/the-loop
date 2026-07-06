@@ -15,6 +15,7 @@ import { machineOrientation } from '../src/propose-next-action.js';
 import { sectionAfter } from '../src/replace-fenced-block.js';
 import { resolveModels } from '../src/resolve-model-bindings.js';
 import { setStatus } from '../src/set-feature-status.js';
+import { describeRun, spliceRunDescription } from '../src/splice-workflow-description.js';
 import { renderStatusSummary } from '../src/status-summary.js';
 import { render } from '../src/write-feature-graph.js';
 
@@ -155,17 +156,23 @@ function taskCommand(featureId, [taskId, planFile, graphFile]) {
   out(resolveTask(plan, design, taskId));
 }
 
-// the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> — the
-// one-shot execution-context assembler (ADR-0036/0038): gates the graph and the scope,
-// gathers every per-feature input (design doc, plan from the feature branch, task
-// state from git), and prints the execution context the workflow consumes as `args`.
-// Any gate failure exits 1 with nothing printed to stdout. No default target branch: a
-// guessed target can silently diverge from the branch the execution context's
-// artifacts were read from, and the whole run inherits the mismatch — the caller must
-// name the ref the run integrates into.
+// the-loop prepare-execution-context --features <id,id,…> --target-branch <ref>
+// [--script-out <path>] — the one-shot execution-context assembler (ADR-0036/0038):
+// gates the graph and the scope, gathers every per-feature input (design doc, plan
+// from the feature branch, task state from git), and prints the execution context the
+// workflow consumes as `args`. Any gate failure exits 1 with nothing printed to
+// stdout. No default target branch: a guessed target can silently diverge from the
+// branch the execution context's artifacts were read from, and the whole run inherits
+// the mismatch — the caller must name the ref the run integrates into.
+// `--script-out` additionally writes a launch-ready copy of the canonical workflow
+// script (run-presentation), its meta description spliced to name this run's scope
+// and target — the harness reads a workflow's description only from that literal, so
+// a per-run description needs a per-run script copy. A shape-gate refusal (the
+// canonical script's meta doesn't carry the expected `description: '…'` shape) throws,
+// bubbling to the shared top-level catch: exit 1, nothing written — stdout included.
 export function prepareExecutionContextCommand(argv) {
-  const opts = parseFlags(argv, { '--features': 'scope', '--target-branch': 'target' });
-  if (!opts.scope || !opts.target) { fail('usage: the-loop prepare-execution-context --features <id,id,…> --target-branch <ref>'); }
+  const opts = parseFlags(argv, { '--features': 'scope', '--target-branch': 'target', '--script-out': 'scriptOut' });
+  if (!opts.scope || !opts.target) { fail('usage: the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> [--script-out <path>]'); }
   const scope = opts.scope.split(',').map((s) => s.trim()).filter(Boolean);
   const target = opts.target;
 
@@ -186,7 +193,17 @@ export function prepareExecutionContextCommand(argv) {
     inputs[id] = gatherFeatureInputs(id, model);
   }
   const cli = `node "${path.join(PLUGIN_ROOT, 'bin/the-loop.js')}"`;
-  out(assembleExecutionContext({ model, scope, target, probe, models, inputs, cli }));
+  const executionContext = assembleExecutionContext({ model, scope, target, probe, models, inputs, cli });
+  if (opts.scriptOut) { writeSplicedWorkflowScript(opts.scriptOut, scope, target); }
+  out(executionContext);
+}
+
+// The canonical workflow script's own copy, meta description spliced to this run's
+// scope and target — see the command comment above for why a per-run copy is required.
+function writeSplicedWorkflowScript(scriptOut, scope, target) {
+  const canonicalText = readFileSync(path.join(PLUGIN_ROOT, 'workflows/execution-pipeline.js'), 'utf8');
+  const spliced = spliceRunDescription(canonicalText, describeRun(scope, target));
+  writeFileSync(scriptOut, spliced);
 }
 
 // Print every issue to stderr and exit 1 — the gate refusal every prepare-execution-

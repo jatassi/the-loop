@@ -52,6 +52,20 @@ test('commands/the-loop.md routes on the collapsed status subcommand, prepare-ex
   assert.ok(!cmd.includes('inner-loop.js'), 'the retired workflow script path should not be named');
 });
 
+// ── run-presentation criterion 4: the launch leg passes --script-out, and the
+// Workflow call's scriptPath is that spliced per-run script — never the canonical
+// workflows/ file launched directly ──
+test('commands/the-loop.md passes --script-out on the prepare-execution-context call, and scriptPath is bound to that path rather than the canonical workflow file', () => {
+  const cmd = read('commands/the-loop.md');
+
+  assert.match(cmd, /prepare-execution-context --features <id,id,…> --target-branch <ref>.*--script-out/);
+  assert.match(cmd, /scriptPath.*--script-out/);
+  assert.ok(
+    !/scriptPath[^\n]*\$CLAUDE_PLUGIN_ROOT\/workflows\/execution-pipeline\.js/.test(cmd),
+    'scriptPath should never bind directly to the canonical workflows/ file',
+  );
+});
+
 // ── criterion 3: interview replaces grilling in prose; the literal /grilling
 // binding id survives wherever the port's default binding is named ──
 test('interview replaces grilling in prose, except the literal /grilling binding id', () => {

@@ -11,8 +11,10 @@ validate → `Validate` — and `meta` declares `phases: [{title: 'Plan'}, {titl
 'Build'}, {title: 'Validate'}]` as title-only entries in that order, on meta's
 single physical line (the eslint preprocessor and the shim regex pin one-line meta).
 
-Labels carry the per-spawn detail and are the sole feature disambiguator:
-`[model] agentType:feature-id[/task-id]`. In multi-feature scopes the phase boxes
+Labels carry the per-spawn detail; the phase box (not the label) is the
+agentType disambiguator, so labels carry no phase/agentType prefix (amended by
+run-presentation): plan and validate → `feature-id`; build → `feature-id/task-id`;
+drive → `feature-id/task-id via executor`. In multi-feature scopes the phase boxes
 pool across features — the accepted trade of the phase-first view.
 
 Probe-confirmed harness behavior (2026-07-04, wf_e7b31dd9-38a): declared meta.phases

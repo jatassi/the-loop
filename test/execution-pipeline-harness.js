@@ -66,12 +66,14 @@ export async function runWorkflowScript(scriptPath, options = {}) {
 }
 
 /**
- * Reply router keyed by spawn label:
- * `byLabel({'plan:alpha': {returns: …}, …})`. A spawn whose label has no scripted
- * reply resolves to null, which the engine records as a stall — tests assert that
- * explicitly when they mean it.
+ * Reply router keyed by `agentType:label` (run-presentation: labels dropped their
+ * agentType prefix, so a bare label alone no longer disambiguates plan from
+ * validate on the same feature — the composite key is unique again):
+ * `byLabel({'plan:alpha': {returns: …}, …})`. A spawn whose composite key has no
+ * scripted reply resolves to null, which the engine records as a stall — tests
+ * assert that explicitly when they mean it.
  * @param {Object<string, ScriptedReply>} table
  */
 export function byLabel(table) {
-  return (_prompt, opts) => table[String(opts.label || '')];
+  return (_prompt, opts) => table[`${opts.agentType}:${opts.label}`];
 }

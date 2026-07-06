@@ -42,7 +42,7 @@ test('an executor-bound judgment_level routes to the drive agent with the execut
 
   const drive = spawns.find((s) => s.opts.agentType === 'drive');
   assert.ok(drive, 'the rote task spawned the drive agent');
-  assert.equal(drive.opts.label, 'drive:alpha/t1 via grok');
+  assert.equal(drive.opts.label, 'alpha/t1 via grok'); // bare — no agentType prefix (run-presentation)
   assert.equal(drive.opts.model, 'haiku'); // the drive binding, never the executor model
   assert.equal(drive.opts.phase, 'Build');
   assert.ok(drive.prompt.startsWith('executor: grok · executor-model: grok-build\n'));

@@ -223,7 +223,7 @@ features:
   # ── post-sweep amendments ────────────────────────────────────────────────
   - id: run-presentation
     title: Run presentation — scope-derived workflow description and prefix-free spawn labels
-    status: designed
+    status: validated
     depends_on: [execution-pipeline, workflow-phase-grouping]
     notes:
       - the harness reads a workflow's description only from the script's pure-literal meta, so a per-run description requires the splice-a-per-run-script mechanism — see the design doc
