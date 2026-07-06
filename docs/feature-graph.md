@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 15
+design_version: 16
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -221,6 +221,18 @@ features:
       - the loop runs end to end under the new vocabulary — the machine orientation reads the swept graph and the run-preparation subcommand assembles a valid execution context — and the code-quality baseline carries the distilled naming rule
 
   # ── post-sweep amendments ────────────────────────────────────────────────
+  - id: run-presentation
+    title: Run presentation — scope-derived workflow description and prefix-free spawn labels
+    status: designed
+    depends_on: [execution-pipeline, workflow-phase-grouping]
+    notes:
+      - the harness reads a workflow's description only from the script's pure-literal meta, so a per-run description requires the splice-a-per-run-script mechanism — see the design doc
+    acceptance:
+      - given a valid scope, prepare-execution-context with --script-out <path> writes a copy of the canonical workflow script differing only in its meta description — one line naming the target branch and every in-scope feature id (past 5 ids, the first 5 then +<k> more) — while stdout stays the unchanged execution context; without the flag nothing is written
+      - the splice is quote-safe (the description value lands JSON-stringified, meta stays one physical line) and shape-gated — a canonical script whose meta line doesn't match the expected description shape makes the command exit 1 with nothing written
+      - no spawn label in the workflow carries a phase or agentType prefix — plan and validate labels are the bare feature id, build labels are <feature>/<task>, drive labels are <feature>/<task> via <executor>
+      - the /the-loop launch leg passes --script-out and the Workflow call's scriptPath is the spliced per-run script, never the canonical workflows/ file
+
   - id: proposed-status
     title: "`proposed` backlog stage — feature status enum expansion"
     status: validated

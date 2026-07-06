@@ -43,7 +43,10 @@ mechanically (graph validity, scope readiness, model-binding validity — refusi
 loudly replaces prose checklists) and assembles the **execution context** —
 per-feature design docs, plans read from feature branches, git-derived task state,
 the model table, and the validation-runbook binding — that the workflow consumes as
-`args`. Supporting commands: `list`, `check`, `set-status`, `status` (prints the
+`args`. With `--script-out <path>` it also writes the launch-ready per-run workflow
+script: the canonical engine with the run's scope spliced into its meta description
+(the harness reads a workflow's description only from that pure literal, so a
+per-run description means a per-run script). Supporting commands: `list`, `check`, `set-status`, `status` (prints the
 status story to stdout, `--json` for the machine orientation; never written to
 disk), `plan parse|check|task`, `worktree-create|worktree-remove`, `models-list`,
 `executors-list`.
