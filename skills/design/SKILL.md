@@ -64,6 +64,7 @@ downstream agent. Three artifacts come out (ADR-0037):
 5. **Lint**: `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" check` until it prints OK.
    Acceptance criteria are the validator's only brief — observable, binary, vague
    adjectives made measurable or cut.
-6. **Gate**: present the design and get explicit approval. For a large or contested
-   design, offering a fresh-context reader test first is a good judgment call.
-   Commit the artifacts as one commit. `/the-loop` now sees a configured project.
+6. **Gate**: present the files you created/modified **FIRST**, then get explicit approval. 
+   For a large or contested design, offering a fresh-context reader test first is a good 
+   judgment call. Commit the artifacts as one commit. `/the-loop` now sees a configured 
+   project.
