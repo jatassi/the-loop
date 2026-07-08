@@ -61,7 +61,7 @@ downstream agent. Three artifacts come out (ADR-0037):
    but first ask "does a standard industry term already name this?"; if yes, use it
    and record nothing (the ratchet). A hard-to-reverse, surprising, real-trade-off
    decision gets offered as an ADR in `docs/adr/`. All three criteria or no record.
-5. **Lint**: `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" check` until it prints OK.
+5. **Lint**: `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" check` until it prints OK.
    Acceptance criteria are the validator's only brief — observable, binary, vague
    adjectives made measurable or cut.
 6. **Gate**: present the files you created/modified **FIRST**, then get explicit approval. 

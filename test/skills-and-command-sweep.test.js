@@ -36,7 +36,7 @@ test('commands/the-loop.md routes on the collapsed status subcommand, prepare-ex
   const cmd = read('commands/the-loop.md');
 
   assert.match(cmd, /the-loop\.js"\s+status\s+--json/, 'the context call should read `status --json`');
-  assert.match(cmd, /\bnode "\$CLAUDE_PLUGIN_ROOT\/bin\/the-loop\.js" status\b(?!\s*--json)/, 'the closing call should read bare `status`');
+  assert.match(cmd, /\bnode "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/the-loop\.js" status\b(?!\s*--json)/, 'the closing call should read bare `status`');
   assert.ok(!/\borient\b/.test(cmd), 'the retired `orient` subcommand should not be named');
   assert.ok(!/\bledger\b/.test(cmd), 'the retired `ledger` subcommand should not be named');
 
@@ -52,6 +52,35 @@ test('commands/the-loop.md routes on the collapsed status subcommand, prepare-ex
   assert.ok(!cmd.includes('inner-loop.js'), 'the retired workflow script path should not be named');
 });
 
+// ── regression guard: Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` (braced) in
+// command and skill content, but leaves a bare `$CLAUDE_PLUGIN_ROOT` untouched. A
+// bare reference reaches the model as a literal, gets run in a shell where the env
+// var is unset, expands to empty, and the CLI call fails. Every reference in a
+// command or skill body must therefore be brace-wrapped. ──
+test('every CLAUDE_PLUGIN_ROOT reference in commands/ and skills/ is brace-wrapped', () => {
+  const mdFiles = [];
+  const walk = (dir) => {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.name.endsWith('.md')) {
+        mdFiles.push(full);
+      }
+    }
+  };
+  walk('commands');
+  walk('skills');
+
+  for (const file of mdFiles) {
+    // `$CLAUDE_PLUGIN_ROOT` (dollar followed directly by the name) is the unsubstituted
+    // bare form; `${CLAUDE_PLUGIN_ROOT}` puts a `{` after the dollar and never matches.
+    const bare = read(file).match(/\$CLAUDE_PLUGIN_ROOT/g);
+    assert.equal(bare, null, `${file} has a bare $CLAUDE_PLUGIN_ROOT — brace it as \${CLAUDE_PLUGIN_ROOT}`);
+  }
+});
+
 // ── run-presentation criterion 4: the launch leg passes --script-out, and the
 // Workflow call's scriptPath is that spliced per-run script — never the canonical
 // workflows/ file launched directly ──
@@ -61,7 +90,7 @@ test('commands/the-loop.md passes --script-out on the prepare-execution-context 
   assert.match(cmd, /prepare-execution-context --features <id,id,…> --target-branch <ref>.*--script-out/);
   assert.match(cmd, /scriptPath.*--script-out/);
   assert.ok(
-    !/scriptPath[^\n]*\$CLAUDE_PLUGIN_ROOT\/workflows\/execution-pipeline\.js/.test(cmd),
+    !/scriptPath[^\n]*CLAUDE_PLUGIN_ROOT\/workflows\/execution-pipeline\.js/.test(cmd),
     'scriptPath should never bind directly to the canonical workflows/ file',
   );
 });

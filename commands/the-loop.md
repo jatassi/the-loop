@@ -39,7 +39,7 @@ answer sets the scope; nothing outside it starts.
 
 1. Confirm the scope: the dependency-ready eligible set, or the human's subset.
 2. Assemble, gate, and splice in one call:
-   `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" prepare-execution-context --features <id,id,…> --target-branch <ref> --script-out <session-scratch path>`
+   `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" prepare-execution-context --features <id,id,…> --target-branch <ref> --script-out <session-scratch path>`
    — `--target-branch` is required: name the target branch explicitly — the branch
    the session is working on, unless the design narrative names another. Never
    pass a target branch the checkout's artifacts didn't come from. `--script-out`
@@ -65,5 +65,5 @@ answer sets the scope; nothing outside it starts.
    - `halted` — the run stopped (budget or environment); report the detail.
 
 No status bookkeeping: the validators already updated the graph on the target branch,
-and `git log` is the run history. `node "$CLAUDE_PLUGIN_ROOT/bin/the-loop.js" status`
+and `git log` is the run history. `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status`
 prints the status story on demand.

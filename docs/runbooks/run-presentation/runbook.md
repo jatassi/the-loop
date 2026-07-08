@@ -77,7 +77,7 @@ populated v2 target repository, committed on `main`.
    the file for a direct `scriptPath` → canonical-file binding found none.
    Automated coverage: `node --test test/skills-and-command-sweep.test.js`,
    green, including the new assertion that `scriptPath` never binds to
-   `$CLAUDE_PLUGIN_ROOT/workflows/execution-pipeline.js`.
+   `${CLAUDE_PLUGIN_ROOT}/workflows/execution-pipeline.js`.
 
 ## Expected observations
 
