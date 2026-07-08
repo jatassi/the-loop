@@ -9,6 +9,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { adapterOf, buildCells, loadDoneKeys, rowKey } from '../eval/lib/cells.js';
+import { lastJsonObject } from '../eval/lib/cli-grok.js';
 import { excursions, scanCanary, suppressionHits } from '../eval/lib/detect.js';
 import { estimateGrokUsage, grokCostUsd } from '../eval/lib/pricing.js';
 import { scoreFindings, verifyValidate } from '../eval/verify.js';
@@ -73,6 +74,13 @@ test('verifyValidate: false_pass only when ground-truth fail is judged validated
   const r = verifyValidate({ manifest: clean, selfReport: { result: 'fail', findings: ['noise'] } });
   assert.equal(r.false_fail, true);
   assert.equal(r.findings, null);
+});
+
+test('lastJsonObject extracts the final object from grok\'s concatenated per-turn JSON, handling nesting', () => {
+  const text = '{ "result": "fail", "findings": ["placeholder"] }{ "result": "fail", "feature": "f", "findings": ["real { brace } content"] }';
+  assert.deepEqual(lastJsonObject(text), { result: 'fail', feature: 'f', findings: ['real { brace } content'] });
+  assert.equal(lastJsonObject('no json here'), null);
+  assert.deepEqual(lastJsonObject('{"a":1}'), { a: 1 });
 });
 
 test('grok pricing fallback: token estimate from chars at $2/$6 per Mtok', () => {

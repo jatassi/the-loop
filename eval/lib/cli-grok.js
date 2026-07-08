@@ -28,12 +28,24 @@ export async function invokeGrok({ model, promptPath, cwd, schema, maxTurns, tim
   return { exit: r.code, timedOut: r.timedOut, durationMs: r.durationMs, stderr: r.stderr, resolvedModel: model, ...parseEnvelope(r) };
 }
 
+// grok's `text` field concatenates one schema-conforming JSON object per assistant
+// turn (interim narration included) — the LAST complete object is the verdict.
+export function lastJsonObject(text) {
+  const trimmed = (text ?? '').trimEnd();
+  for (let i = trimmed.lastIndexOf('{'); i !== -1; i = trimmed.lastIndexOf('{', i - 1)) {
+    const parsed = tryParse(trimmed.slice(i));
+    if (parsed != null) { return parsed; }
+    if (i === 0) { break; }
+  }
+  return null;
+}
+
 function parseEnvelope(r) {
   const envelope = tryParse(r.stdout) ?? {};
   const finalText = envelope.text ?? r.stdout;
   return {
     finalText,
-    selfReport: tryParse(finalText),
+    selfReport: tryParse(finalText) ?? lastJsonObject(finalText),
     ...costFields(envelope),
     ...sessionFields(envelope),
   };

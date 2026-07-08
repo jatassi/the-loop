@@ -18,15 +18,26 @@ async function must(promise, label) {
   return r;
 }
 
+// Destructive fixture operations demand an absolute dir: a relative path would
+// resolve rm/tar against the runner's cwd — the main checkout. (Learned the hard
+// way: overlayTree once swept the main repo's tracked files via relative paths.)
+function assertAbsolute(dir) {
+  if (!path.isAbsolute(dir)) { throw new Error(`fixture dir must be absolute: ${dir}`); }
+}
+
 export async function extractTree({ repoRoot, sha, dir }) {
+  assertAbsolute(dir);
   await mkdir(dir, { recursive: true });
   await must(sh(`git -C "${repoRoot}" archive ${sha} | tar -x -C "${dir}"`), `extract ${sha}`);
 }
 
 // Replace every tracked file with the tree at `sha`, leaving untracked content
 // (node_modules) alone — used to stack a landing tree on top of a target commit.
+// The rm pipeline MUST execute with cwd = the fixture: ls-files emits relative
+// paths, and they must never resolve anywhere else.
 export async function overlayTree({ repoRoot, sha, dir }) {
-  await must(sh(`git -C "${dir}" ls-files -z | xargs -0 rm -f`), 'clear tracked files');
+  assertAbsolute(dir);
+  await must(sh('git ls-files -z | xargs -0 rm -f', { cwd: dir }), 'clear tracked files');
   await must(sh(`git -C "${repoRoot}" archive ${sha} | tar -x -C "${dir}"`), `overlay ${sha}`);
 }
 

@@ -99,7 +99,7 @@ async function executeCell(cell, ctx) {
 const opts = parseArgs(process.argv.slice(2));
 const matrix = JSON.parse(await readFile(path.join(evalRoot, 'matrix.json'), 'utf8'));
 const units = await loadUnits(evalRoot);
-const resultsDir = opts.results ?? path.join(evalRoot, 'results', new Date().toISOString().replaceAll(':', '-').slice(0, 19));
+const resultsDir = path.resolve(opts.results ?? path.join(evalRoot, 'results', new Date().toISOString().replaceAll(':', '-').slice(0, 19)));
 const rowsPath = path.join(resultsDir, 'rows.jsonl');
 await mkdir(path.join(resultsDir, 'work'), { recursive: true });
 const doneKeys = await loadDoneKeys(rowsPath);
