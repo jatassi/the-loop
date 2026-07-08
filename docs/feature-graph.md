@@ -248,7 +248,7 @@ features:
 
   - id: build-agent-title-progress
     title: Task-position prefix on divided-feature build agent titles
-    status: validated
+    status: shipped
     depends_on: [run-presentation]
     notes:
       - refines run-presentation's build/drive label shapes; run-presentation's shipped acceptance stays the historical record of what it delivered (bare labels), this feature's criteria carry the (i/N)-prefixed shapes
