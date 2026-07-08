@@ -2,3 +2,5 @@ node_modules/
 .DS_Store
 *.log
 .claude/worktrees/
+eval/fixtures-cache/
+eval/results/

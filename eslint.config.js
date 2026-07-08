@@ -11,7 +11,10 @@ import unicorn from 'eslint-plugin-unicorn';
 import globals from 'globals';
 
 export default defineConfig([
-  globalIgnores(['node_modules', 'docs']),
+  // eval/results + fixtures-cache hold materialized repo copies (linting them would
+  // re-lint the whole codebase per fixture); oracle files execute inside a fixture
+  // at <fixture>/eval-oracle/, so their relative imports only resolve there.
+  globalIgnores(['node_modules', 'docs', 'eval/results', 'eval/fixtures-cache', 'eval/**/oracle']),
   {
     files: ['**/*.js'],
     extends: [
@@ -83,6 +86,16 @@ export default defineConfig([
     // The CLI surface owns exit codes; process.exit at this boundary is the contract.
     files: ['bin/**/*.js'],
     rules: {
+      'n/no-process-exit': 'off',
+      'unicorn/no-process-exit': 'off',
+    },
+  },
+  {
+    // The eval harness is an operator-facing CLI surface like bin/: its product IS
+    // console output (progress lines, comparison tables) and it owns its exit codes.
+    files: ['eval/**/*.js'],
+    rules: {
+      'no-console': 'off',
       'n/no-process-exit': 'off',
       'unicorn/no-process-exit': 'off',
     },

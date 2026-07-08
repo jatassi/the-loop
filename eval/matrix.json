@@ -1,0 +1,8 @@
+{
+  "legs": {
+    "build": { "models": ["grok-4.5", "sonnet", "opus"], "reps": 3 },
+    "validate": { "models": ["grok-4.5", "sonnet", "opus"], "reps": 3 }
+  },
+  "concurrency": { "grok": 2, "claude": 3, "total": 5 },
+  "defaults": { "grok_max_turns": 500, "wall_clock_s": 2400 }
+}
