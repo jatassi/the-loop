@@ -27,21 +27,21 @@ features:
 
   - id: define
     title: Define skill (interview → brief)
-    status: designed
+    status: shipped
     depends_on: [the-loop-entry]
     acceptance:
       - a brain-dump is whittled to a structured, actionable brief
 
   - id: design
     title: Design skill (brief → docs/architecture.md + docs/feature-graph.md + per-feature docs)
-    status: designed
+    status: shipped
     depends_on: [define, document-foundation]
     acceptance:
       - a brief yields a valid docs/architecture.md, docs/feature-graph.md, and per-feature design docs, with spine check printing OK
 
   - id: plan
     title: Plan agent + workflow-path sizing
-    status: designed
+    status: shipped
     depends_on: [document-foundation]
     acceptance:
       - a feature decomposes into comfortably-small tasks, or is declared small workflow path and handled whole; an irreducible feature needs refinement before re-slicing
