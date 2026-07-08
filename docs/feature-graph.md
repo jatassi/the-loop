@@ -223,7 +223,7 @@ features:
   # ── post-sweep amendments ────────────────────────────────────────────────
   - id: run-presentation
     title: Run presentation — scope-derived workflow description and prefix-free spawn labels
-    status: validated
+    status: shipped
     depends_on: [execution-pipeline, workflow-phase-grouping]
     notes:
       - the harness reads a workflow's description only from the script's pure-literal meta, so a per-run description requires the splice-a-per-run-script mechanism — see the design doc
@@ -235,7 +235,7 @@ features:
 
   - id: proposed-status
     title: "`proposed` backlog stage — feature status enum expansion"
-    status: validated
+    status: shipped
     depends_on: [document-foundation, the-loop-entry]
     notes:
       - born from the naming-map's deferred feature-status expansion (the docs/TODO.md item this amendment deletes); value name blind-derived and human-approved 2026-07-05 per the naming standard
