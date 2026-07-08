@@ -77,7 +77,7 @@ function playbook(id, { models = ['model-a', 'model-b'], concurrency = 1 } = {})
 test('spine executors-list with no dir argument reads the real plugin docs/executors/ dir: grok appears with worktree driver-made and the pinned models list', () => {
   const registry = JSON.parse(spine(['executors-list']));
   assert.equal(registry.grok.worktree, 'driver-made');
-  assert.deepEqual(registry.grok.models, ['grok-build', 'grok-composer-2.5-fast']);
+  assert.deepEqual(registry.grok.models, ['grok-4.5', 'grok-composer-2.5-fast']);
 });
 
 test('spine executors-list with an explicit dir argument reads a fixture dir, printing the registry keyed by id', () => {

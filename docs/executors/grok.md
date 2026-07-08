@@ -8,14 +8,17 @@ tell a real defect from a false alarm.
 
 Operational lore, every item load-bearing:
 
-- none yet, populate as you observe noteworthy behaviors
+- CLI updates can retire model ids without warning: grok 0.2.91 (2026-07-08)
+  dropped `grok-build` — any invocation naming it fails immediately with
+  "unknown model id" before doing work. When a rote task blocks with that
+  error, check `grok models` against this playbook's list first.
 
 ## Machine block
 
 ```yaml
 id: grok
 command: grok
-models: [grok-build, grok-composer-2.5-fast]
+models: [grok-4.5, grok-composer-2.5-fast]
 worktree: driver-made
 invocation: grok -m {model} --prompt-file {prompt} --cwd {worktree} --always-approve --no-subagents --max-turns 500 --output-format plain
 availability: grok --version

@@ -1,6 +1,6 @@
 {
   "plan": { "model": "session" },
-  "build.rote": { "model": "grok-build", "executor": "grok" },
+  "build.rote": { "model": "grok-4.5", "executor": "grok" },
   "build.standard": { "model": "sonnet" },
   "build.complex": { "model": "opus" },
   "drive": { "model": "sonnet" },
