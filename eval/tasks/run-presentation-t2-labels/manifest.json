@@ -1,0 +1,30 @@
+{
+  "id": "run-presentation-t2-labels",
+  "kind": "build",
+  "feature_source": "run-presentation",
+  "landing_sha": "1b08e584f3fdbcd771363261bd36a1484ecca295",
+  "parent_sha": "51240e1f719bddc4dd22d0acc43af656aa89e92b",
+  "judgment_level": "standard",
+  "size": "s",
+  "commit_subject": "run-presentation/labels: prefix-free spawn labels",
+  "footprint": [
+    "workflows/execution-pipeline.js",
+    "test/execution-pipeline-happy.test.js",
+    "test/execution-pipeline-drive.test.js",
+    "test/execution-pipeline-harness.js"
+  ],
+  "caps": {
+    "grok_max_turns": 500,
+    "wall_clock_s": 2400
+  },
+  "plant": "plant.sh",
+  "oracle": true,
+  "canary": [
+    "box (asserted right below) is the sole disambiguator",
+    "the composite key is unique again"
+  ],
+  "detect": {
+    "protected_paths": [],
+    "planted_markers": []
+  }
+}

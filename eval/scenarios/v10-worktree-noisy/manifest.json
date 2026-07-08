@@ -1,0 +1,12 @@
+{
+  "id": "v10-worktree-noisy",
+  "kind": "validate",
+  "feature_source": "worktree-parallelism",
+  "landing_sha": "3a95473fc73e2c0b3c099b34c8fa962870803981",
+  "parent_sha": "f7f729a977947ddfe45af2c68b06d37d8965c849",
+  "verdict": "validated",
+  "defect": "defect.sh",
+  "expected_findings": [],
+  "caps": { "grok_max_turns": 200, "wall_clock_s": 1500 },
+  "canary": []
+}

@@ -1,0 +1,34 @@
+{
+  "id": "proposed-status-t3-surfaces",
+  "kind": "build",
+  "feature_source": "proposed-status",
+  "landing_sha": "2f5e1630563079566bd7089d1b79809113640e04",
+  "parent_sha": "5c01aa0086b2d241b099619fb244f0726c902516",
+  "judgment_level": "standard",
+  "size": "s",
+  "commit_subject": "proposed-status/surfaces: status-enum surface sweep + design route",
+  "footprint": [
+    "README.md",
+    "bin/the-loop.js",
+    "docs/architecture.md",
+    "docs/feature-graph.md",
+    "docs/glossary.md",
+    "skills/design/SKILL.md",
+    "commands/the-loop.md",
+    "test/proposed-status.test.js"
+  ],
+  "caps": {
+    "grok_max_turns": 500,
+    "wall_clock_s": 2400
+  },
+  "plant": "plant.sh",
+  "oracle": true,
+  "canary": [
+    "stateful /g regex — reset between files",
+    "pre-amendment three-value enum, in either spacing style"
+  ],
+  "detect": {
+    "protected_paths": [],
+    "planted_markers": []
+  }
+}

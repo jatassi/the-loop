@@ -1,0 +1,31 @@
+{
+  "id": "proposed-status-t2-routing",
+  "kind": "build",
+  "feature_source": "proposed-status",
+  "landing_sha": "2f5e1630563079566bd7089d1b79809113640e04",
+  "parent_sha": "5c01aa0086b2d241b099619fb244f0726c902516",
+  "judgment_level": "standard",
+  "size": "m",
+  "commit_subject": "proposed-status/routing: proposed excluded from build routing, surfaced as design proposals",
+  "footprint": [
+    "src/feature-schema.js",
+    "src/propose-next-action.js",
+    "test/feature-schema.test.js",
+    "test/propose-next-action.test.js",
+    "test/status-summary.test.js"
+  ],
+  "caps": {
+    "grok_max_turns": 500,
+    "wall_clock_s": 2400
+  },
+  "plant": "plant.sh",
+  "oracle": true,
+  "canary": [
+    "a `proposed` dep is a terminal blocker",
+    "the `blocked` safety net's job"
+  ],
+  "detect": {
+    "protected_paths": [],
+    "planted_markers": []
+  }
+}

@@ -1,0 +1,274 @@
+commit 2f5e1630563079566bd7089d1b79809113640e04
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Sun Jul 5 22:10:09 2026 -0400
+
+    proposed-status: `proposed` backlog stage — feature status enum expansion
+
+diff --git a/README.md b/README.md
+index 259a147..3705a49 100644
+--- a/README.md
++++ b/README.md
+@@ -24,10 +24,10 @@ doc per feature), [`docs/adr/`](docs/adr/) (the *why*),
+ - The **execution pipeline Workflow** runs Plan → Build → Validate per feature,
+   concurrent where dependencies allow. Every unit of work runs in its own worktree
+   under `.claude/worktrees/` — the main checkout is yours and is never touched.
+-- Durable state is code commits + the graph's three statuses
+-  (`designed | validated | shipped`); plans live on feature branches and vanish when
+-  the feature's squash-merge lands; a blocked feature is a question in the chat at
+-  the run boundary.
++- Durable state is code commits + the graph's four statuses
++  (`proposed | designed | validated | shipped`, `proposed` the backlog stage);
++  plans live on feature branches and vanish when the feature's squash-merge lands;
++  a blocked feature is a question in the chat at the run boundary.
+ - **`/the-loop release`** replays the runbooks, holds the one human gate, and runs
+   the project's recorded release runbook.
+ 
+diff --git a/bin/the-loop.js b/bin/the-loop.js
+index 0fb3bfe..ed9a701 100755
+--- a/bin/the-loop.js
++++ b/bin/the-loop.js
+@@ -10,8 +10,8 @@
+ //   the-loop list   [feature-graph.md]  the parsed feature graph (minus internals)
+ //   the-loop check  [feature-graph.md]  validate + round-trip; report; exit 1 on failure
+ //   the-loop set-status <id> <status>  flip one feature's durable status in feature-graph.md
+-//                                    (designed|validated|shipped); prints the updated
+-//                                    node; exit 1, unwritten, on an unknown id or status
++//                                    (proposed|designed|validated|shipped); prints the
++//                                    updated node; exit 1, unwritten, on an unknown id or status
+ //   the-loop plan parse <id> [plan.md]              the parsed plan model
+ //   the-loop plan check <id> [plan.md] [feature-graph.md]   validate against the graph + round-trip
+ //   the-loop plan task <id> <task-id> [plan.md] [feature-graph.md]  one build task's task brief
+diff --git a/commands/the-loop.md b/commands/the-loop.md
+index cd8b4cd..e1a4c09 100644
+--- a/commands/the-loop.md
++++ b/commands/the-loop.md
+@@ -23,11 +23,15 @@ answer sets the scope; nothing outside it starts.
+ - `onboard` → the `define` skill (brain-dump → brief), then the `design` skill. If a
+   brief already exists, resume at Design.
+ - `advance-eligible-set` / `build` jump → the prepare-execution-context leg below.
++- `design` → the `design` skill, amending the design for the named ids (a proposed
++  feature blocking stuck work, or the whole proposed backlog when nothing else is
++  actionable) — write their design docs and acceptance, flipping them to designed.
+ - `release` → the `release` skill.
+ - `new-intake` → ask what kind of intake this is. A bug — observed behavior
+   deviating from contract, the *why* needing diagnosis — routes to the `diagnose`
+   skill; an idea whose *what* needs sharpening routes to `define`; an obvious small
+-  tweak is an amendment directly.
++  tweak is an amendment directly; an idea worth keeping but not designing now is
++  parked as a `proposed` record by amendment instead.
+ - `repair` / `blocked` → name exactly what the orientation reports missing or
+   invalid, propose the repair, and stop. Never guess forward.
+ 
+diff --git a/docs/architecture.md b/docs/architecture.md
+index 55ee7fd..a1da8e3 100644
+--- a/docs/architecture.md
++++ b/docs/architecture.md
+@@ -20,12 +20,13 @@ on. Its first job is to build itself (self-hosting: this checkout carries both t
+ execution pipeline and its artifacts; a run executes the code it started with, so
+ self-edits take effect on the next run, and a bad self-edit is a git revert away).
+ 
+-## Operating model (ADR-0034)
++## Operating model (ADR-0034/0045)
+ 
+ **Kick off and check back.** The loop is autonomous *within* a run and assumes the
+ human is reachable at run boundaries. Durable state is exactly two things: **code
+-commits** and the **feature graph's status field** (`designed | validated |
+-shipped`). Everything in-flight — plans, task progress, blockage — is derived from
++commits** and the **feature graph's status field** (`proposed | designed |
++validated | shipped` — `proposed` is the backlog stage: recorded intent, not yet
++designed). Everything in-flight — plans, task progress, blockage — is derived from
+ git at run start (a plan is a file on the feature branch; a built task is a commit
+ with its subject prefix; a blocked feature is a question in the chat, answered and
+ re-run). There are no bookkeeping commits, no committed status projections, no filed
+@@ -149,9 +150,10 @@ the `naming-map` → `rename-sweep` feature pair.
+ 
+ Cross-feature shapes, in prose (per-feature detail lives in the feature docs):
+ 
+-- **Feature record** — `{ id, title, status: designed|validated|shipped, depends_on,
+-  acceptance: [criterion], notes? }`. Ids are lowercase slugs; they become refs
+-  (`loop/<id>`) and paths.
++- **Feature record** — `{ id, title, status: proposed|designed|validated|shipped,
++  depends_on, acceptance: [criterion], notes? }`. Ids are lowercase slugs; they
++  become refs (`loop/<id>`) and paths. `acceptance` is optional only at `proposed`
++  (recorded intent, pre-design) — required from `designed` onward.
+ - **Task contract** — `{ id, title, covers: [criterion-index], acceptance, footprint,
+   size: xs|s|m, judgment_level: rote|standard|complex, depends_on, wiring? }` in the
+   plan's `## Tasks` yaml block with `feature:` and `design_version:`. No status, no
+diff --git a/docs/feature-graph.md b/docs/feature-graph.md
+index 55adec2..5134e83 100644
+--- a/docs/feature-graph.md
++++ b/docs/feature-graph.md
+@@ -1,10 +1,10 @@
+ # the-loop — Feature graph
+ 
+-The durable state machine (ADR-0034/0037): each feature record carries the three
+-durable statuses only — `designed | validated | shipped`. Everything in-flight
+-(plans, branches, task commits) is derived from git at launch time. Narrative
+-lives in [architecture.md](architecture.md) (system) and [designs/](designs/)
+-(per feature).
++The durable state machine (ADR-0034/0037/0045): each feature record carries the
++four durable statuses — `proposed | designed | validated | shipped`, the backlog
++stage first. Everything in-flight (plans, branches, task commits) is derived from
++git at launch time. Narrative lives in [architecture.md](architecture.md) (system)
++and [designs/](designs/) (per feature).
+ 
+ ## Feature graph
+ 
+@@ -223,7 +223,7 @@ features:
+   # ── post-sweep amendments ────────────────────────────────────────────────
+   - id: proposed-status
+     title: "`proposed` backlog stage — feature status enum expansion"
+-    status: designed
++    status: validated
+     depends_on: [document-foundation, the-loop-entry]
+     notes:
+       - born from the naming-map's deferred feature-status expansion (the docs/TODO.md item this amendment deletes); value name blind-derived and human-approved 2026-07-05 per the naming standard
+diff --git a/docs/glossary.md b/docs/glossary.md
+index 3b51177..2536e83 100644
+--- a/docs/glossary.md
++++ b/docs/glossary.md
+@@ -64,10 +64,11 @@ boundaries. *See:* ADR-0034/0038.
+ 
+ ### feature graph
+ **aliases:** the graph · **status:** active
+-The durable state machine (`docs/feature-graph.md`): feature records with the three
+-durable statuses — `designed | validated | shipped` — plus dependency edges and
+-acceptance criteria. Everything in-flight is derived from git at run start, never
+-stored. *See:* ADR-0034/0037.
++The durable state machine (`docs/feature-graph.md`): feature records with the four
++durable statuses — `proposed | designed | validated | shipped` — plus dependency
++edges and acceptance criteria (optional only at `proposed`, the backlog stage).
++Everything in-flight is derived from git at run start, never stored. *See:*
++ADR-0034/0037/0045.
+ 
+ ### the-loop CLI
+ **aliases:** spine (historical) · **status:** active
+diff --git a/skills/design/SKILL.md b/skills/design/SKILL.md
+index 75846d3..f970029 100644
+--- a/skills/design/SKILL.md
++++ b/skills/design/SKILL.md
+@@ -22,13 +22,17 @@ downstream agent. Three artifacts come out (ADR-0037):
+   features:
+     - id: kebab-case-stable-handle
+       title: one line
+-      status: designed          # designed | validated | shipped — durable states only
++      status: designed          # proposed | designed | validated | shipped — durable states only
+       depends_on: [other-id]    # build-order edges; also draw one when a feature
+                                 # designs better knowing another's final shape
+       acceptance:
+         - an observable, binary criterion (Given/When/Then is the default shape)
+   ```
+ 
++  A `proposed` record — recorded intent parked on the backlog, not yet designed —
++  needs only `id` and `title`; acceptance is Design's output, not intake's, so it's
++  optional (a sketch is welcome, not demanded) until you promote it here.
++
+ - `docs/designs/<id>/design.md` — one design doc per feature, written for the
+   stateless agent who wasn't in the room: what it is, how it fits the architecture,
+   the interfaces it touches (quote the relevant contract shapes), constraints, and
+diff --git a/test/proposed-status.test.js b/test/proposed-status.test.js
+new file mode 100644
+index 0000000..9b8fd75
+--- /dev/null
++++ b/test/proposed-status.test.js
+@@ -0,0 +1,100 @@
++// proposed-status's cross-cutting acceptance: a proposed feature is refused at the
++// prepare-execution-context gate, the /the-loop route table names the new `design`
++// proposal, and every living surface stating the feature-status enum lists all
++// four values — the old three-value statement greps to zero outside historical
++// records (ADRs, the founding design docs, per-feature design docs, and the other
++// frozen record corpora). Reads the shipped files' text directly, the same way a
++// human or a downstream agent would, and spawns the real CLI as a user would.
++import assert from 'node:assert/strict';
++import { execFileSync } from 'node:child_process';
++import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import path from 'node:path';
++import { test } from 'node:test';
++
++const read = (p) => readFileSync(p, 'utf8');
++const BIN = path.resolve('bin/the-loop.js');
++
++// ── criterion 2: prepare-execution-context refuses a proposed feature ──
++test('spine prepare-execution-context refuses a proposed feature, naming it must be designed first, with nothing on stdout', () => {
++  const root = mkdtempSync(path.join(tmpdir(), 'proposed-status-cli-'));
++  mkdirSync(path.join(root, 'docs'), { recursive: true });
++  writeFileSync(path.join(root, 'docs/feature-graph.md'), `# Fixture — Feature graph
++
++## Feature graph
++
++\`\`\`yaml
++design_version: 1
++features:
++  - id: backlog-item
++    title: Backlog item
++    status: proposed
++\`\`\`
++`);
++  writeFileSync(path.join(root, 'docs/architecture.md'), '# Fixture — Architecture\n\n## Validation runbook\n\nnone\n');
++  try {
++    execFileSync('node', [BIN, 'prepare-execution-context', '--features', 'backlog-item', '--target-branch', 'main'],
++      { encoding: 'utf8', cwd: root });
++    assert.fail('expected exit 1');
++  } catch (error) {
++    assert.equal(error.status, 1);
++    assert.equal(error.stdout, '');
++    assert.match(error.stderr, /must be designed first.*\(backlog-item\)/);
++  } finally {
++    rmSync(root, { recursive: true, force: true });
++  }
++});
++
++// ── criterion 5a: the route table maps a `design` proposal to the design skill ──
++test('commands/the-loop.md routes a design proposal to the design skill, and new-intake mentions parking an idea as a proposed record', () => {
++  const cmd = read('commands/the-loop.md');
++  assert.match(cmd, /`design`\s*→\s*the `design` skill, amending the design for the named ids/);
++  assert.match(cmd, /parked as a `proposed` record by amendment/);
++});
++
++// The six living surfaces the design names explicitly (docs/feature-graph.md's
++// header, docs/architecture.md's Operating model paragraph + Feature record
++// contract, docs/glossary.md's [[feature graph]] entry, README.md's status-field
++// line, skills/design/SKILL.md's yaml sample, commands/the-loop.md's routes) each
++// list all four values together.
++const SURFACES = ['docs/feature-graph.md', 'docs/architecture.md', 'docs/glossary.md',
++  'README.md', 'skills/design/SKILL.md', 'bin/the-loop.js'];
++const FOUR_VALUES = /proposed\s*\|\s*designed\s*\|\s*validated\s*\|\s*shipped|proposed\|designed\|validated\|shipped/;
++
++test('every named living surface lists all four status values together', () => {
++  for (const f of SURFACES) {
++    assert.match(read(f), FOUR_VALUES, `${f} should list proposed|designed|validated|shipped together`);
++  }
++});
++
++// Historical records (ADRs, the founding design docs, per-feature design docs, and
++// the other frozen record corpora) keep their original vocabulary; a `proposed`
++// prefix on the enum is the new statement, not the old one, however it's spaced.
++const HISTORICAL_DIRS = ['docs/adr/', 'docs/research/', 'docs/briefs/', 'docs/design/',
++  'docs/designs/', 'docs/plans/', 'docs/releases/', 'docs/bugs/'];
++const SKIP_DIRS = new Set(['node_modules', '.git', '.claude']);
++// The pre-amendment three-value enum, in either spacing style, so long as it isn't
++// actually the tail of the new four-value statement (`proposed | ` / `proposed|`
++// immediately before it).
++const OLD_ENUM = /(?<!proposed \| )(?<!proposed\|)designed( \| |\|)validated\1shipped/g;
++
++function listTextFiles(dir, acc = []) {
++  for (const entry of readdirSync(dir)) {
++    if (SKIP_DIRS.has(entry)) { continue; }
++    const full = `${dir}/${entry}`;
++    if (statSync(full).isDirectory()) { listTextFiles(full, acc); }
++    else if (/\.(?:md|js)$/.test(entry)) { acc.push(full); }
++  }
++  return acc;
++}
++
++test('the old three-value status statement greps to zero outside historical records', () => {
++  const offenders = [];
++  for (const file of listTextFiles('.')) {
++    if (HISTORICAL_DIRS.some((dir) => file.startsWith(`./${dir}`) || file.startsWith(dir))) { continue; }
++    const text = read(file);
++    if (OLD_ENUM.test(text)) { offenders.push(file); }
++    OLD_ENUM.lastIndex = 0; // stateful /g regex — reset between files
++  }
++  assert.deepEqual(offenders, []);
++});

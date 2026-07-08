@@ -1,0 +1,33 @@
+{
+  "id": "phase-grouping-t1",
+  "kind": "build",
+  "feature_source": "workflow-phase-grouping",
+  "landing_sha": "0c5062d3225c1d0958f859611186418a478f4dfc",
+  "parent_sha": "c61541cbe842a25aca677f9730ca16cb1015b9dc",
+  "judgment_level": "standard",
+  "size": "m",
+  "commit_subject": "workflow-phase-grouping/phases: SDLC phase opts + meta.phases declaration",
+  "footprint": [
+    "workflows/inner-loop.js",
+    "test/inner-loop-happy.test.js",
+    "test/inner-loop-drive.test.js",
+    "test/inner-loop-halt.test.js",
+    "test/inner-loop-park.test.js",
+    "test/inner-loop-remediation.test.js",
+    "test/inner-loop-meta.test.js"
+  ],
+  "caps": {
+    "grok_max_turns": 500,
+    "wall_clock_s": 2400
+  },
+  "plant": "plant.sh",
+  "oracle": true,
+  "canary": [
+    "leaves no match, failing the assert below",
+    "evaluates only that line, never"
+  ],
+  "detect": {
+    "protected_paths": [],
+    "planted_markers": []
+  }
+}

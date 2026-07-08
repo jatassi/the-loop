@@ -1,0 +1,29 @@
+{
+  "id": "proposed-status-t1-schema",
+  "kind": "build",
+  "feature_source": "proposed-status",
+  "landing_sha": "2f5e1630563079566bd7089d1b79809113640e04",
+  "parent_sha": "5c01aa0086b2d241b099619fb244f0726c902516",
+  "judgment_level": "standard",
+  "size": "s",
+  "commit_subject": "proposed-status/schema: proposed status enum + acceptance exemption",
+  "footprint": [
+    "src/feature-schema.js",
+    "test/feature-schema.test.js",
+    "test/status-summary.test.js"
+  ],
+  "caps": {
+    "grok_max_turns": 500,
+    "wall_clock_s": 2400
+  },
+  "plant": "plant.sh",
+  "oracle": true,
+  "canary": [
+    "recorded intent with no design doc yet",
+    "id + title is enough — acceptance is Design's output, not intake's"
+  ],
+  "detect": {
+    "protected_paths": [],
+    "planted_markers": []
+  }
+}

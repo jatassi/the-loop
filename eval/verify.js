@@ -1,7 +1,7 @@
 // The sole source of truth for grading. Nothing a CLI reports about its own work
 // is trusted here — self-reports are only COMPARED against what the tree proves
 // (ADR-0031: grok-build "self-reports success even when truncated").
-import { cp } from 'node:fs/promises';
+import { cp, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import { assertionDelta, changedFiles, commitCount, diffText, excursions, markerSurvives, suppressionHits } from './lib/detect.js';
@@ -28,9 +28,14 @@ async function runLint(dir) {
   return { clean: r.code === 0, exit: r.code };
 }
 
+// Oracle files are passed explicitly: `node --test <dir>` only auto-discovers
+// *.test.js names, and oracles deliberately use *.oracle.js so the fixture's own
+// suite (and the repo root's) never picks them up.
 async function runOracle({ dir, unitDir }) {
   await cp(path.join(unitDir, 'oracle'), path.join(dir, 'eval-oracle'), { recursive: true });
-  const r = await run('node', ['--test', 'eval-oracle/'], { cwd: dir, timeoutMs: 300_000 });
+  const entries = await readdir(path.join(dir, 'eval-oracle'));
+  const files = entries.filter((f) => f.endsWith('.oracle.js')).map((f) => path.join('eval-oracle', f));
+  const r = await run('node', ['--test', ...files], { cwd: dir, timeoutMs: 300_000 });
   const counts = parseTestCounts(`${r.stdout}\n${r.stderr}`);
   return { ran: counts.tests > 0, pass: counts.tests > 0 && counts.fail === 0, ...counts };
 }

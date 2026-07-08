@@ -1,0 +1,323 @@
+commit 1b08e584f3fdbcd771363261bd36a1484ecca295
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Sun Jul 5 23:09:21 2026 -0400
+
+    run-presentation: scope-derived workflow description + prefix-free spawn labels
+
+diff --git a/bin/cli-commands.js b/bin/cli-commands.js
+index 67cb2c6..f955c39 100644
+--- a/bin/cli-commands.js
++++ b/bin/cli-commands.js
+@@ -15,6 +15,7 @@ import { machineOrientation } from '../src/propose-next-action.js';
+ import { sectionAfter } from '../src/replace-fenced-block.js';
+ import { resolveModels } from '../src/resolve-model-bindings.js';
+ import { setStatus } from '../src/set-feature-status.js';
++import { describeRun, spliceRunDescription } from '../src/splice-workflow-description.js';
+ import { renderStatusSummary } from '../src/status-summary.js';
+ import { render } from '../src/write-feature-graph.js';
+ 
+@@ -155,17 +156,23 @@ function taskCommand(featureId, [taskId, planFile, graphFile]) {
+   out(resolveTask(plan, design, taskId));
+ }
+ 
+-// the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> — the
+-// one-shot execution-context assembler (ADR-0036/0038): gates the graph and the scope,
+-// gathers every per-feature input (design doc, plan from the feature branch, task
+-// state from git), and prints the execution context the workflow consumes as `args`.
+-// Any gate failure exits 1 with nothing printed to stdout. No default target branch: a
+-// guessed target can silently diverge from the branch the execution context's
+-// artifacts were read from, and the whole run inherits the mismatch — the caller must
+-// name the ref the run integrates into.
++// the-loop prepare-execution-context --features <id,id,…> --target-branch <ref>
++// [--script-out <path>] — the one-shot execution-context assembler (ADR-0036/0038):
++// gates the graph and the scope, gathers every per-feature input (design doc, plan
++// from the feature branch, task state from git), and prints the execution context the
++// workflow consumes as `args`. Any gate failure exits 1 with nothing printed to
++// stdout. No default target branch: a guessed target can silently diverge from the
++// branch the execution context's artifacts were read from, and the whole run inherits
++// the mismatch — the caller must name the ref the run integrates into.
++// `--script-out` additionally writes a launch-ready copy of the canonical workflow
++// script (run-presentation), its meta description spliced to name this run's scope
++// and target — the harness reads a workflow's description only from that literal, so
++// a per-run description needs a per-run script copy. A shape-gate refusal (the
++// canonical script's meta doesn't carry the expected `description: '…'` shape) throws,
++// bubbling to the shared top-level catch: exit 1, nothing written — stdout included.
+ export function prepareExecutionContextCommand(argv) {
+-  const opts = parseFlags(argv, { '--features': 'scope', '--target-branch': 'target' });
+-  if (!opts.scope || !opts.target) { fail('usage: the-loop prepare-execution-context --features <id,id,…> --target-branch <ref>'); }
++  const opts = parseFlags(argv, { '--features': 'scope', '--target-branch': 'target', '--script-out': 'scriptOut' });
++  if (!opts.scope || !opts.target) { fail('usage: the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> [--script-out <path>]'); }
+   const scope = opts.scope.split(',').map((s) => s.trim()).filter(Boolean);
+   const target = opts.target;
+ 
+@@ -186,7 +193,17 @@ export function prepareExecutionContextCommand(argv) {
+     inputs[id] = gatherFeatureInputs(id, model);
+   }
+   const cli = `node "${path.join(PLUGIN_ROOT, 'bin/the-loop.js')}"`;
+-  out(assembleExecutionContext({ model, scope, target, probe, models, inputs, cli }));
++  const executionContext = assembleExecutionContext({ model, scope, target, probe, models, inputs, cli });
++  if (opts.scriptOut) { writeSplicedWorkflowScript(opts.scriptOut, scope, target); }
++  out(executionContext);
++}
++
++// The canonical workflow script's own copy, meta description spliced to this run's
++// scope and target — see the command comment above for why a per-run copy is required.
++function writeSplicedWorkflowScript(scriptOut, scope, target) {
++  const canonicalText = readFileSync(path.join(PLUGIN_ROOT, 'workflows/execution-pipeline.js'), 'utf8');
++  const spliced = spliceRunDescription(canonicalText, describeRun(scope, target));
++  writeFileSync(scriptOut, spliced);
+ }
+ 
+ // Print every issue to stderr and exit 1 — the gate refusal every prepare-execution-
+diff --git a/src/splice-workflow-description.js b/src/splice-workflow-description.js
+new file mode 100644
+index 0000000..daf40b8
+--- /dev/null
++++ b/src/splice-workflow-description.js
+@@ -0,0 +1,47 @@
++// The run-presentation splice's pure core: derives a scope-and-target description for
++// one run, and splices it into the canonical workflow script's `meta` literal — the
++// harness reads a workflow's description only from that literal (no `args`
++// interpolation), so a per-run description requires a per-run script copy whose meta
++// line is rewritten before launch. The bin edge (bin/cli-commands.js) does the file
++// I/O; everything here is a pure function over strings.
++
++// The meta declaration must sit on one physical line (workflow-phase-grouping: the
++// eslint preprocessor and the test shim's regex both pin it there) — this mirrors the
++// same pattern test/execution-pipeline-meta.test.js uses to extract it.
++const META_LINE = /^export const meta\b.*;$/m;
++// A single-quoted JS string literal, handling backslash-escaped characters (including
++// an escaped quote) the way the language itself does.
++const DESCRIPTION_VALUE = /description: '(?:[^'\\]|\\.)*'/;
++
++/**
++ * The scope-derived description: every in-scope feature id in scope order, past 5 ids
++ * collapsed to the first 5 plus a `+<k> more` count, then the target branch.
++ * @param {string[]} scope
++ * @param {string} target
++ * @returns {string}
++ */
++export function describeRun(scope, target) {
++  const ids = scope.length > 5 ? [...scope.slice(0, 5), `+${scope.length - 5} more`] : scope;
++  return `${ids.join(', ')} → ${target}`;
++}
++
++/**
++ * Splice `description` into the canonical script's one-line `meta` declaration,
++ * JSON-stringified so an arbitrary target-branch value (unlike feature ids, not
++ * schema-pinned) can never break out of the literal. Refuses — throws, nothing
++ * returned — when the script's meta line isn't found or doesn't carry the expected
++ * `description: '…'` shape; never hands back an unspliced copy.
++ * @param {string} scriptText  the canonical workflow script's full source text
++ * @param {string} description  the value to splice in (already shaped by describeRun)
++ * @returns {string} the script text with the description literal replaced
++ */
++export function spliceRunDescription(scriptText, description) {
++  const metaMatch = scriptText.match(META_LINE);
++  if (!metaMatch || !DESCRIPTION_VALUE.test(metaMatch[0])) {
++    throw new Error("canonical workflow script's meta line does not carry the expected description: '…' shape — refusing to splice");
++  }
++  // A function replacer (never the raw string) so a `$`-bearing description — JSON.stringify
++  // never escapes `$` — can't be misread as a $&/$1-style replacement pattern.
++  const splicedLine = metaMatch[0].replace(DESCRIPTION_VALUE, () => `description: ${JSON.stringify(description)}`);
++  return scriptText.slice(0, metaMatch.index) + splicedLine + scriptText.slice(metaMatch.index + metaMatch[0].length);
++}
+diff --git a/test/prepare-execution-context-script-out.test.js b/test/prepare-execution-context-script-out.test.js
+new file mode 100644
+index 0000000..b790510
+--- /dev/null
++++ b/test/prepare-execution-context-script-out.test.js
+@@ -0,0 +1,134 @@
++// run-presentation's --script-out leg on `spine prepare-execution-context`: with the
++// flag, a launch-ready copy of the canonical workflow script is written, its meta
++// description spliced to name the run's scope and target; without it, nothing is
++// written, and stdout stays the unchanged execution context either way. A canonical
++// script whose meta line doesn't carry the expected shape is a refusal — exit 1,
++// nothing written, stdout included.
++import assert from 'node:assert/strict';
++import { execFileSync } from 'node:child_process';
++import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import path from 'node:path';
++import { test } from 'node:test';
++
++const BIN = path.resolve('bin/the-loop.js');
++
++function spine(args, opts = {}) {
++  return execFileSync('node', [BIN, ...args], { encoding: 'utf8', ...opts });
++}
++
++function fixture(files) {
++  const root = mkdtempSync(path.join(tmpdir(), 'spine-cli-'));
++  for (const [rel, contents] of Object.entries(files)) {
++    const full = path.join(root, rel);
++    mkdirSync(path.dirname(full), { recursive: true });
++    writeFileSync(full, contents);
++  }
++  return root;
++}
++
++const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
++
++// A fixture that is also a git repo, everything committed on main.
++function gitFixture(files) {
++  const root = fixture(files);
++  git(root, 'init', '-q', '-b', 'main');
++  git(root, 'config', 'user.email', 'test@the-loop.local');
++  git(root, 'config', 'user.name', 'spine test');
++  git(root, 'add', '-A');
++  git(root, 'commit', '-qm', 'seed');
++  return root;
++}
++
++// A standalone `PLUGIN_ROOT` — a real copy of bin/ + src/ + config/ + docs/executors
++// (node_modules symlinked in, the same trick worktree-create uses) plus a
++// caller-supplied workflows/execution-pipeline.js — so a test can drive the real CLI
++// against a canonical script it controls, without touching this repo's own copy.
++function pluginRootFixture(workflowScript) {
++  const root = mkdtempSync(path.join(tmpdir(), 'spine-plugin-'));
++  for (const dir of ['bin', 'src', 'config', 'docs/executors']) {
++    cpSync(dir, path.join(root, dir), { recursive: true });
++  }
++  symlinkSync(path.resolve('node_modules'), path.join(root, 'node_modules'), 'dir');
++  mkdirSync(path.join(root, 'workflows'), { recursive: true });
++  writeFileSync(path.join(root, 'workflows/execution-pipeline.js'), workflowScript);
++  return root;
++}
++
++const GRAPH = `# Fixture — Feature graph
++
++## Feature graph
++
++\`\`\`yaml
++design_version: 1
++features:
++  - id: widget
++    title: Widget
++    status: designed
++    depends_on: []
++    acceptance: [renders a widget, persists a widget]
++\`\`\`
++`;
++
++const DESIGN = `# Fixture — Architecture
++
++Narrative.
++
++## Validation runbook
++
++Run the fixture CLI and expect pong on stdout.
++`;
++
++test("spine prepare-execution-context --script-out writes a spliced copy of the canonical workflow script naming this run's scope and target; without the flag nothing is written, and stdout stays the unchanged execution context either way", () => {
++  const root = gitFixture({ 'docs/feature-graph.md': GRAPH, 'docs/architecture.md': DESIGN });
++  try {
++    const scriptOut = path.join(root, 'spliced-workflow.js');
++    const withoutFlag = spine(['prepare-execution-context', '--features', 'widget', '--target-branch', 'main'], { cwd: root });
++    assert.ok(!existsSync(scriptOut)); // no flag → nothing written
++
++    const withFlag = spine(['prepare-execution-context', '--features', 'widget', '--target-branch', 'main', '--script-out', scriptOut], { cwd: root });
++    assert.equal(withFlag, withoutFlag); // stdout is the unchanged execution context either way
++
++    const canonical = readFileSync('workflows/execution-pipeline.js', 'utf8');
++    const spliced = readFileSync(scriptOut, 'utf8');
++    const metaLine = /^export const meta\b.*;$/m;
++    assert.notEqual(spliced, canonical);
++    assert.equal(spliced.replace(metaLine, ''), canonical.replace(metaLine, '')); // differs only in meta
++
++    const meta = new Function(`${spliced.match(metaLine)[0].replace(/^export /, '')}\nreturn meta;`)();
++    assert.equal(meta.description, 'widget → main'); // scope-derived: the one in-scope id, arrow, target
++    assert.equal(meta.name, 'execution-pipeline'); // meta.name is left alone
++  } finally {
++    rmSync(root, { recursive: true, force: true });
++  }
++});
++
++test("spine prepare-execution-context --script-out exits 1 with nothing written — stdout included — when the canonical script's meta line doesn't carry the expected description shape", () => {
++  const root = gitFixture({ 'docs/feature-graph.md': GRAPH, 'docs/architecture.md': DESIGN });
++  const pluginRoot = pluginRootFixture([
++    'export const meta = {',
++    "  name: 'execution-pipeline',",
++    "  description: 'a static description that never varies',",
++    '};',
++    'const x = 1;',
++    '',
++  ].join('\n')); // meta spans multiple lines — no one-line `description: '…'` shape to splice
++  try {
++    const scriptOut = path.join(root, 'spliced-workflow.js');
++    const bin = path.join(pluginRoot, 'bin/the-loop.js');
++    let failure;
++    try {
++      execFileSync('node', [bin, 'prepare-execution-context', '--features', 'widget', '--target-branch', 'main', '--script-out', scriptOut], { cwd: root, encoding: 'utf8' });
++    } catch (error) {
++      failure = error;
++    }
++    assert.ok(failure, 'expected the command to exit non-zero');
++    assert.equal(failure.status, 1);
++    assert.equal(failure.stdout, '');
++    assert.match(failure.stderr, /description/);
++    assert.ok(!existsSync(scriptOut));
++  } finally {
++    rmSync(root, { recursive: true, force: true });
++    rmSync(pluginRoot, { recursive: true, force: true });
++  }
++});
+diff --git a/test/splice-workflow-description.test.js b/test/splice-workflow-description.test.js
+new file mode 100644
+index 0000000..e43bff0
+--- /dev/null
++++ b/test/splice-workflow-description.test.js
+@@ -0,0 +1,53 @@
++// The run-presentation splice's pure core (src/splice-workflow-description.js):
++// scope-derived description shaping and the meta-line splice, both testable without a
++// repo or a real workflow script.
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++
++import { describeRun, spliceRunDescription } from '../src/splice-workflow-description.js';
++
++// ── describeRun ──
++test('describeRun lists every in-scope id, in scope order, arrow-joined to the target', () => {
++  assert.equal(describeRun(['alpha', 'beta'], 'main'), 'alpha, beta → main');
++  assert.equal(describeRun(['solo'], 'release/1.0'), 'solo → release/1.0');
++});
++
++test('describeRun past 5 ids collapses to the first 5 plus a +<k> more count', () => {
++  const scope = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
++  assert.equal(describeRun(scope, 'main'), 'a, b, c, d, e, +2 more → main');
++});
++
++// ── spliceRunDescription ──
++const CANONICAL = "export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph', whenToUse: 'x', phases: [{ title: 'Plan' }] };\nconst rest = 1;\n";
++
++function evalMeta(scriptText) {
++  const match = scriptText.match(/^export const meta\b.*;$/m);
++  assert.ok(match, 'expected a spliced one-line meta declaration');
++  return new Function(`${match[0].replace(/^export /, '')}\nreturn meta;`)();
++}
++
++test('spliceRunDescription replaces only the description value, JSON-stringified, leaving the rest of the meta line and the script untouched', () => {
++  const spliced = spliceRunDescription(CANONICAL, 'alpha, beta → main');
++  assert.equal(evalMeta(spliced).description, 'alpha, beta → main');
++  assert.equal(evalMeta(spliced).name, 'execution-pipeline'); // sibling fields untouched
++  assert.ok(spliced.endsWith("\nconst rest = 1;\n")); // everything after the meta line is untouched
++  assert.equal(spliced.match(/^export const meta\b.*$/gm).length, 1); // meta still one physical line
++});
++
++test('spliceRunDescription is quote-safe: a description carrying quotes and backslashes round-trips exactly, and the meta line stays one physical line', () => {
++  const description = String.raw`weird's target "branch" \with\ backslashes → main`;
++  const spliced = spliceRunDescription(CANONICAL, description);
++  assert.equal(evalMeta(spliced).description, description);
++  assert.equal(spliced.match(/\n/g).length, (CANONICAL.match(/\n/g).length)); // no new physical lines introduced
++});
++
++test('spliceRunDescription refuses — throws, nothing to write — when the meta line lacks the expected description shape', () => {
++  const multiLineMeta = "export const meta = {\n  name: 'x',\n  description: 'y',\n};\n";
++  assert.throws(() => spliceRunDescription(multiLineMeta, 'z'), /description/);
++
++  const doubleQuoted = 'export const meta = { name: \'x\', description: "y" };\n';
++  assert.throws(() => spliceRunDescription(doubleQuoted, 'z'), /description/);
++
++  const noDescription = "export const meta = { name: 'x' };\n";
++  assert.throws(() => spliceRunDescription(noDescription, 'z'), /description/);
++});

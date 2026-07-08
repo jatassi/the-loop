@@ -1,0 +1,110 @@
+commit 2f5e1630563079566bd7089d1b79809113640e04
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Sun Jul 5 22:10:09 2026 -0400
+
+    proposed-status: `proposed` backlog stage — feature status enum expansion
+
+diff --git a/src/feature-schema.js b/src/feature-schema.js
+index 31cdd60..7a73f55 100644
+--- a/src/feature-schema.js
++++ b/src/feature-schema.js
+@@ -3,11 +3,13 @@
+ // contract (block); warnings inform but don't block.
+ 
+ /**
+- * The durable lifecycle a feature record moves through (ADR-0034): what has *landed*.
+- * Everything in-flight — planned, building, blocked-on-a-question — is derived from
+- * git (branches, plan files, task commits) at execution-context time, never stored here.
++ * The durable lifecycle a feature record moves through (ADR-0034/0045): `proposed`
++ * is the backlog stage — recorded intent with no design doc yet, not "landed" but
++ * durable all the same. Everything in-flight — planned, building,
++ * blocked-on-a-question — is derived from git (branches, plan files, task commits)
++ * at execution-context time, never stored here.
+  */
+-export const STATUS = ['designed', 'validated', 'shipped'];
++export const STATUS = ['proposed', 'designed', 'validated', 'shipped'];
+ 
+ /**
+  * Ids become git refs (`loop/<id>`) and file paths (`docs/plans/<id>/plan.md`)
+@@ -76,11 +78,13 @@ function collectIds(items, err, codes) {
+   return ids;
+ }
+ 
+-// Per-feature field checks: title, status, acceptance.
++// Per-feature field checks: title, status, acceptance. Acceptance is Design's
++// output, not intake's — a `proposed` record (recorded intent, not yet designed)
++// is exempt; every other status still requires it.
+ function checkFeatureFields(f, err) {
+   if (!f.title) { err('missing-title', 'feature has no title', f.id); }
+   if (!STATUS.includes(f.status)) { err('bad-status', `status must be one of ${STATUS.join('|')} (got ${JSON.stringify(f.status)})`, f.id); }
+-  if (!hasAcceptance(f.acceptance)) { err('missing-acceptance', 'feature has no acceptance criterion', f.id); }
++  if (f.status !== 'proposed' && !hasAcceptance(f.acceptance)) { err('missing-acceptance', 'feature has no acceptance criterion', f.id); }
+ }
+ 
+ // Per-feature reference checks: depends_on edges.
+diff --git a/test/feature-schema.test.js b/test/feature-schema.test.js
+index ee4fc8c..5352597 100644
+--- a/test/feature-schema.test.js
++++ b/test/feature-schema.test.js
+@@ -10,8 +10,8 @@ function model(featuresYaml) {
+ }
+ const codes = (issues) => issues.map((i) => i.code);
+ 
+-test('STATUS holds the three durable lifecycle states', () => {
+-  assert.deepEqual(STATUS, ['designed', 'validated', 'shipped']);
++test('STATUS holds the four durable lifecycle states, proposed leading', () => {
++  assert.deepEqual(STATUS, ['proposed', 'designed', 'validated', 'shipped']);
+ });
+ 
+ test('a clean model validates ok', () => {
+@@ -28,6 +28,18 @@ test('bad status, duplicate id, and missing acceptance are errors', () => {
+   assert.equal(v.ok, false);
+ });
+ 
++test('a proposed feature needs no acceptance, but a designed feature missing acceptance still fails', () => {
++  // proposed: id + title is enough — acceptance is Design's output, not intake's.
++  const proposed = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: proposed'));
++  assert.equal(proposed.ok, true);
++  assert.deepEqual(proposed.errors, []);
++
++  // designed, same shape, no acceptance: the existing gate still holds.
++  const designed = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: designed'));
++  assert.ok(codes(designed.errors).includes('missing-acceptance'));
++  assert.equal(designed.ok, false);
++});
++
+ test('self and dangling dependencies are errors', () => {
+   const v = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: designed\n    acceptance: x\n    depends_on: [a, ghost]'));
+   assert.ok(codes(v.errors).includes('self-dependency'));
+diff --git a/test/status-summary.test.js b/test/status-summary.test.js
+index 5851bf8..f0af3b3 100644
+--- a/test/status-summary.test.js
++++ b/test/status-summary.test.js
+@@ -22,6 +22,7 @@ const EXPECTED = `# Status — projected from docs/feature-graph.md
+ 
+ Total: 4 feature(s) at design_version 3
+ 
++- proposed: 0
+ - designed: 2
+ - validated: 1
+ - shipped: 1
+@@ -41,6 +42,19 @@ test('renderStatusSummary renders counts, the dependency-ready Next line, and th
+   assert.equal(renderStatusSummary(MODEL), renderStatusSummary(MODEL)); // same model, same bytes
+ });
+ 
++test('the four-stage counts render, proposed included', () => {
++  const withBacklog = {
++    designVersion: 1,
++    features: [
++      { id: 'backlog-item', title: 'Backlog item', status: 'proposed', depends_on: [] },
++      { id: 'widget', title: 'Widget', status: 'designed', depends_on: [], acceptance: 'x' },
++      { id: 'gadget', title: 'Gadget', status: 'validated', depends_on: [], acceptance: 'x' },
++      { id: 'sprocket', title: 'Sprocket', status: 'shipped', depends_on: [], acceptance: 'x' },
++    ],
++  };
++  assert.match(renderStatusSummary(withBacklog), /- proposed: 1\n- designed: 1\n- validated: 1\n- shipped: 1/);
++});
++
+ test('with nothing dependency-ready, the Next line says so', () => {
+   const drained = {
+     designVersion: 1,

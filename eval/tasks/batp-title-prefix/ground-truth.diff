@@ -1,0 +1,249 @@
+commit e9a50df5a62e33716ebd24a017f073a4722f4f22
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Wed Jul 8 02:54:48 2026 -0400
+
+    build-agent-title-progress: Task-position prefix on divided-feature build agent titles
+
+diff --git a/test/execution-pipeline-blocked.test.js b/test/execution-pipeline-blocked.test.js
+index d588acc..308e270 100644
+--- a/test/execution-pipeline-blocked.test.js
++++ b/test/execution-pipeline-blocked.test.js
+@@ -49,7 +49,9 @@ test('a feature-shaped build block blocks the feature, skips its dependents and
+   const args = executionContextOf([feature('alpha'), feature('beta', { depends_on: ['alpha'] })]);
+   const replies = byLabel({
+     'plan:alpha': { returns: { result: 'planned', workflow_path: 'standard', tasks } },
+-    'build:alpha/t1': { returns: { result: 'blocked', task: 'alpha/t1', kind: 'feature', detail: 'criterion 1 is untestable as written', options: ['re-plan t1'] } },
++    // alpha builds as 2 tasks — build-agent-title-progress prefixes t1's label with its
++    // fixed plan-array position, (1/2).
++    'build:(1/2) alpha/t1': { returns: { result: 'blocked', task: 'alpha/t1', kind: 'feature', detail: 'criterion 1 is untestable as written', options: ['re-plan t1'] } },
+   });
+ 
+   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
+diff --git a/test/execution-pipeline-drive.test.js b/test/execution-pipeline-drive.test.js
+index 5e9b85d..6528b5b 100644
+--- a/test/execution-pipeline-drive.test.js
++++ b/test/execution-pipeline-drive.test.js
+@@ -25,9 +25,11 @@ function executionContextOf(models) {
+ }
+ 
+ const BUDGET = { spent: 0, remaining: 10 };
++// alpha builds as 2 tasks (t1, t2) — build-agent-title-progress prefixes both labels
++// with their fixed 1-based plan-array position, `(1/2)` and `(2/2)`.
+ const replies = byLabel({
+-  'drive:alpha/t1 via grok': { returns: { result: 'built', task: 'alpha/t1' } },
+-  'build:alpha/t2': { returns: { result: 'built', task: 'alpha/t2' } },
++  'drive:(1/2) alpha/t1 via grok': { returns: { result: 'built', task: 'alpha/t1' } },
++  'build:(2/2) alpha/t2': { returns: { result: 'built', task: 'alpha/t2' } },
+   'validate:alpha': { returns: { result: 'validated', feature: 'alpha' } },
+ });
+ 
+@@ -42,7 +44,9 @@ test('an executor-bound judgment_level routes to the drive agent with the execut
+ 
+   const drive = spawns.find((s) => s.opts.agentType === 'drive');
+   assert.ok(drive, 'the rote task spawned the drive agent');
+-  assert.equal(drive.opts.label, 'alpha/t1 via grok'); // bare — no agentType prefix (run-presentation)
++  // bare — no agentType prefix (run-presentation) — but the position prefix rides the
++  // drive label too, since alpha builds as 2 tasks (build-agent-title-progress).
++  assert.equal(drive.opts.label, '(1/2) alpha/t1 via grok');
+   assert.equal(drive.opts.model, 'haiku'); // the drive binding, never the executor model
+   assert.equal(drive.opts.phase, 'Build');
+   assert.ok(drive.prompt.startsWith('executor: grok · executor-model: grok-build\n'));
+diff --git a/test/execution-pipeline-happy.test.js b/test/execution-pipeline-happy.test.js
+index a283677..869dbd1 100644
+--- a/test/execution-pipeline-happy.test.js
++++ b/test/execution-pipeline-happy.test.js
+@@ -43,11 +43,14 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
+   const args = executionContextOf([feature('alpha'), feature('beta', { depends_on: ['alpha'] })]);
+   const replies = byLabel({
+     'plan:alpha': { returns: { result: 'planned', workflow_path: 'standard', tasks: alphaTasks } },
+-    'build:alpha/t1': built('alpha/t1'),
+-    'build:alpha/t2': built('alpha/t2'),
++    // alpha builds as 2 tasks: build-agent-title-progress prefixes each label with its
++    // fixed 1-based position in the *declared* array above (t2 first, t1 second) — never
++    // the DAG build order below, which runs t1 before t2.
++    'build:(2/2) alpha/t1': built('alpha/t1'),
++    'build:(1/2) alpha/t2': built('alpha/t2'),
+     'validate:alpha': validated('alpha'),
+     'plan:beta': { returns: { result: 'planned', workflow_path: 'small' } },
+-    'build:beta/feature': built('beta/feature'),
++    'build:beta/feature': built('beta/feature'), // small workflow path: never a divided build, no prefix
+     'validate:beta': validated('beta'),
+   });
+ 
+@@ -55,14 +58,16 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
+ 
+   const labels = spawns.map((s) => `${s.opts.agentType}:${s.opts.label}`);
+   assert.deepEqual(labels, [
+-    'plan:alpha', 'build:alpha/t1', 'build:alpha/t2', 'validate:alpha',
++    'plan:alpha', 'build:(2/2) alpha/t1', 'build:(1/2) alpha/t2', 'validate:alpha',
+     'plan:beta', 'build:beta/feature', 'validate:beta',
+   ]);
+   // run-presentation: no spawn label itself carries a phase/agentType prefix — the phase
+   // box (asserted right below) is the sole disambiguator, so plan and validate on the
+-  // same feature share one bare label, `<feature>`.
++  // same feature share one bare label, `<feature>`. build-agent-title-progress: the two
++  // alpha build labels additionally carry their `(<pos>/<N>)` plan-array position — beta,
++  // a single small-workflow build, carries none.
+   assert.deepEqual(spawns.map((s) => s.opts.label), [
+-    'alpha', 'alpha/t1', 'alpha/t2', 'alpha', 'beta', 'beta/feature', 'beta',
++    'alpha', '(2/2) alpha/t1', '(1/2) alpha/t2', 'alpha', 'beta', 'beta/feature', 'beta',
+   ]);
+   assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Plan', 'Build', 'Validate']);
+ 
+@@ -72,13 +77,16 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
+   assert.ok(prompt('plan:alpha').includes('design doc for alpha'));
+   assert.ok(prompt('plan:alpha').includes('node /plugin/bin/the-loop.js'));
+   // build task briefs: the branch DAG — t1 branches from the feature branch, t2 from t1's
+-  assert.ok(prompt('build:alpha/t1').includes('worktree-create loop/alpha--t1 --base-branch loop/alpha'));
+-  assert.ok(prompt('build:alpha/t2').includes('worktree-create loop/alpha--t2 --base-branch loop/alpha--t1'));
+-  assert.ok(prompt('build:alpha/t2').includes('commit subject: "alpha/t2:'));
+-  assert.ok(prompt('build:alpha/t2').includes('footprint (the lease — stay inside it): src/b.js'));
+-  assert.ok(prompt('build:alpha/t2').includes('wiring: t2 sits atop t1'));
+-  assert.ok(prompt('build:alpha/t2').includes('covers feature criteria: alpha works'));
+-  assert.ok(!prompt('build:alpha/t2').includes('design doc for alpha'), 'build task briefs resource-guide-reference the design doc, never inline it');
++  assert.ok(prompt('build:(2/2) alpha/t1').includes('worktree-create loop/alpha--t1 --base-branch loop/alpha'));
++  assert.ok(prompt('build:(1/2) alpha/t2').includes('worktree-create loop/alpha--t2 --base-branch loop/alpha--t1'));
++  assert.ok(prompt('build:(1/2) alpha/t2').includes('commit subject: "alpha/t2:'));
++  assert.ok(prompt('build:(1/2) alpha/t2').includes('footprint (the lease — stay inside it): src/b.js'));
++  assert.ok(prompt('build:(1/2) alpha/t2').includes('wiring: t2 sits atop t1'));
++  assert.ok(prompt('build:(1/2) alpha/t2').includes('covers feature criteria: alpha works'));
++  assert.ok(!prompt('build:(1/2) alpha/t2').includes('design doc for alpha'), 'build task briefs resource-guide-reference the design doc, never inline it');
++  // build-agent-title-progress criterion 4: the position prefix lives only in the display
++  // label — branch names, commit subjects, and merge order below are unaffected.
++  assert.ok(!prompt('build:(1/2) alpha/t2').includes('(1/2)'), 'the prefix never bleeds into the task brief itself');
+   // small workflow path: one whole-feature build straight off the target, design doc pushed
+   assert.ok(prompt('build:beta/feature').includes('small workflow path'));
+   assert.ok(prompt('build:beta/feature').includes('worktree-create loop/beta --base-branch main'));
+@@ -92,6 +100,29 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
+   assert.equal(logs.at(-1), JSON.stringify(result)); // the completion channel's belt-and-braces echo
+ });
+ 
++// ── build-agent-title-progress criterion 3: undivided builds (a small workflow path,
++// or a standard plan that returned exactly one task) never carry an ordinal prefix —
++// `(1/1)` is pure noise, so both stay the bare `<feature>/<task>` run-presentation shape.
++test('a single-task standard plan and a small-workflow build both carry the bare build label — never a redundant (1/1)', async () => {
++  const singleTask = [{ id: 'only', title: 'sole task', covers: [1], acceptance: ['only passes'], footprint: ['src/only.js'], size: 's', depends_on: [] }];
++  const args = executionContextOf([feature('alpha'), feature('beta')]);
++  const replies = byLabel({
++    'plan:alpha': { returns: { result: 'planned', workflow_path: 'standard', tasks: singleTask } },
++    'build:alpha/only': built('alpha/only'),
++    'validate:alpha': validated('alpha'),
++    'plan:beta': { returns: { result: 'planned', workflow_path: 'small' } },
++    'build:beta/feature': built('beta/feature'),
++    'validate:beta': validated('beta'),
++  });
++
++  const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
++
++  const buildLabels = spawns.filter((s) => s.opts.agentType === 'build').map((s) => s.opts.label);
++  assert.deepEqual(buildLabels, ['alpha/only', 'beta/feature']);
++  assert.ok(buildLabels.every((l) => !l.startsWith('(')), 'a single-task standard plan and a small-workflow build never carry an ordinal prefix');
++  assert.deepEqual(result.completed.toSorted((a, b) => a.localeCompare(b)), ['alpha', 'beta']);
++});
++
+ // ── resume: a plan already in the execution context skips Plan; git-derived builtTasks skip their builds ──
+ test('a feature whose plan is already in the execution context skips Plan and resumes Build at the first task git has not landed', async () => {
+   const plan = { designVersion: 8, tasks: [
+@@ -100,13 +131,16 @@ test('a feature whose plan is already in the execution context skips Plan and re
+   ] };
+   const args = executionContextOf([feature('gamma', { plan, builtTasks: ['g1'] })]);
+   const replies = byLabel({
+-    'build:gamma/g2': built('gamma/g2'),
++    // build-agent-title-progress: g2's position stays its fixed plan-array slot (2/2)
++    // even though g1 already landed and never spawns — a resume never re-bases to (1/2).
++    'build:(2/2) gamma/g2': built('gamma/g2'),
+     'validate:gamma': validated('gamma'),
+   });
+ 
+   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
+ 
+   assert.deepEqual(spawns.map((s) => s.opts.agentType), ['build', 'validate']); // no plan spawn, no g1 spawn
++  assert.equal(spawns[0].opts.label, '(2/2) gamma/g2');
+   assert.ok(spawns[0].prompt.includes('worktree-create loop/gamma--g2 --base-branch loop/gamma--g1'));
+   assert.ok(spawns[1].prompt.includes('merge, in order: loop/gamma, loop/gamma--g1, loop/gamma--g2'));
+   assert.deepEqual(result.completed, ['gamma']);
+@@ -154,8 +188,8 @@ test('build spawns route through build.<judgment_level> bindings and every label
+   });
+   const replies = byLabel({
+     'plan:alpha': { returns: { result: 'planned', workflow_path: 'standard', tasks } },
+-    'build:alpha/t1': built('alpha/t1'),
+-    'build:alpha/t2': built('alpha/t2'),
++    'build:(1/2) alpha/t1': built('alpha/t1'),
++    'build:(2/2) alpha/t2': built('alpha/t2'),
+     'validate:alpha': validated('alpha'),
+   });
+ 
+@@ -165,8 +199,8 @@ test('build spawns route through build.<judgment_level> bindings and every label
+   // (run-presentation dropped the agentType prefix) — key on agentType + label instead.
+   const optsByLabel = Object.fromEntries(spawns.map((s) => [`${s.opts.agentType}:${s.opts.label}`, s.opts]));
+   assert.equal('model' in optsByLabel['plan:alpha'], false, 'an unbound role passes no model opt');
+-  assert.equal(optsByLabel['build:alpha/t1'].model, 'opus');
+-  assert.equal('model' in optsByLabel['build:alpha/t2'], true, 'an unrated task routes build.standard');
++  assert.equal(optsByLabel['build:(1/2) alpha/t1'].model, 'opus');
++  assert.equal('model' in optsByLabel['build:(2/2) alpha/t2'], true, 'an unrated task routes build.standard');
+   assert.equal(optsByLabel['validate:alpha'].effort, 'high', 'a bound effort rides the spawn');
+   assert.ok(logs.includes('model-selection — role plan unbound, session-model fallback'));
+   assert.ok(logs.includes('model-selection — task alpha/t2 has no judgment_level, routing build.standard'));
+diff --git a/workflows/execution-pipeline.js b/workflows/execution-pipeline.js
+index f6127fe..41c1250 100644
+--- a/workflows/execution-pipeline.js
++++ b/workflows/execution-pipeline.js
+@@ -247,19 +247,23 @@ async function runPlan(f) {
+   return { workflow_path: 'standard', tasks: planned.tasks };
+ }
+ 
+-function buildSpawnOpts(f, task, binding) {
+-  return { agentType: agentTypeFor('build'), label: `${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
++function buildSpawnOpts(f, task, { binding, prefix = '' }) {
++  return { agentType: agentTypeFor('build'), label: `${prefix}${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
+ }
+ 
+-async function runTask(f, task, prompt) {
++// `prefix` is `(<pos>/<N>) ` when the feature built as 2+ tasks (computed by `runBuild`
++// from the task's position in the plan's task array), empty otherwise — the sole source
++// of the ordinal is that array, never the task id (build-agent-title-progress). It rides
++// both the ordinary build label and the drive-path override below.
++async function runTask(f, task, { prompt, prefix = '' }) {
+   if (task.judgment_level == null) { log(`model-selection — task ${f.id}/${task.id} has no judgment_level, routing build.standard`); }
+   const binding = roleBinding(`build.${task.judgment_level ?? 'standard'}`);
+-  const opts = buildSpawnOpts(f, task, binding);
++  const opts = buildSpawnOpts(f, task, { binding, prefix });
+   if (binding.executor && binding.executor !== 'agent') {
+     const driveBinding = hasRole(`drive.${binding.executor}`) ? modelTable[`drive.${binding.executor}`] : roleBinding('drive');
+     log(`model-selection — task ${f.id}/${task.id} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
+     return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
+-      ...opts, agentType: agentTypeFor('drive'), label: `${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
++      ...opts, agentType: agentTypeFor('drive'), label: `${prefix}${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
+     }, f.id);
+   }
+   return spawn(prompt, opts, f.id);
+@@ -285,6 +289,11 @@ function taskOutcome(f, r) {
+ async function runBuild(f, tasks) {
+   const tasksById = new Map(tasks.map((t) => [t.id, t]));
+   const already = new Set(f.builtTasks || []);
++  // Position is the task's fixed 1-based slot in the plan's declared task array — never
++  // the DAG build order (concurrent, so it varies run to run) and never parsed from the
++  // free-form task id. A single-task plan gets no prefix; `(1/1)` is pure noise.
++  const positionOf = new Map(tasks.map((t, i) => [t.id, i + 1]));
++  const prefixFor = (id) => (tasks.length >= 2 ? `(${positionOf.get(id)}/${tasks.length}) ` : '');
+   let didAllLand = true;
+   await runConcurrencyPolicy({
+     ids: tasks.map((t) => t.id),
+@@ -295,7 +304,7 @@ async function runBuild(f, tasks) {
+       const deps = task.depends_on || [];
+       const base = deps.length > 0 ? taskBranch(f, deps[0]) : f.branch;
+       const mergeBranches = deps.slice(1).map((d) => taskBranch(f, d));
+-      const outcome = taskOutcome(f, await runTask(f, task, buildPrompt(f, task, { base, mergeBranches })));
++      const outcome = taskOutcome(f, await runTask(f, task, { prompt: buildPrompt(f, task, { base, mergeBranches }), prefix: prefixFor(id) }));
+       if (outcome !== true) { didAllLand = false; }
+       return outcome;
+     },
+@@ -307,7 +316,7 @@ async function runBuild(f, tasks) {
+ async function runSmallBuild(f) {
+   if ((f.branchHead || '').startsWith(`${f.id}/feature: `)) { return true; } // already landed
+   const task = { id: 'feature', title: f.title, acceptance: f.acceptance };
+-  return taskOutcome(f, await runTask(f, task, smallBuildPrompt(f))) === true;
++  return taskOutcome(f, await runTask(f, task, { prompt: smallBuildPrompt(f) })) === true;
+ }
+ 
+ // depends_on-respecting topological order over task contracts.

@@ -1,0 +1,14 @@
+{
+  "id": "v07-runpres-regression",
+  "kind": "validate",
+  "feature_source": "run-presentation",
+  "landing_sha": "1b08e584f3fdbcd771363261bd36a1484ecca295",
+  "parent_sha": "51240e1f719bddc4dd22d0acc43af656aa89e92b",
+  "verdict": "fail",
+  "expected_findings": [
+    ["haiku", "grok-build", "drive model", "drive binding", "executor model", "execution-pipeline-drive"]
+  ],
+  "defect": "defect.sh",
+  "caps": { "grok_max_turns": 200, "wall_clock_s": 1500 },
+  "canary": []
+}

@@ -1,0 +1,237 @@
+commit 2f5e1630563079566bd7089d1b79809113640e04
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Sun Jul 5 22:10:09 2026 -0400
+
+    proposed-status: `proposed` backlog stage — feature status enum expansion
+
+diff --git a/src/feature-schema.js b/src/feature-schema.js
+index 31cdd60..7a73f55 100644
+--- a/src/feature-schema.js
++++ b/src/feature-schema.js
+@@ -3,11 +3,13 @@
+ // contract (block); warnings inform but don't block.
+ 
+ /**
+- * The durable lifecycle a feature record moves through (ADR-0034): what has *landed*.
+- * Everything in-flight — planned, building, blocked-on-a-question — is derived from
+- * git (branches, plan files, task commits) at execution-context time, never stored here.
++ * The durable lifecycle a feature record moves through (ADR-0034/0045): `proposed`
++ * is the backlog stage — recorded intent with no design doc yet, not "landed" but
++ * durable all the same. Everything in-flight — planned, building,
++ * blocked-on-a-question — is derived from git (branches, plan files, task commits)
++ * at execution-context time, never stored here.
+  */
+-export const STATUS = ['designed', 'validated', 'shipped'];
++export const STATUS = ['proposed', 'designed', 'validated', 'shipped'];
+ 
+ /**
+  * Ids become git refs (`loop/<id>`) and file paths (`docs/plans/<id>/plan.md`)
+@@ -76,11 +78,13 @@ function collectIds(items, err, codes) {
+   return ids;
+ }
+ 
+-// Per-feature field checks: title, status, acceptance.
++// Per-feature field checks: title, status, acceptance. Acceptance is Design's
++// output, not intake's — a `proposed` record (recorded intent, not yet designed)
++// is exempt; every other status still requires it.
+ function checkFeatureFields(f, err) {
+   if (!f.title) { err('missing-title', 'feature has no title', f.id); }
+   if (!STATUS.includes(f.status)) { err('bad-status', `status must be one of ${STATUS.join('|')} (got ${JSON.stringify(f.status)})`, f.id); }
+-  if (!hasAcceptance(f.acceptance)) { err('missing-acceptance', 'feature has no acceptance criterion', f.id); }
++  if (f.status !== 'proposed' && !hasAcceptance(f.acceptance)) { err('missing-acceptance', 'feature has no acceptance criterion', f.id); }
+ }
+ 
+ // Per-feature reference checks: depends_on edges.
+diff --git a/src/propose-next-action.js b/src/propose-next-action.js
+index af8c9a4..e57a419 100644
+--- a/src/propose-next-action.js
++++ b/src/propose-next-action.js
+@@ -19,7 +19,7 @@ const DONE = new Set(['validated', 'shipped']);
+ 
+ /**
+  * @typedef {Object} Proposal
+- * @property {'onboard'|'repair'|'advance-eligible-set'|'release'|'new-intake'|'blocked'} kind
++ * @property {'onboard'|'repair'|'advance-eligible-set'|'design'|'release'|'new-intake'|'blocked'} kind
+  * @property {string[]} features  the ids the proposal concerns
+  * @property {string} summary     one sentence; the command surface expands it
+  */
+@@ -55,11 +55,51 @@ export function eligibleSet(model) {
+   );
+ }
+ 
++// A node's depends_on ids that aren't already DONE — the edges that could block it.
++function unsatisfiedDeps(node, satisfied) {
++  return (node.depends_on || []).filter((dep) => !satisfied(dep));
++}
++
++// One node's unsatisfied deps: a `proposed` one is a terminal blocker, anything
++// else unresolved (a `designed` dep, typically) re-queues the chain.
++function queueBlockers(node, { byId, satisfied, queue, blockers }) {
++  for (const dep of unsatisfiedDeps(node, satisfied)) {
++    const depNode = byId.get(dep); // a dangling dep is reported by validate() elsewhere
++    if (depNode?.status === 'proposed') { blockers.add(dep); }
++    else if (depNode) { queue.push(dep); }
++  }
++}
++
++// The proposed features a stuck designed feature is blocked behind, transitively:
++// walk each stuck feature's unsatisfied depends_on edges (DONE deps aren't
++// blocking); a `proposed` dep is a terminal blocker, a `designed` dep keeps the
++// chain going. Visited-tracking makes this safe over a cycle (which yields no
++// proposed blocker at all — the `blocked` safety net's job).
++function blockingProposedIds(model, stuckIds) {
++  const byId = new Map((model.features || []).map((f) => [f.id, f]));
++  const satisfied = (id) => { const d = byId.get(id); return !!d && DONE.has(d.status); };
++  const blockers = new Set();
++  const visited = new Set();
++  const queue = [...stuckIds];
++  while (queue.length > 0) {
++    const id = queue.shift();
++    if (visited.has(id)) { continue; }
++    visited.add(id);
++    const node = byId.get(id);
++    if (node) { queueBlockers(node, { byId, satisfied, queue, blockers }); }
++  }
++  return [...blockers];
++}
++
+ /**
+  * The next-action proposal /the-loop opens with. Precedence: the drainable eligible
+- * set, then Release, then a fresh intake. `blocked` is the safety net: unreachable on a
+- * validate-clean graph (acyclic + no dangling edges ⇒ some designed feature has a
+- * satisfied eligible set), so seeing it means the graph needs repair.
++ * set; then, if designed work is stuck, `design` naming the proposed dependencies
++ * that explain the stall; then Release; then `design` again to drain a proposed-only
++ * backlog; then a fresh intake. `blocked` is the true safety net: on a validate-clean
++ * graph (acyclic + no dangling edges), the base case that used to make it
++ * unreachable now has exactly one exception — a stall bottoming out at proposed
++ * dependencies reads as `design`, not `blocked` — so seeing `blocked` still means
++ * the graph needs repair (e.g. a dependency cycle among designed features).
+  * @param {import('./parse-feature-graph.js').DesignModel} model
+  * @returns {Proposal}
+  */
+@@ -74,6 +114,11 @@ export function propose(model) {
+   }
+   const stuck = withStatus('designed');
+   if (stuck.length > 0) {
++    const blocking = blockingProposedIds(model, stuck);
++    if (blocking.length > 0) {
++      return { kind: 'design', features: blocking,
++        summary: `${blocking.length} proposed feature(s) block the stuck designed set — design them first` };
++    }
+     return { kind: 'blocked', features: stuck,
+       summary: 'designed features exist but none are actionable — the graph needs repair' };
+   }
+@@ -82,6 +127,11 @@ export function propose(model) {
+     return { kind: 'release', features: validated,
+       summary: 'everything buildable is validated — ready to release' };
+   }
++  const proposed = withStatus('proposed');
++  if (proposed.length > 0) {
++    return { kind: 'design', features: proposed,
++      summary: `${proposed.length} proposed feature(s) are the whole remaining backlog — design them next` };
++  }
+   return { kind: 'new-intake', features: [],
+     summary: 'everything is shipped — bring the next intake' };
+ }
+diff --git a/test/feature-schema.test.js b/test/feature-schema.test.js
+index ee4fc8c..5352597 100644
+--- a/test/feature-schema.test.js
++++ b/test/feature-schema.test.js
+@@ -10,8 +10,8 @@ function model(featuresYaml) {
+ }
+ const codes = (issues) => issues.map((i) => i.code);
+ 
+-test('STATUS holds the three durable lifecycle states', () => {
+-  assert.deepEqual(STATUS, ['designed', 'validated', 'shipped']);
++test('STATUS holds the four durable lifecycle states, proposed leading', () => {
++  assert.deepEqual(STATUS, ['proposed', 'designed', 'validated', 'shipped']);
+ });
+ 
+ test('a clean model validates ok', () => {
+@@ -28,6 +28,18 @@ test('bad status, duplicate id, and missing acceptance are errors', () => {
+   assert.equal(v.ok, false);
+ });
+ 
++test('a proposed feature needs no acceptance, but a designed feature missing acceptance still fails', () => {
++  // proposed: id + title is enough — acceptance is Design's output, not intake's.
++  const proposed = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: proposed'));
++  assert.equal(proposed.ok, true);
++  assert.deepEqual(proposed.errors, []);
++
++  // designed, same shape, no acceptance: the existing gate still holds.
++  const designed = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: designed'));
++  assert.ok(codes(designed.errors).includes('missing-acceptance'));
++  assert.equal(designed.ok, false);
++});
++
+ test('self and dangling dependencies are errors', () => {
+   const v = validate(model('design_version: 1\nfeatures:\n  - id: a\n    title: A\n    status: designed\n    acceptance: x\n    depends_on: [a, ghost]'));
+   assert.ok(codes(v.errors).includes('self-dependency'));
+diff --git a/test/propose-next-action.test.js b/test/propose-next-action.test.js
+index 82a24bb..fd9f731 100644
+--- a/test/propose-next-action.test.js
++++ b/test/propose-next-action.test.js
+@@ -117,3 +117,30 @@ test('an exhausted-but-unfinished graph is blocked (the repair safety net)', ()
+   assert.equal(p.kind, 'blocked');
+   assert.deepEqual(p.features, ['a', 'b']);
+ });
++
++// ── proposed-status: eligible-set exclusion, and the `design` proposal ──
++test('a designed feature depending on a proposed one is excluded from the eligible set; the machine orientation proposes kind design naming the blocking proposed id, direct or transitive', () => {
++  const direct = repo({ graphText: graph(feat('backlog', 'proposed'), feat('blocked-feature', 'designed', ['backlog'])) });
++  const o = machineOrientation(direct);
++  assert.deepEqual(o.eligibleSet, []); // never enters the eligible set
++  assert.equal(o.proposal.kind, 'design');
++  assert.deepEqual(o.proposal.features, ['backlog']);
++
++  // transitive: chained depends on gate, which depends on the proposed backlog item —
++  // the proposal names only the proposed root cause, not the intermediate designed link.
++  const chainedRoot = repo({
++    graphText: graph(
++      feat('backlog', 'proposed'),
++      feat('gate', 'designed', ['backlog']),
++      feat('chained', 'designed', ['gate']),
++    ),
++  });
++  assert.deepEqual(machineOrientation(chainedRoot).proposal.features, ['backlog']);
++});
++
++test('on a graph whose only unshipped features are proposed, the machine orientation proposes kind design naming them, never new-intake', () => {
++  const root = repo({ graphText: graph(feat('done', 'shipped'), feat('next-up', 'proposed'), feat('later', 'proposed')) });
++  const o = machineOrientation(root);
++  assert.equal(o.proposal.kind, 'design');
++  assert.deepEqual(o.proposal.features, ['next-up', 'later']);
++});
+diff --git a/test/status-summary.test.js b/test/status-summary.test.js
+index 5851bf8..f0af3b3 100644
+--- a/test/status-summary.test.js
++++ b/test/status-summary.test.js
+@@ -22,6 +22,7 @@ const EXPECTED = `# Status — projected from docs/feature-graph.md
+ 
+ Total: 4 feature(s) at design_version 3
+ 
++- proposed: 0
+ - designed: 2
+ - validated: 1
+ - shipped: 1
+@@ -41,6 +42,19 @@ test('renderStatusSummary renders counts, the dependency-ready Next line, and th
+   assert.equal(renderStatusSummary(MODEL), renderStatusSummary(MODEL)); // same model, same bytes
+ });
+ 
++test('the four-stage counts render, proposed included', () => {
++  const withBacklog = {
++    designVersion: 1,
++    features: [
++      { id: 'backlog-item', title: 'Backlog item', status: 'proposed', depends_on: [] },
++      { id: 'widget', title: 'Widget', status: 'designed', depends_on: [], acceptance: 'x' },
++      { id: 'gadget', title: 'Gadget', status: 'validated', depends_on: [], acceptance: 'x' },
++      { id: 'sprocket', title: 'Sprocket', status: 'shipped', depends_on: [], acceptance: 'x' },
++    ],
++  };
++  assert.match(renderStatusSummary(withBacklog), /- proposed: 1\n- designed: 1\n- validated: 1\n- shipped: 1/);
++});
++
+ test('with nothing dependency-ready, the Next line says so', () => {
+   const drained = {
+     designVersion: 1,

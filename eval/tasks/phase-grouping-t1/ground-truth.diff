@@ -1,0 +1,295 @@
+commit 0c5062d3225c1d0958f859611186418a478f4dfc
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Sat Jul 4 15:36:35 2026 -0400
+
+    workflow-phase-grouping: validated at design_version 8
+
+diff --git a/test/inner-loop-drive.test.js b/test/inner-loop-drive.test.js
+index 6507116..485c38e 100644
+--- a/test/inner-loop-drive.test.js
++++ b/test/inner-loop-drive.test.js
+@@ -57,7 +57,7 @@ test('a via-bound build.<tier> binding spawns agentType drive with the pinned pr
+ 
+   const driveSpawn = spawns[1];
+   assert.equal(driveSpawn.opts.agentType, 'drive');
+-  assert.equal(driveSpawn.opts.phase, 'alpha');
++  assert.equal(driveSpawn.opts.phase, 'Build');
+   assert.deepEqual(driveSpawn.opts.schema.properties.result.enum, ['built', 'blocked']); // BUILD_SCHEMA, unchanged
+   assert.equal(driveSpawn.prompt, 'feature: alpha\ntask: t1\nexecutor: grok\nexecutor-model: grok-build');
+   assert.equal(driveSpawn.opts.label, '[sonnet] drive:alpha/t1 via grok/grok-build');
+diff --git a/test/inner-loop-halt.test.js b/test/inner-loop-halt.test.js
+index 0e83fd5..e3a2d17 100644
+--- a/test/inner-loop-halt.test.js
++++ b/test/inner-loop-halt.test.js
+@@ -68,7 +68,16 @@ test('an environment-kind blocked build return halts the run, preserving complet
+ 
+   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+ 
+-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'alpha', 'alpha', 'alpha', 'beta', 'gamma', 'gamma']);
++  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate', 'Plan', 'Plan', 'Build']);
++  assert.deepEqual(spawns.map((s) => s.opts.label), [
++    '[session] plan:alpha',
++    '[session] build:alpha/alpha1',
++    '[session] derive:alpha',
++    '[session] validate:alpha',
++    '[session] plan:beta',
++    '[session] plan:gamma',
++    '[session] build:gamma/g1',
++  ]); // delta never appears — the halt fires before delta's plan spawns
+   assert.deepEqual(result.completed, ['alpha']);
+   assert.deepEqual(result.parked, [{ feature: 'beta', deviation: bounce.deviation, menu: bounce.menu }]);
+   assert.deepEqual(result.halted, { reason: 'environment-blocked', detail: envBlock.detail });
+@@ -152,7 +161,14 @@ test('a thrown error named for budget exhaustion halts the run; message text alo
+ 
+   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+ 
+-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'alpha', 'alpha', 'alpha', 'beta']);
++  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate', 'Plan']);
++  assert.deepEqual(spawns.map((s) => s.opts.label), [
++    '[session] plan:alpha',
++    '[session] build:alpha/alpha1',
++    '[session] derive:alpha',
++    '[session] validate:alpha',
++    '[session] plan:beta',
++  ]); // beta never gets past its plan spawn — the budget halt fires there
+   assert.deepEqual(result.completed, ['alpha']);
+   assert.deepEqual(result.halted, { reason: 'budget-exhausted', detail: budgetError.message });
+   assert.deepEqual(result.budget, budget);
+@@ -177,7 +193,7 @@ test('an error whose message merely mentions budget, but isn\'t named or coded f
+   const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+ 
+   assert.equal(result.halted, undefined);
+-  assert.deepEqual(result.stalled, [{ feature: 'alpha', phase: 'plan', note: impostor.message }]);
++  assert.deepEqual(result.stalled, [{ feature: 'alpha', agent: 'plan', note: impostor.message }]);
+   assert.deepEqual(result.completed, ['beta']);
+ });
+ 
+@@ -203,8 +219,8 @@ test('a null return or any other thrown error stalls just that feature, and the
+   const { result } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+ 
+   assert.deepEqual(result.stalled, [
+-    { feature: 'alpha', phase: 'plan', note: 'agent returned null' },
+-    { feature: 'beta', phase: 'plan', note: crash.message },
++    { feature: 'alpha', agent: 'plan', note: 'agent returned null' },
++    { feature: 'beta', agent: 'plan', note: crash.message },
+   ]);
+   assert.deepEqual(result.completed, ['gamma']);
+   assert.equal(result.halted, undefined);
+@@ -232,7 +248,7 @@ test('a planned return without task summaries stalls the feature and the run con
+ 
+   assert.equal(result.stalled.length, 1);
+   assert.equal(result.stalled[0].feature, 'alpha');
+-  assert.equal(result.stalled[0].phase, 'plan');
++  assert.equal(result.stalled[0].agent, 'plan');
+   assert.ok(result.stalled[0].note.includes('no task summaries'), 'note names the gap');
+   assert.deepEqual(result.completed, ['gamma']);
+   assert.equal(result.halted, undefined);
+diff --git a/test/inner-loop-happy.test.js b/test/inner-loop-happy.test.js
+index eb260e8..9c99ced 100644
+--- a/test/inner-loop-happy.test.js
++++ b/test/inner-loop-happy.test.js
+@@ -62,7 +62,18 @@ test('a designed, dependency-linked pair runs Plan→Build→Derive→Validate p
+   // untiered, so both fall back to build.standard, unbound (session) in this fixture.
+   assert.equal(spawns[1].opts.label, '[session] build:alpha/t1');
+   assert.equal(spawns[2].opts.label, '[session] build:alpha/t2');
+-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'alpha', 'alpha', 'alpha', 'alpha', 'beta', 'beta', 'beta', 'beta']);
++  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Validate', 'Plan', 'Build', 'Validate', 'Validate']);
++  assert.deepEqual(spawns.map((s) => s.opts.label), [
++    '[session] plan:alpha',
++    '[session] build:alpha/t1',
++    '[session] build:alpha/t2',
++    '[opus] derive:alpha',
++    '[session] validate:alpha',
++    '[session] plan:beta',
++    '[session] build:beta/b1',
++    '[opus] derive:beta',
++    '[session] validate:beta',
++  ]);
+   assert.equal(spawns[3].opts.model, 'opus'); // derive resolves the bound model
+   assert.equal(spawns[3].opts.effort, 'low'); // and its bound effort — no longer hardcoded
+   assert.ok(spawns[3].prompt.includes(JSON.stringify(args.probe)), 'derive prompt carries the probe binding');
+diff --git a/test/inner-loop-meta.test.js b/test/inner-loop-meta.test.js
+new file mode 100644
+index 0000000..de6f8b1
+--- /dev/null
++++ b/test/inner-loop-meta.test.js
+@@ -0,0 +1,26 @@
++// The meta declaration's own source shape (ADR-0029): every workflow script's `meta`
++// sits on a single physical line so the eslint processor (eslint.config.js) can rewrite
++// it in place without a multi-line-aware parse. This test pins that shape independently
++// of the lint processor — it extracts the `export const meta = { ... };` declaration
++// straight from workflows/inner-loop.js's source text and evaluates only that line, never
++// running the rest of the script, then asserts the declared `phases` in order and shape.
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { test } from 'node:test';
++
++const SCRIPT = 'workflows/inner-loop.js';
++
++// ── criteria 1 & 2: `phases` deep-equals the three title-only SDLC entries in order,
++// extracted from the meta declaration's single physical line — the regex has no `s`
++// flag, so it can only match a declaration that ends in `;` before any newline, and a
++// future meta spread across multiple lines leaves no match, failing the assert below
++// rather than passing silently ──
++test("the meta declaration's single line pins phases to the three title-only SDLC entries in order", () => {
++  const source = readFileSync(SCRIPT, 'utf8');
++  const match = source.match(/^export const meta\b.*;$/m);
++  assert.ok(match, 'expected `export const meta = { ... };` on a single physical line ending in `;`');
++
++  const meta = new Function(`${match[0].replace(/^export /, '')}\nreturn meta;`)();
++
++  assert.deepEqual(meta.phases, [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }]);
++});
+diff --git a/test/inner-loop-park.test.js b/test/inner-loop-park.test.js
+index bef611b..66216b3 100644
+--- a/test/inner-loop-park.test.js
++++ b/test/inner-loop-park.test.js
+@@ -41,7 +41,14 @@ test('a plan bounce parks the feature with its deviation and menu carried verbat
+   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+ 
+   assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'plan', 'build', 'derive', 'validate']);
+-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'beta', 'beta', 'beta', 'beta']);
++  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Plan', 'Build', 'Validate', 'Validate']);
++  assert.deepEqual(spawns.map((s) => s.opts.label), [
++    '[session] plan:alpha',
++    '[session] plan:beta',
++    '[session] build:beta/b1',
++    '[session] derive:beta',
++    '[session] validate:beta',
++  ]);
+   assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: bounce.deviation, menu: bounce.menu }]);
+   assert.deepEqual(result.completed, ['beta']);
+   assert.deepEqual(result.stalled, []);
+@@ -165,7 +172,13 @@ test('a validate blocked return with kind feature parks and drains; kind environ
+   const { result: envResult, spawns: envSpawns } = await runWorkflowScript(SCRIPT, { agentReplies: envReplies, args: envArgs, budget });
+ 
+   assert.deepEqual(envResult.halted, { reason: 'environment-blocked', detail: envBlock.detail });
+-  assert.deepEqual(envSpawns.map((s) => s.opts.phase), ['gamma', 'gamma', 'gamma', 'gamma']); // delta never spawns
++  assert.deepEqual(envSpawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Validate', 'Validate']); // delta never spawns
++  assert.deepEqual(envSpawns.map((s) => s.opts.label), [
++    '[session] plan:gamma',
++    '[session] build:gamma/g1',
++    '[session] derive:gamma',
++    '[session] validate:gamma',
++  ]); // delta appears in none of them
+   assert.deepEqual(envResult.completed, []);
+ });
+ 
+@@ -197,7 +210,14 @@ test('a dependent of a parked feature never spawns, while an independent feature
+ 
+   const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies, args, budget });
+ 
+-  assert.deepEqual(spawns.map((s) => s.opts.phase), ['alpha', 'gamma', 'gamma', 'gamma', 'gamma']); // beta contributes none
++  assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Plan', 'Build', 'Validate', 'Validate']); // beta contributes none
++  assert.deepEqual(spawns.map((s) => s.opts.label), [
++    '[session] plan:alpha',
++    '[session] plan:gamma',
++    '[session] build:gamma/g1',
++    '[session] derive:gamma',
++    '[session] validate:gamma',
++  ]); // beta never appears — the drain excludes the parked feature's dependent
+   assert.ok(logs.some((l) => l.includes('beta')), 'beta was skipped via a log() line, never an error');
+   assert.deepEqual(result.completed, ['gamma']);
+   assert.deepEqual(result.parked, [{ feature: 'alpha', deviation: bounce.deviation, menu: bounce.menu }]);
+diff --git a/test/inner-loop-remediation.test.js b/test/inner-loop-remediation.test.js
+index ba78b11..f014dc9 100644
+--- a/test/inner-loop-remediation.test.js
++++ b/test/inner-loop-remediation.test.js
+@@ -89,7 +89,7 @@ test('a second remediation-pending on the same feature stalls with a protocol-vi
+ 
+   assert.deepEqual(spawns.map((s) => s.opts.agentType), ['plan', 'build', 'derive', 'validate', 'build', 'validate']);
+   assert.deepEqual(result.stalled, [
+-    { feature: 'alpha', phase: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' },
++    { feature: 'alpha', agent: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' },
+   ]);
+   assert.deepEqual(result.completed, []);
+   assert.equal(result.halted, undefined);
+diff --git a/workflows/inner-loop.js b/workflows/inner-loop.js
+index aed2a45..50cf8de 100644
+--- a/workflows/inner-loop.js
++++ b/workflows/inner-loop.js
+@@ -6,7 +6,7 @@
+ // workflow script exports: a single `export const meta` line, and a bare top-level
+ // `return` of the BoundaryResult once the harness (and test/workflow-shim.js, in tests)
+ // applies its own async-body transform to this text.
+-export const meta = { name: 'inner-loop', description: 'One autonomous pass over the feature graph: Plan → Build → Validate per in-scope feature, park-and-drain, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the args orientation snapshot — never invoked bare' };
++export const meta = { name: 'inner-loop', description: 'One autonomous pass over the feature graph: Plan → Build → Validate per in-scope feature, park-and-drain, ending in a BoundaryResult', whenToUse: 'Launched by /the-loop with the args orientation snapshot — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
+ 
+ // Some callers deliver args as a JSON-encoded string rather than the parsed snapshot;
+ // normalize into a local before anything reads it — the launch leg cannot control the
+@@ -173,10 +173,10 @@ async function spawn(prompt, opts, featureId) {
+     r = await agent(prompt, opts);
+   } catch (error) {
+     if (isBudgetExhausted(error)) { return { halted: { reason: 'budget-exhausted', detail: error.message } }; }
+-    return { stalled: { feature: featureId, phase: opts.agentType, note: error.message } };
++    return { stalled: { feature: featureId, agent: opts.agentType, note: error.message } };
+   }
+   if (r == null) {
+-    return { stalled: { feature: featureId, phase: opts.agentType, note: 'agent returned null' } };
++    return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } };
+   }
+   if (isEnvironmentBlock(opts.agentType, r)) {
+     return { halted: { reason: 'environment-blocked', detail: haltDetail(r) } };
+@@ -203,7 +203,7 @@ function spawnDrive(featureId, task, binding) {
+   log(`model-selection — task ${featureId}/${task.id} routed via ${via}/${binding.model}, driver ${driverBinding.model}`);
+   const prompt = `feature: ${featureId}\ntask: ${task.id}\nexecutor: ${via}\nexecutor-model: ${binding.model}`;
+   return spawn(prompt, {
+-    agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${featureId}/${task.id} via ${via}/${binding.model}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(driverBinding),
++    agentType: 'drive', label: `${modelLabel(driverBinding)}drive:${featureId}/${task.id} via ${via}/${binding.model}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(driverBinding),
+   }, featureId);
+ }
+ 
+@@ -215,7 +215,7 @@ function spawnDrive(featureId, task, binding) {
+ // already booked durable, so the next pass re-enters Build with a corrected snapshot.
+ async function runBuild(featureId, tasks) {
+   if (!Array.isArray(tasks)) {
+-    return { stalled: { feature: featureId, phase: 'plan', note: 'no task summaries reached the script (planned return or args.plans entry empty) — plan artifact is booked; re-run with a corrected snapshot' } };
++    return { stalled: { feature: featureId, agent: 'plan', note: 'no task summaries reached the script (planned return or args.plans entry empty) — plan artifact is booked; re-run with a corrected snapshot' } };
+   }
+   const pending = orderTasks(tasks).filter((task) => task.status !== 'built');
+   for (const task of pending) {
+@@ -226,7 +226,7 @@ async function runBuild(featureId, tasks) {
+     const built = isViaBound(binding)
+       ? await spawnDrive(featureId, task, binding)
+       : await spawn(`feature: ${featureId}\ntask: ${task.id}`, {
+-        agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: featureId, schema: BUILD_SCHEMA, ...modelOpts(binding),
++        agentType: 'build', label: `${modelLabel(binding)}build:${featureId}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding),
+       }, featureId);
+     if (built.halted || built.stalled) { return built; }
+     if (built.result === 'blocked' && built.kind === 'feature') { return built; }
+@@ -239,7 +239,7 @@ async function runValidate(featureId, sheet) {
+   const binding = roleBinding('validate');
+   return spawn(
+     `feature: ${featureId}\nexpectation-sheet: ${JSON.stringify(sheet)}`,
+-    { agentType: 'validate', label: `${modelLabel(binding)}validate:${featureId}`, phase: featureId, schema: VALIDATE_SCHEMA, ...modelOpts(binding) },
++    { agentType: 'validate', label: `${modelLabel(binding)}validate:${featureId}`, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding) },
+     featureId,
+   );
+ }
+@@ -271,7 +271,7 @@ async function runRemediation(featureId, remediationTask, sheet) {
+ 
+   const verdict = await runValidate(featureId, sheet);
+   if (verdict.result !== 'remediation-pending') { return verdict; }
+-  return { stalled: { feature: featureId, phase: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' } };
++  return { stalled: { feature: featureId, agent: 'validate', note: 'a second remediation-pending on the same feature — protocol violation' } };
+ }
+ 
+ // Runs Plan when the feature enters `designed`; otherwise resumes from the task list
+@@ -281,7 +281,7 @@ async function runPlan(featureId) {
+   if (statusById.get(featureId) !== 'designed') { return { tasks: snapshot.plans[featureId] }; }
+   const binding = roleBinding('plan');
+   const planned = await spawn(`feature: ${featureId}`, {
+-    agentType: 'plan', label: `${modelLabel(binding)}plan:${featureId}`, phase: featureId, schema: PLAN_SCHEMA, ...modelOpts(binding),
++    agentType: 'plan', label: `${modelLabel(binding)}plan:${featureId}`, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
+   }, featureId);
+   if (isSignal(planned) || planned.result === 'bounce') { return planned; }
+   return { tasks: planned.tasks };
+@@ -294,7 +294,7 @@ async function runValidationCycle(featureId) {
+   const deriveBinding = roleBinding('derive');
+   const derived = await spawn(
+     `feature: ${featureId}\nslice: ${JSON.stringify(snapshot.slices[featureId])}\nprobe: ${JSON.stringify(snapshot.probe)}`,
+-    { agentType: 'derive', label: `${modelLabel(deriveBinding)}derive:${featureId}`, phase: featureId, schema: DERIVE_SCHEMA, ...modelOpts(deriveBinding) },
++    { agentType: 'derive', label: `${modelLabel(deriveBinding)}derive:${featureId}`, phase: 'Validate', schema: DERIVE_SCHEMA, ...modelOpts(deriveBinding) },
+     featureId,
+   );
+   if (isSignal(derived)) { return derived; }

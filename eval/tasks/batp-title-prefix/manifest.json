@@ -1,0 +1,25 @@
+{
+  "id": "batp-title-prefix",
+  "kind": "build",
+  "feature_source": "build-agent-title-progress",
+  "landing_sha": "e9a50df5a62e33716ebd24a017f073a4722f4f22",
+  "parent_sha": "3ac42a51efb17333964cb817a52b1644eb2c735b",
+  "judgment_level": "standard",
+  "size": "s",
+  "commit_subject": "build-agent-title-progress/feature: task-position prefix on divided-feature build labels",
+  "footprint": [
+    "workflows/execution-pipeline.js",
+    "test/execution-pipeline-blocked.test.js",
+    "test/execution-pipeline-drive.test.js",
+    "test/execution-pipeline-happy.test.js"
+  ],
+  "caps": { "grok_max_turns": 500, "wall_clock_s": 2400 },
+  "plant": null,
+  "oracle": true,
+  "canary": [
+    "of the ordinal is that array, never the task id",
+    "never bleeds into the task brief itself",
+    "is pure noise, so both stay the bare"
+  ],
+  "detect": { "protected_paths": [], "planted_markers": [] }
+}

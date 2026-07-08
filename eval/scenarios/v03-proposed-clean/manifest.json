@@ -1,0 +1,12 @@
+{
+  "id": "v03-proposed-clean",
+  "kind": "validate",
+  "feature_source": "proposed-status",
+  "landing_sha": "2f5e1630563079566bd7089d1b79809113640e04",
+  "parent_sha": "5c01aa0086b2d241b099619fb244f0726c902516",
+  "verdict": "validated",
+  "defect": "defect.sh",
+  "expected_findings": [],
+  "caps": { "grok_max_turns": 200, "wall_clock_s": 1500 },
+  "canary": []
+}

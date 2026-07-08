@@ -1,0 +1,126 @@
+commit 3a95473fc73e2c0b3c099b34c8fa962870803981
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Sun Jul 5 11:36:19 2026 -0400
+
+    worktree-parallelism: trivial-merge relaxation — compose-and-prove at every merge point
+    
+    Deletes the unordered-overlap plan-check error (footprint disjointness becomes
+    plan-agent bias, not lint law) and replaces the conflicts-impossible posture at
+    every merge point (build's sibling merge, validate's integration merge and
+    publish-rebase) with compose-and-prove: resolve a textual conflict only with a
+    resolution serving both sides' stated intents, proven by the merged suite going
+    green; otherwise blocked naming the conflicting paths (ADR-0042).
+
+diff --git a/src/plan.js b/src/plan.js
+index ea73544..202bf54 100644
+--- a/src/plan.js
++++ b/src/plan.js
+@@ -1,8 +1,10 @@
+ // The plan artifact (docs/plans/<feature-id>.md): parse + validate for the per-feature
+ // task-contract block — the Plan → Build handoff. Mirrors the design spine's split of
+-// concerns: parsePlan() is lenient and structural; semantics — coverage, overlap
+-// ordering, sizing, edges — live in validatePlan(); render.js handles the round-trip
+-// (its _blocks shape is shared).
++// concerns: parsePlan() is lenient and structural; semantics — coverage, sizing,
++// edges — live in validatePlan(); render.js handles the round-trip (its _blocks shape
++// is shared). Footprint overlap is not policed here (ADR-0042): disjointness is the
++// plan agent's bias, not a lint law — a shared file surfaces at the merge point,
++// which classifies it with better evidence than a lint-time guess ever could.
+ //
+ // A plan carries contracts only — no task status, no folded reports (ADR-0034/0037):
+ // a task's state is derived from git (its branch and commit exist or they don't), and
+@@ -46,7 +48,8 @@ export function planPath(featureId, root = 'docs/plans') {
+  * @property {string[]} footprint   expected files created/modified
+  * @property {string} size          xs | s | m
+  * @property {string} [tier]        rote|standard|complex — decision-density, stamped at Plan
+- * @property {string[]} depends_on  task-ordering edges (overlapping footprints must be chained)
++ * @property {string[]} depends_on  task-ordering edges (chain when shared-file edits genuinely
++ *   interact; unordered sharing is fine — ADR-0042)
+  * @property {string} [wiring]      short per-task wiring note — how this task connects to the rest
+  */
+ 
+@@ -125,7 +128,6 @@ export function validatePlan(plan, design) {
+ 
+   const cycle = findCycle(tasks);
+   if (cycle) { err('task-dependency-cycle', `depends_on cycle: ${cycle.join(' → ')}`, cycle[0]); }
+-  else { checkOverlaps(tasks, err); }
+ 
+   return { ok: errors.length === 0, errors, warnings };
+ }
+@@ -211,17 +213,6 @@ function checkCoverage({ feature, tasks, criteria, covered, err }) {
+   }
+ }
+ 
+-// Overlap serialization: shared footprint ⇒ an ordering path must exist. The inverse
+-// is the concurrency guarantee: two tasks with no ordering path between them are
+-// footprint-disjoint, so the scheduler may run them in parallel worktrees safely.
+-function checkOverlaps(tasks, err) {
+-  for (const [a, b, shared] of overlaps(tasks)) {
+-    if (!reaches(tasks, a.id, b.id) && !reaches(tasks, b.id, a.id)) {
+-      err('unordered-overlap', `tasks share files (${shared.join(', ')}) but neither orders before the other — chain them via depends_on`, `${a.id}+${b.id}`);
+-    }
+-  }
+-}
+-
+ /**
+  * Resolve one task into the kernel a build agent is handed (ADR-0036): the task
+  * contract plus the texts of the feature acceptance criteria it covers. The launch
+@@ -250,29 +241,3 @@ function hasAcceptance(a) {
+   if (Array.isArray(a)) {return a.length > 0 && a.every((x) => typeof x === 'string' && x.trim().length > 0);}
+   return false;
+ }
+-
+-function* overlaps(tasks) {
+-  for (let i = 0; i < tasks.length; i++) {
+-    const fa = new Set(tasks[i].footprint);
+-    for (let j = i + 1; j < tasks.length; j++) {
+-      const shared = tasks[j].footprint.filter((p) => fa.has(p));
+-      if (shared.length > 0) {yield [tasks[i], tasks[j], shared];}
+-    }
+-  }
+-}
+-
+-// Is `to` a transitive dependency of `from`? DFS over depends_on edges.
+-function reaches(tasks, from, to) {
+-  const edges = new Map(tasks.filter((t) => t.id).map((t) => [t.id, t.depends_on || []]));
+-  const seen = new Set();
+-  const stack = [from];
+-  while (stack.length > 0) {
+-    const id = stack.pop();
+-    const deps = edges.get(id) || [];
+-    for (const dep of deps) {
+-      if (dep === to) { return true; }
+-      if (!seen.has(dep)) { seen.add(dep); stack.push(dep); }
+-    }
+-  }
+-  return false;
+-}
+diff --git a/test/plan.test.js b/test/plan.test.js
+index 3387a66..a4a710c 100644
+--- a/test/plan.test.js
++++ b/test/plan.test.js
+@@ -99,18 +99,13 @@ test('a task may carry multiple acceptance criteria (string | string[])', () =>
+   assert.deepEqual(r.errors, []);
+ });
+ 
+-test('overlapping footprints without an ordering path are an error', () => {
++test('a plan whose unordered tasks share a footprint file passes plan check clean (ADR-0042: disjointness is bias, not law)', () => {
+   const m = model();
+-  m.tasks[1].depends_on = []; // both touch src/render.js, now unordered
+-  assert.ok(codes(validatePlan(m, DESIGN)).includes('unordered-overlap'));
+-});
+-
+-test('an ordering path through intermediate tasks satisfies overlap serialization', () => {
+-  const m = model();
+-  m.tasks[1].depends_on = ['t3'];
+-  m.tasks.push({ id: 't3', title: 'Mid', covers: [1], acceptance: 'x',
+-    footprint: ['src/mid.js'], size: 'xs', depends_on: ['t1'] });
+-  assert.ok(!codes(validatePlan(m, DESIGN)).includes('unordered-overlap')); // t2 → t3 → t1
++  m.tasks[1].depends_on = []; // both touch src/render.js, now unordered — no chain declared
++  const r = validatePlan(m, DESIGN);
++  assert.ok(r.ok);
++  assert.deepEqual(r.errors, []);
++  assert.ok(!codes(r).includes('unordered-overlap')); // the rule is gone, not just quiet here
+ });
+ 
+ test('task edge integrity: duplicates, dangling, self, cycles', () => {

@@ -1,0 +1,22 @@
+{
+  "id": "worktree-parallelism-t1-overlap",
+  "kind": "build",
+  "feature_source": "worktree-parallelism",
+  "landing_sha": "3a95473fc73e2c0b3c099b34c8fa962870803981",
+  "parent_sha": "f7f729a977947ddfe45af2c68b06d37d8965c849",
+  "judgment_level": "standard",
+  "size": "s",
+  "commit_subject": "worktree-parallelism/overlap: drop the unordered-overlap plan-check lint",
+  "footprint": [
+    "src/plan.js",
+    "test/plan.test.js"
+  ],
+  "caps": { "grok_max_turns": 500, "wall_clock_s": 2400 },
+  "plant": null,
+  "oracle": true,
+  "canary": [
+    "better evidence than a lint-time guess ever could",
+    "plan agent's bias, not a lint law"
+  ],
+  "detect": { "protected_paths": [], "planted_markers": [] }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "run-presentation-t1-splice",
+  "kind": "build",
+  "feature_source": "run-presentation",
+  "landing_sha": "1b08e584f3fdbcd771363261bd36a1484ecca295",
+  "parent_sha": "51240e1f719bddc4dd22d0acc43af656aa89e92b",
+  "judgment_level": "standard",
+  "size": "m",
+  "commit_subject": "run-presentation/splice: scope-derived workflow description via prepare-execution-context --script-out",
+  "footprint": [
+    "src/splice-workflow-description.js",
+    "bin/cli-commands.js",
+    "test/splice-workflow-description.test.js",
+    "test/prepare-execution-context-script-out.test.js"
+  ],
+  "caps": {
+    "grok_max_turns": 500,
+    "wall_clock_s": 2400
+  },
+  "plant": "plant.sh",
+  "oracle": true,
+  "canary": [
+    "can't be misread as a $&/$1-style replacement pattern",
+    "never hands back an unspliced copy"
+  ],
+  "detect": {
+    "protected_paths": [],
+    "planted_markers": []
+  }
+}

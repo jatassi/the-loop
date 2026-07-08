@@ -1,0 +1,117 @@
+commit 1b08e584f3fdbcd771363261bd36a1484ecca295
+Author: Jackson Atassi <jackson.atassi@outlook.com>
+Date:   Sun Jul 5 23:09:21 2026 -0400
+
+    run-presentation: scope-derived workflow description + prefix-free spawn labels
+
+diff --git a/test/execution-pipeline-drive.test.js b/test/execution-pipeline-drive.test.js
+index a36266a..1d63d35 100644
+--- a/test/execution-pipeline-drive.test.js
++++ b/test/execution-pipeline-drive.test.js
+@@ -42,7 +42,7 @@ test('an executor-bound judgment_level routes to the drive agent with the execut
+ 
+   const drive = spawns.find((s) => s.opts.agentType === 'drive');
+   assert.ok(drive, 'the rote task spawned the drive agent');
+-  assert.equal(drive.opts.label, 'drive:alpha/t1 via grok');
++  assert.equal(drive.opts.label, 'alpha/t1 via grok'); // bare — no agentType prefix (run-presentation)
+   assert.equal(drive.opts.model, 'haiku'); // the drive binding, never the executor model
+   assert.equal(drive.opts.phase, 'Build');
+   assert.ok(drive.prompt.startsWith('executor: grok · executor-model: grok-build\n'));
+diff --git a/test/execution-pipeline-happy.test.js b/test/execution-pipeline-happy.test.js
+index 0a01b13..424666e 100644
+--- a/test/execution-pipeline-happy.test.js
++++ b/test/execution-pipeline-happy.test.js
+@@ -52,11 +52,17 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
+ 
+   const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
+ 
+-  const labels = spawns.map((s) => s.opts.label.replace(/^\[[^\]]*\] /, ''));
++  const labels = spawns.map((s) => `${s.opts.agentType}:${s.opts.label}`);
+   assert.deepEqual(labels, [
+     'plan:alpha', 'build:alpha/t1', 'build:alpha/t2', 'validate:alpha',
+     'plan:beta', 'build:beta/feature', 'validate:beta',
+   ]);
++  // run-presentation: no spawn label itself carries a phase/agentType prefix — the phase
++  // box (asserted right below) is the sole disambiguator, so plan and validate on the
++  // same feature share one bare label, `<feature>`.
++  assert.deepEqual(spawns.map((s) => s.opts.label), [
++    'alpha', 'alpha/t1', 'alpha/t2', 'alpha', 'beta', 'beta/feature', 'beta',
++  ]);
+   assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Plan', 'Build', 'Validate']);
+ 
+   const prompt = (label) => spawns[labels.indexOf(label)].prompt;
+@@ -154,7 +160,9 @@ test('build spawns route through build.<judgment_level> bindings and every label
+ 
+   const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
+ 
+-  const optsByLabel = Object.fromEntries(spawns.map((s) => [s.opts.label, s.opts]));
++  // Bare labels alone no longer disambiguate plan from validate on the same feature
++  // (run-presentation dropped the agentType prefix) — key on agentType + label instead.
++  const optsByLabel = Object.fromEntries(spawns.map((s) => [`${s.opts.agentType}:${s.opts.label}`, s.opts]));
+   assert.equal('model' in optsByLabel['plan:alpha'], false, 'an unbound role passes no model opt');
+   assert.equal(optsByLabel['build:alpha/t1'].model, 'opus');
+   assert.equal('model' in optsByLabel['build:alpha/t2'], true, 'an unrated task routes build.standard');
+diff --git a/test/execution-pipeline-harness.js b/test/execution-pipeline-harness.js
+index 5288867..4d2721e 100644
+--- a/test/execution-pipeline-harness.js
++++ b/test/execution-pipeline-harness.js
+@@ -66,12 +66,14 @@ export async function runWorkflowScript(scriptPath, options = {}) {
+ }
+ 
+ /**
+- * Reply router keyed by spawn label:
+- * `byLabel({'plan:alpha': {returns: …}, …})`. A spawn whose label has no scripted
+- * reply resolves to null, which the engine records as a stall — tests assert that
+- * explicitly when they mean it.
++ * Reply router keyed by `agentType:label` (run-presentation: labels dropped their
++ * agentType prefix, so a bare label alone no longer disambiguates plan from
++ * validate on the same feature — the composite key is unique again):
++ * `byLabel({'plan:alpha': {returns: …}, …})`. A spawn whose composite key has no
++ * scripted reply resolves to null, which the engine records as a stall — tests
++ * assert that explicitly when they mean it.
+  * @param {Object<string, ScriptedReply>} table
+  */
+ export function byLabel(table) {
+-  return (_prompt, opts) => table[String(opts.label || '')];
++  return (_prompt, opts) => table[`${opts.agentType}:${opts.label}`];
+ }
+diff --git a/workflows/execution-pipeline.js b/workflows/execution-pipeline.js
+index 63a4a43..aad03ee 100644
+--- a/workflows/execution-pipeline.js
++++ b/workflows/execution-pipeline.js
+@@ -226,7 +226,7 @@ async function runPlan(f) {
+   if (f.plan) { return { workflow_path: 'standard', tasks: f.plan.tasks }; }
+   const binding = roleBinding('plan');
+   const planned = await spawn(planPrompt(f), {
+-    agentType: 'plan', label: `plan:${f.id}`, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
++    agentType: 'plan', label: f.id, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
+   }, f.id);
+   const flow = signalOf(planned);
+   if (flow) { return { flow }; }
+@@ -239,7 +239,7 @@ async function runPlan(f) {
+ }
+ 
+ function buildSpawnOpts(f, task, binding) {
+-  return { agentType: 'build', label: `build:${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
++  return { agentType: 'build', label: `${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
+ }
+ 
+ async function runTask(f, task, prompt) {
+@@ -250,7 +250,7 @@ async function runTask(f, task, prompt) {
+     const driveBinding = hasRole(`drive.${binding.executor}`) ? modelTable[`drive.${binding.executor}`] : roleBinding('drive');
+     log(`model-selection — task ${f.id}/${task.id} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
+     return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
+-      ...opts, agentType: 'drive', label: `drive:${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
++      ...opts, agentType: 'drive', label: `${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
+     }, f.id);
+   }
+   return spawn(prompt, opts, f.id);
+@@ -323,7 +323,7 @@ async function runValidate(f, workflowPath, tasks) {
+     : [f.branch, ...topoOrder(tasks).map((t) => taskBranch(f, t.id))];
+   const binding = roleBinding('validate');
+   const verdict = await withValidateLock(() => spawn(validatePrompt(f, branches), {
+-    agentType: 'validate', label: `validate:${f.id}`, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
++    agentType: 'validate', label: f.id, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
+   }, f.id));
+   const flow = signalOf(verdict);
+   if (flow) { return flow === 'halt' ? 'halt' : false; }

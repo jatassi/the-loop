@@ -1,0 +1,14 @@
+{
+  "id": "v05-batp-unmet",
+  "kind": "validate",
+  "feature_source": "build-agent-title-progress",
+  "landing_sha": "e9a50df5a62e33716ebd24a017f073a4722f4f22",
+  "parent_sha": "3ac42a51efb17333964cb817a52b1644eb2c735b",
+  "verdict": "fail",
+  "defect": "defect.sh",
+  "expected_findings": [
+    ["(1/1)", "single-task", "single task", "one task", "one-task", "no prefix"]
+  ],
+  "caps": { "grok_max_turns": 200, "wall_clock_s": 1500 },
+  "canary": []
+}
