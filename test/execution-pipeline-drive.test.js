@@ -16,7 +16,7 @@ function executionContextOf(models) {
     { id: 't2', title: 'ordinary', covers: [1], acceptance: ['t2'], footprint: ['b.js'], size: 'xs', judgment_level: 'standard', depends_on: ['t1'] },
   ] };
   return {
-    target: 'main', scope: ['alpha'], probe: null, models,
+    target: 'main', scope: ['alpha'], probe: null, models, agentNamespace: '',
     features: { alpha: {
       id: 'alpha', title: 'alpha title', acceptance: ['alpha works'], depends_on: [],
       designDoc: 'design doc for alpha', branch: 'loop/alpha', branchHead: null, plan, builtTasks: [],

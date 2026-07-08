@@ -13,6 +13,15 @@ export const meta = { name: 'execution-pipeline', description: 'One autonomous p
 const executionContext = typeof args === 'string' ? JSON.parse(args) : args;
 const CLI = executionContext.cli || 'node bin/the-loop.js';
 
+// ---- agent-type resolution. Installed-plugin sessions register the plugin's agents
+// under the plugin namespace (`the-loop:plan`, …); only a repo that symlinks
+// agents/*.md into .claude/agents/ (this dev repo does) also exposes the bare names.
+// Spawn by the namespaced name so a run works in any target project, not just here.
+// The execution context may override the namespace (a fork under a different plugin
+// name) or set it to '' to spawn the bare names.
+const AGENT_NS = executionContext.agentNamespace ?? 'the-loop';
+const agentTypeFor = (role) => (AGENT_NS ? `${AGENT_NS}:${role}` : role);
+
 const asList = (x) => (Array.isArray(x) ? x : [x]);
 
 // ---- model bindings (ADR-0030): role → {model, effort?, executor?}; unbound falls
@@ -226,7 +235,7 @@ async function runPlan(f) {
   if (f.plan) { return { workflow_path: 'standard', tasks: f.plan.tasks }; }
   const binding = roleBinding('plan');
   const planned = await spawn(planPrompt(f), {
-    agentType: 'plan', label: f.id, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
+    agentType: agentTypeFor('plan'), label: f.id, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
   }, f.id);
   const flow = signalOf(planned);
   if (flow) { return { flow }; }
@@ -239,7 +248,7 @@ async function runPlan(f) {
 }
 
 function buildSpawnOpts(f, task, binding) {
-  return { agentType: 'build', label: `${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
+  return { agentType: agentTypeFor('build'), label: `${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
 }
 
 async function runTask(f, task, prompt) {
@@ -250,7 +259,7 @@ async function runTask(f, task, prompt) {
     const driveBinding = hasRole(`drive.${binding.executor}`) ? modelTable[`drive.${binding.executor}`] : roleBinding('drive');
     log(`model-selection — task ${f.id}/${task.id} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
     return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
-      ...opts, agentType: 'drive', label: `${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
+      ...opts, agentType: agentTypeFor('drive'), label: `${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
     }, f.id);
   }
   return spawn(prompt, opts, f.id);
@@ -323,7 +332,7 @@ async function runValidate(f, workflowPath, tasks) {
     : [f.branch, ...topoOrder(tasks).map((t) => taskBranch(f, t.id))];
   const binding = roleBinding('validate');
   const verdict = await withValidateLock(() => spawn(validatePrompt(f, branches), {
-    agentType: 'validate', label: f.id, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
+    agentType: agentTypeFor('validate'), label: f.id, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
   }, f.id));
   const flow = signalOf(verdict);
   if (flow) { return flow === 'halt' ? 'halt' : false; }

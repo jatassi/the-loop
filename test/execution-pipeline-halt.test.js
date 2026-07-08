@@ -18,7 +18,7 @@ function feature(id, overrides = {}) {
 
 function executionContextOf(features, overrides = {}) {
   return {
-    target: 'main', scope: features.map((f) => f.id), probe: null, models: {},
+    target: 'main', scope: features.map((f) => f.id), probe: null, models: {}, agentNamespace: '',
     features: Object.fromEntries(features.map((f) => [f.id, f])), ...overrides,
   };
 }

@@ -23,6 +23,7 @@ function executionContextOf(features, overrides = {}) {
     scope: features.map((f) => f.id),
     probe: 'bring-up: node app · exercise: curl /health · teardown: kill',
     models: {},
+    agentNamespace: '', // bare agent types; a real run resolves the-loop:<role> (see the namespace test)
     cli: 'node /plugin/bin/the-loop.js',
     features: Object.fromEntries(features.map((f) => [f.id, f])),
     ...overrides,
@@ -170,4 +171,31 @@ test('build spawns route through build.<judgment_level> bindings and every label
   assert.ok(logs.includes('model-selection — role plan unbound, session-model fallback'));
   assert.ok(logs.includes('model-selection — task alpha/t2 has no judgment_level, routing build.standard'));
   assert.deepEqual(result.completed, ['alpha']);
+});
+
+// ── agent-type namespacing: plugin agents register as the-loop:<role> in any installed
+// session (only a repo symlinking agents/*.md into .claude/agents/ also exposes the bare
+// names). A run must spawn the namespaced type by default so it works in any target
+// project — the bug that stalled a run in a plugin-only project. The namespace is
+// overridable (a fork under a different plugin name).
+test('spawns resolve through the plugin agent namespace — the-loop:<role> when the context omits one, overridable per run', async () => {
+  const alphaTasks = [{ id: 't1', title: 'core', covers: [1], acceptance: ['t1 passes'], footprint: ['src/a.js'], size: 's', depends_on: [] }];
+  const repliesFor = (ns) => byLabel({
+    [`${ns}plan:alpha`]: { returns: { result: 'planned', workflow_path: 'standard', tasks: alphaTasks } },
+    [`${ns}build:alpha/t1`]: built('alpha/t1'),
+    [`${ns}validate:alpha`]: validated('alpha'),
+  });
+
+  // A context with no agentNamespace (what prepare-execution-context emits) → the plugin namespace.
+  const defaulted = executionContextOf([feature('alpha')]);
+  delete defaulted.agentNamespace;
+  const run1 = await runWorkflowScript(SCRIPT, { agentReplies: repliesFor('the-loop:'), args: defaulted, budget: BUDGET });
+  assert.deepEqual(run1.spawns.map((s) => s.opts.agentType), ['the-loop:plan', 'the-loop:build', 'the-loop:validate']);
+  assert.deepEqual(run1.result.completed, ['alpha']);
+
+  // A fork installed under a different plugin name overrides the namespace.
+  const forked = executionContextOf([feature('alpha')], { agentNamespace: 'acme' });
+  const run2 = await runWorkflowScript(SCRIPT, { agentReplies: repliesFor('acme:'), args: forked, budget: BUDGET });
+  assert.deepEqual(run2.spawns.map((s) => s.opts.agentType), ['acme:plan', 'acme:build', 'acme:validate']);
+  assert.deepEqual(run2.result.completed, ['alpha']);
 });
