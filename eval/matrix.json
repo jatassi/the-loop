@@ -1,6 +1,6 @@
 {
   "legs": {
-    "build": { "models": ["grok-4.5", "sonnet", "opus"], "reps": 3 },
+    "build": { "models": ["grok-4.5", "sonnet"], "reps": 3 },
     "validate": { "models": ["grok-4.5", "sonnet", "opus"], "reps": 3 }
   },
   "concurrency": { "grok": 2, "claude": 3, "total": 5 },
