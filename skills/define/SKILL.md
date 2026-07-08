@@ -13,12 +13,17 @@ Define owns the invitation and the brief; the interview
 between them belongs to the interview port — `/grilling` unless this project's
 configuration binds another interview skill.
 
-## 1 · Invite the brain-dump
+## 1 · Invite & ingest the brain-dump
 
 Ask for everything in the human's head about the idea, in whatever order it comes out —
 goals, fragments, constraints, worries. Don't interrupt and don't impose structure:
 structure is produced by the interview, never demanded at capture. If the idea already
 lives in a document or notes, read that instead of asking for a restatement.
+
+The human may provide context along with the skill invocation - this may or may not be 
+the full brain dump. If the user's context plus project directory context is enough to
+proceed with the interview, do so immediately and skip the brain-dump invitation. If
+context is lacking, nudge the human to provide more detail before interviewing.
 
 If a brief for this intake already exists in `docs/briefs/`, ask whether this session
 sharpens it or replaces it with a new one — git history keeps the old brief either way.
