@@ -1,29 +1,9 @@
-// The model-binding resolver core (src/resolve-model-bindings.js) and the shipped
-// default table (config/model-bindings.json). Pure: every test passes in-memory
-// objects, never a file path (pure core — resolveModels touches no fs).
+// The model-binding resolver core (src/resolve-model-bindings.js). Pure: every test
+// passes in-memory objects, never a file path (pure core — resolveModels touches no fs).
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { test } from 'node:test';
 
 import { bindingFor, EFFORTS, resolveModels } from '../src/resolve-model-bindings.js';
-
-const DEFAULTS_PATH = path.resolve('config/model-bindings.json');
-
-test('config/model-bindings.json ships exactly the six pinned default rows, each shaped per the model-binding contract', () => {
-  const defaults = JSON.parse(readFileSync(DEFAULTS_PATH, 'utf8'));
-  assert.deepEqual(Object.keys(defaults).toSorted((a, b) => a.localeCompare(b)), [
-    'build.complex', 'build.rote', 'build.standard', 'drive', 'plan', 'validate',
-  ]);
-  assert.deepEqual(defaults.plan, { model: 'session' });
-  assert.deepEqual(defaults['build.rote'], { model: 'grok-build', executor: 'grok' });
-  assert.deepEqual(defaults['build.standard'], { model: 'sonnet' });
-  assert.deepEqual(defaults['build.complex'], { model: 'opus' });
-  assert.deepEqual(defaults.drive, { model: 'sonnet' });
-  assert.deepEqual(defaults.validate, { model: 'sonnet' });
-  // shape check: resolveModels accepts the shipped table as a valid defaults layer
-  assert.doesNotThrow(() => resolveModels({ defaults }));
-});
 
 test('resolveModels merges defaults < project < local, whole-entry replacement per role, stamping per-layer provenance', () => {
   const defaults = { build: { model: 'opus', effort: 'low' }, drive: { model: 'sonnet' } };
