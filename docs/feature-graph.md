@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 16
+design_version: 17
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -245,4 +245,16 @@ features:
       - a designed feature depending on a proposed one is excluded from the eligible set, and the machine orientation proposes kind `design` naming the blocking proposed id
       - on a graph whose only unshipped features are proposed, the machine orientation proposes kind `design` naming them (never `new-intake`), and the human status summary counts the proposed stage
       - the /the-loop route table maps a `design` proposal to the design skill, and every living surface stating the status enum lists the four values — the three-value statement greps to zero outside historical records
+
+  - id: build-agent-title-progress
+    title: Task-position prefix on divided-feature build agent titles
+    status: designed
+    depends_on: [run-presentation]
+    notes:
+      - refines run-presentation's build/drive label shapes; run-presentation's shipped acceptance stays the historical record of what it delivered (bare labels), this feature's criteria carry the (i/N)-prefixed shapes
+    acceptance:
+      - given a feature built as 2+ tasks, each build agent's spawn label is `(<pos>/<N>) <feature>/<task>` — <pos> the task's 1-based position in the plan's task array, <N> the total — so the 2nd of 3 tasks reads `(2/3) <feature>/<task>`
+      - given a task in a 2+-task feature that routes to a registered executor, its drive spawn label is `(<pos>/<N>) <feature>/<task> via <executor>`
+      - given a feature built via the small workflow path, or a standard plan with exactly one task, the build spawn label carries no prefix (the bare `<feature>/feature` / `<feature>/<task>`) — `(1/1)` never appears
+      - given any of the above, branch names, commit subjects, and merge order are byte-identical to before the prefix — the prefix lives only in the display label
 ```
