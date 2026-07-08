@@ -1,6 +1,6 @@
 {
   "name": "the-loop",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "An owned, composable agentic dev loop: define \u2192 design \u2192 build \u2192 validate \u2192 release \u2192 operate \u2192 evolve, built from native Claude Code primitives. Its first job is to build itself.",
   "author": {
     "name": "Jackson Atassi",
