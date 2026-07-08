@@ -87,6 +87,13 @@ become:
 - drive → `${f.id}/${task.id} via ${executor}` — the suffix keeps drive
   visually distinct inside the Build box
 
+*(Amended by build-agent-title-progress: build and drive additionally gain a
+leading `(<pos>/<N>) ` — the task's 1-based position in the plan's task array,
+out of the array's total length — whenever the feature built as 2+ tasks. A
+small-workflow build or a standard plan that returned exactly one task keeps
+the bare shape above; `(1/1)` never appears. Plan and validate stay per-feature
+and uncounted.)*
+
 Accepted consequences:
 
 - Labels are unique only within a phase box — a feature's plan and validate

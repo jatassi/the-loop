@@ -247,19 +247,23 @@ async function runPlan(f) {
   return { workflow_path: 'standard', tasks: planned.tasks };
 }
 
-function buildSpawnOpts(f, task, binding) {
-  return { agentType: agentTypeFor('build'), label: `${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
+function buildSpawnOpts(f, task, { binding, prefix = '' }) {
+  return { agentType: agentTypeFor('build'), label: `${prefix}${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
 }
 
-async function runTask(f, task, prompt) {
+// `prefix` is `(<pos>/<N>) ` when the feature built as 2+ tasks (computed by `runBuild`
+// from the task's position in the plan's task array), empty otherwise — the sole source
+// of the ordinal is that array, never the task id (build-agent-title-progress). It rides
+// both the ordinary build label and the drive-path override below.
+async function runTask(f, task, { prompt, prefix = '' }) {
   if (task.judgment_level == null) { log(`model-selection — task ${f.id}/${task.id} has no judgment_level, routing build.standard`); }
   const binding = roleBinding(`build.${task.judgment_level ?? 'standard'}`);
-  const opts = buildSpawnOpts(f, task, binding);
+  const opts = buildSpawnOpts(f, task, { binding, prefix });
   if (binding.executor && binding.executor !== 'agent') {
     const driveBinding = hasRole(`drive.${binding.executor}`) ? modelTable[`drive.${binding.executor}`] : roleBinding('drive');
     log(`model-selection — task ${f.id}/${task.id} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
     return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
-      ...opts, agentType: agentTypeFor('drive'), label: `${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
+      ...opts, agentType: agentTypeFor('drive'), label: `${prefix}${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
     }, f.id);
   }
   return spawn(prompt, opts, f.id);
@@ -285,6 +289,11 @@ function taskOutcome(f, r) {
 async function runBuild(f, tasks) {
   const tasksById = new Map(tasks.map((t) => [t.id, t]));
   const already = new Set(f.builtTasks || []);
+  // Position is the task's fixed 1-based slot in the plan's declared task array — never
+  // the DAG build order (concurrent, so it varies run to run) and never parsed from the
+  // free-form task id. A single-task plan gets no prefix; `(1/1)` is pure noise.
+  const positionOf = new Map(tasks.map((t, i) => [t.id, i + 1]));
+  const prefixFor = (id) => (tasks.length >= 2 ? `(${positionOf.get(id)}/${tasks.length}) ` : '');
   let didAllLand = true;
   await runConcurrencyPolicy({
     ids: tasks.map((t) => t.id),
@@ -295,7 +304,7 @@ async function runBuild(f, tasks) {
       const deps = task.depends_on || [];
       const base = deps.length > 0 ? taskBranch(f, deps[0]) : f.branch;
       const mergeBranches = deps.slice(1).map((d) => taskBranch(f, d));
-      const outcome = taskOutcome(f, await runTask(f, task, buildPrompt(f, task, { base, mergeBranches })));
+      const outcome = taskOutcome(f, await runTask(f, task, { prompt: buildPrompt(f, task, { base, mergeBranches }), prefix: prefixFor(id) }));
       if (outcome !== true) { didAllLand = false; }
       return outcome;
     },
@@ -307,7 +316,7 @@ async function runBuild(f, tasks) {
 async function runSmallBuild(f) {
   if ((f.branchHead || '').startsWith(`${f.id}/feature: `)) { return true; } // already landed
   const task = { id: 'feature', title: f.title, acceptance: f.acceptance };
-  return taskOutcome(f, await runTask(f, task, smallBuildPrompt(f))) === true;
+  return taskOutcome(f, await runTask(f, task, { prompt: smallBuildPrompt(f) })) === true;
 }
 
 // depends_on-respecting topological order over task contracts.

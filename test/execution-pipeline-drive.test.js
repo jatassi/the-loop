@@ -25,9 +25,11 @@ function executionContextOf(models) {
 }
 
 const BUDGET = { spent: 0, remaining: 10 };
+// alpha builds as 2 tasks (t1, t2) — build-agent-title-progress prefixes both labels
+// with their fixed 1-based plan-array position, `(1/2)` and `(2/2)`.
 const replies = byLabel({
-  'drive:alpha/t1 via grok': { returns: { result: 'built', task: 'alpha/t1' } },
-  'build:alpha/t2': { returns: { result: 'built', task: 'alpha/t2' } },
+  'drive:(1/2) alpha/t1 via grok': { returns: { result: 'built', task: 'alpha/t1' } },
+  'build:(2/2) alpha/t2': { returns: { result: 'built', task: 'alpha/t2' } },
   'validate:alpha': { returns: { result: 'validated', feature: 'alpha' } },
 });
 
@@ -42,7 +44,9 @@ test('an executor-bound judgment_level routes to the drive agent with the execut
 
   const drive = spawns.find((s) => s.opts.agentType === 'drive');
   assert.ok(drive, 'the rote task spawned the drive agent');
-  assert.equal(drive.opts.label, 'alpha/t1 via grok'); // bare — no agentType prefix (run-presentation)
+  // bare — no agentType prefix (run-presentation) — but the position prefix rides the
+  // drive label too, since alpha builds as 2 tasks (build-agent-title-progress).
+  assert.equal(drive.opts.label, '(1/2) alpha/t1 via grok');
   assert.equal(drive.opts.model, 'haiku'); // the drive binding, never the executor model
   assert.equal(drive.opts.phase, 'Build');
   assert.ok(drive.prompt.startsWith('executor: grok · executor-model: grok-build\n'));

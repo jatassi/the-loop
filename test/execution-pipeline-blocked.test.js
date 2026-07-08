@@ -49,7 +49,9 @@ test('a feature-shaped build block blocks the feature, skips its dependents and 
   const args = executionContextOf([feature('alpha'), feature('beta', { depends_on: ['alpha'] })]);
   const replies = byLabel({
     'plan:alpha': { returns: { result: 'planned', workflow_path: 'standard', tasks } },
-    'build:alpha/t1': { returns: { result: 'blocked', task: 'alpha/t1', kind: 'feature', detail: 'criterion 1 is untestable as written', options: ['re-plan t1'] } },
+    // alpha builds as 2 tasks — build-agent-title-progress prefixes t1's label with its
+    // fixed plan-array position, (1/2).
+    'build:(1/2) alpha/t1': { returns: { result: 'blocked', task: 'alpha/t1', kind: 'feature', detail: 'criterion 1 is untestable as written', options: ['re-plan t1'] } },
   });
 
   const { result, spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
