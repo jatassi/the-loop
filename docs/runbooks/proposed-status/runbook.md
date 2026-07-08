@@ -78,7 +78,7 @@ depends on greet-core), `greet-farewell` (proposed, no acceptance) — committed
    grep for the old three-value statement returns zero hits outside the declared
    historical directories (`docs/adr/`, `docs/research/`, `docs/briefs/`,
    `docs/design/`, `docs/designs/`, `docs/plans/`, `docs/releases/`, `docs/bugs/`).
-   Re-run directly: `node --test test/proposed-status.test.js` — 5/5 pass.
+   Re-run directly: `node --test test/proposed-status.test.js` — 4/4 pass.
 
 ## Expected observations
 
