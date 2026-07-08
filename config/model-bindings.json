@@ -4,5 +4,5 @@
   "build.standard": { "model": "sonnet" },
   "build.complex": { "model": "opus" },
   "drive": { "model": "sonnet" },
-  "validate": { "model": "session" }
+  "validate": { "model": "opus" }
 }
