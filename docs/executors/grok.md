@@ -12,6 +12,22 @@ Operational lore, every item load-bearing:
   dropped `grok-build` — any invocation naming it fails immediately with
   "unknown model id" before doing work. When a rote task blocks with that
   error, check `grok models` against this playbook's list first.
+- With `--json-schema`, grok emits ONE schema-conforming JSON object PER TURN,
+  concatenated in the envelope's `text` field (interim narration included) —
+  the LAST complete object is the verdict. Never `JSON.parse` the whole field.
+- The JSON envelope carries no token usage (confirmed 0.2.91, session traces
+  included); cost accounting must estimate from transcript characters at the
+  published rates ($2/$6 per Mtok at launch).
+- `grok export <session>` renders a conversation-only Markdown transcript
+  locally. **`grok trace <session>` UPLOADS to xAI's trace service by
+  default** — always pass `--local`.
+- Bakeoff observations (2026-07-08, eval/results/full-2026-07-08): grok-4.5
+  cleared every build-integrity trap that confined grok-build to rote
+  (ADR-0031) — red-test discipline, no gaming, no suppressions, honest
+  truncation — at ~2.4x sonnet's speed. Its one weakness: it applies contracts
+  LITERALLY — it missed a lint suppression the validate contract didn't
+  explicitly forbid, and recovered 3/3 the moment the contract named it. Spell
+  judgment norms out in the brief; assume nothing is inherited from culture.
 
 ## Machine block
 

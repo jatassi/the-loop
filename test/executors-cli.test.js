@@ -133,7 +133,7 @@ test('spine models-list hard-fails an executor naming an unregistered executor, 
 // still prints to stdout with exit 0.
 const WARN_CASES = [
   ['no-routing-surface', { 'design.reader': { model: 'model-a', executor: 'custom' } }],
-  ['off-rubric-tier', { 'build.standard': { model: 'model-a', executor: 'custom' } }],
+  ['off-rubric-tier', { 'build.complex': { model: 'model-a', executor: 'custom' } }],
   ['ignored-effort', { 'build.rote': { model: 'model-a', executor: 'custom', effort: 'high' } }],
 ];
 

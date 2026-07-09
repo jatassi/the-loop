@@ -72,7 +72,10 @@ test('every named living surface lists all four status values together', () => {
 // prefix on the enum is the new statement, not the old one, however it's spaced.
 const HISTORICAL_DIRS = ['docs/adr/', 'docs/research/', 'docs/briefs/', 'docs/design/',
   'docs/designs/', 'docs/plans/', 'docs/releases/', 'docs/bugs/'];
-const SKIP_DIRS = new Set(['node_modules', '.git', '.claude']);
+// eval/results holds kept forensic artifacts (fixture transcripts/diffs replaying
+// pre-amendment commits — historical by nature); eval/fixtures-cache holds
+// materialized dependency templates. Both are gitignored and never loop surfaces.
+const SKIP_DIRS = new Set(['node_modules', '.git', '.claude', 'results', 'fixtures-cache']);
 // The pre-amendment three-value enum, in either spacing style, so long as it isn't
 // actually the tail of the new four-value statement (`proposed | ` / `proposed|`
 // immediately before it).

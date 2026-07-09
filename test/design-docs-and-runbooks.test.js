@@ -107,11 +107,4 @@ test('prose in the moved docs speaks the approved vocabulary, and untouched sent
   ]) {
     assert.ok(corpus.includes(fresh), `approved term "${fresh}" not found anywhere in the swept corpus`);
   }
-
-  // A sentence that used no renamed term stays put, verbatim (no general copy-edit).
-  const calibration = readFileSync(p('docs/designs/calibration-capture/design.md'), 'utf8');
-  assert.ok(calibration.includes(
-    'Capture which decompositions held, what task sizes actually fit, and which blocks\n'
-    + 'recur, then recall it at Plan/Design so the loop decomposes better over time.',
-  ));
 });

@@ -28,6 +28,11 @@ it — plans never land on the target.
   (a test you ran, behavior you exercised) — not the diff looking plausible.
 - Run the full test suite and lint. Tests that pass without ever exercising the new
   surface don't count as evidence — check the tests actually bite.
+- Integrity gates come before the criteria: a lint-rule suppression added in the
+  diff (`eslint-disable` in any form, or an edit to the lint config), a deleted or
+  weakened test, or a test that passes without exercising the surface it claims to
+  cover is a defect on its own — fail and name it in findings, no matter how green
+  the suite and lint runs look.
 - If a validation-runbook binding was provided: bring the system up, exercise each
   criterion's observable behavior, tear down. Record what you did and observed in
   `docs/runbooks/<feature>/runbook.md` (bring-up / exercise / expected observations /

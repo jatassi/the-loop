@@ -140,7 +140,7 @@ test('validateBindings errors model-outside-playbook for a registered executor w
   );
 });
 
-test('validateBindings warns no-routing-surface for an executor on any role outside build.rote/build.standard/build.complex, and raises no error', () => {
+test('validateBindings warns no-routing-surface for an executor on any role outside build.rote/build.standard/build.complex/validate, and raises no error', () => {
   const table = { 'design.reader': { model: 'grok-build', executor: 'grok', provenance: 'local' } };
   const { errors, warnings } = validateBindings(table, REGISTRY);
   assert.deepEqual(errors, []);
@@ -149,19 +149,17 @@ test('validateBindings warns no-routing-surface for an executor on any role outs
   assert.equal(warnings[0].where, 'design.reader');
 });
 
-test('validateBindings warns off-rubric-tier for an executor on build.standard or build.complex, and raises no error', () => {
+test('validateBindings warns off-rubric-tier only for build.complex — build.standard and validate carry recorded eval evidence (ADR-0047) and route silently', () => {
   const table = {
     'build.standard': { model: 'grok-build', executor: 'grok', provenance: 'local' },
     'build.complex': { model: 'grok-build', executor: 'grok', provenance: 'local' },
+    validate: { model: 'grok-build', executor: 'grok', provenance: 'local' },
   };
   const { errors, warnings } = validateBindings(table, REGISTRY);
   assert.deepEqual(errors, []);
   assert.deepEqual(
-    warnings.map(({ code, where }) => ({ code, where })).toSorted((a, b) => a.where.localeCompare(b.where)),
-    [
-      { code: 'off-rubric-tier', where: 'build.complex' },
-      { code: 'off-rubric-tier', where: 'build.standard' },
-    ],
+    warnings.map(({ code, where }) => ({ code, where })),
+    [{ code: 'off-rubric-tier', where: 'build.complex' }],
   );
 });
 

@@ -15,11 +15,13 @@ import { yamlBlockAfter } from './replace-fenced-block.js';
 
 const HEADING = '## Machine block';
 const WORKTREE_MODES = ['native', 'driver-made'];
-// The only roles whose spawn consults `executor` (docs/plans/executor-delegation/
-// plan.md, "Pinned conventions"); off-rubric tiers are the routing-surface subset the
-// provisional delegation rubric (rote-only) doesn't cover.
-const ROUTING_SURFACE = new Set(['build.rote', 'build.standard', 'build.complex']);
-const OFF_RUBRIC_TIERS = new Set(['build.standard', 'build.complex']);
+// The only roles whose spawn consults `executor`: the build tiers and, since the
+// 2026-07-08 bakeoff (ADR-0047), validate. Off-rubric tiers are the routing-surface
+// subset with no recorded eval evidence behind delegation — build.rote cleared the
+// original ADR-0031 head-to-head, build.standard and validate cleared the eval/
+// bakeoff rubric; build.complex has never been evaluated.
+const ROUTING_SURFACE = new Set(['build.rote', 'build.standard', 'build.complex', 'validate']);
+const OFF_RUBRIC_TIERS = new Set(['build.complex']);
 // Held apart from the throw sites below as plain strings (not template literals):
 // interpolating them keeps the literal {model}/{prompt}/{worktree}/{ref} placeholder
 // text out of any template literal's own quasis, which is exactly what a forgotten
@@ -186,13 +188,13 @@ export function validateBindings(table, registry) {
     if (!ROUTING_SURFACE.has(role)) {
       warnings.push({
         code: 'no-routing-surface',
-        message: `role "${role}" binds executor "${executor}" but sits outside the routing surface (build.rote, build.standard, build.complex); executor is never consulted there`,
+        message: `role "${role}" binds executor "${executor}" but sits outside the routing surface (build.rote, build.standard, build.complex, validate); executor is never consulted there`,
         where: role,
       });
     } else if (OFF_RUBRIC_TIERS.has(role)) {
       warnings.push({
         code: 'off-rubric-tier',
-        message: `role "${role}" binds executor "${executor}" on a tier outside the rote-only delegation rubric; the workflow routes it anyway`,
+        message: `role "${role}" binds executor "${executor}" on a tier with no recorded eval evidence behind delegation; the workflow routes it anyway`,
         where: role,
       });
     }

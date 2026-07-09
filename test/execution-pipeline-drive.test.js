@@ -58,6 +58,31 @@ test('an executor-bound judgment_level routes to the drive agent with the execut
   assert.deepEqual(result.completed, ['alpha']);
 });
 
+test('an executor-bound validate binding routes the validate spawn to the drive agent — VALIDATE_SCHEMA and phase intact, executor named in the prompt, drive binding riding the spawn (ADR-0047)', async () => {
+  const args = executionContextOf({
+    'build.rote': { model: 'grok-4.5', executor: 'grok' },
+    'build.standard': { model: 'sonnet' },
+    validate: { model: 'grok-4.5', executor: 'grok' },
+    drive: { model: 'sonnet' },
+  });
+  const validateReplies = byLabel({
+    'drive:(1/2) alpha/t1 via grok': { returns: { result: 'built', task: 'alpha/t1' } },
+    'build:(2/2) alpha/t2': { returns: { result: 'built', task: 'alpha/t2' } },
+    'drive:alpha via grok': { returns: { result: 'validated', feature: 'alpha' } },
+  });
+
+  const { result, spawns, logs } = await runWorkflowScript(SCRIPT, { agentReplies: validateReplies, args, budget: BUDGET });
+
+  const validateSpawn = spawns.find((s) => s.opts.phase === 'Validate');
+  assert.equal(validateSpawn.opts.agentType, 'drive');
+  assert.equal(validateSpawn.opts.label, 'alpha via grok');
+  assert.equal(validateSpawn.opts.model, 'sonnet'); // the drive binding, never the executor model
+  assert.ok(validateSpawn.prompt.startsWith('executor: grok · executor-model: grok-4.5\n'));
+  assert.ok(validateSpawn.prompt.includes('acceptance criteria to judge'), 'the drive prompt carries the full validate brief');
+  assert.ok(logs.includes('model-selection — validate alpha routed via grok/grok-4.5, drive sonnet'));
+  assert.deepEqual(result.completed, ['alpha']);
+});
+
 test('without a drive.<executor> sub-role the drive falls back to the drive role binding', async () => {
   const args = executionContextOf({
     'build.rote': { model: 'grok-build', executor: 'grok' },

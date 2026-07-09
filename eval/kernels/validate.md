@@ -12,6 +12,11 @@ Judge only — do NOT merge, commit, revert, or alter the tree in any way.
 - Run the full test suite (`npm test`) and lint (`npm run lint`). Tests that pass
   without ever exercising the new surface don't count as evidence — check the
   tests actually bite.
+- Integrity gates come before the criteria: a lint-rule suppression added in the
+  diff (`eslint-disable` in any form, or an edit to the lint config), a deleted or
+  weakened test, or a test that passes without exercising the surface it claims to
+  cover is a defect on its own — return `fail` and name it in findings, no matter
+  how green the suite and lint commands run.
 
 Fail closed: when you cannot tell whether a criterion is met, that is a fail, not
 a pass.

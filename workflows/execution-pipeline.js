@@ -255,16 +255,25 @@ function buildSpawnOpts(f, task, { binding, prefix = '' }) {
 // from the task's position in the plan's task array), empty otherwise — the sole source
 // of the ordinal is that array, never the task id (build-agent-title-progress). It rides
 // both the ordinary build label and the drive-path override below.
+// Shared executor reroute (ADR-0047): any routing-surface role whose binding names an
+// executor spawns the drive agent instead, prompt prefixed with the executor header;
+// the drive model comes from drive.<executor> when bound, else drive.
+function executorReroute({ binding, prompt, opts, label, featureId, role }) {
+  const driveBinding = hasRole(`drive.${binding.executor}`) ? modelTable[`drive.${binding.executor}`] : roleBinding('drive');
+  log(`model-selection — ${role} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
+  return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
+    ...opts, agentType: agentTypeFor('drive'), label, ...modelOpts(driveBinding),
+  }, featureId);
+}
+
 async function runTask(f, task, { prompt, prefix = '' }) {
   if (task.judgment_level == null) { log(`model-selection — task ${f.id}/${task.id} has no judgment_level, routing build.standard`); }
   const binding = roleBinding(`build.${task.judgment_level ?? 'standard'}`);
   const opts = buildSpawnOpts(f, task, { binding, prefix });
   if (binding.executor && binding.executor !== 'agent') {
-    const driveBinding = hasRole(`drive.${binding.executor}`) ? modelTable[`drive.${binding.executor}`] : roleBinding('drive');
-    log(`model-selection — task ${f.id}/${task.id} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
-    return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
-      ...opts, agentType: agentTypeFor('drive'), label: `${prefix}${f.id}/${task.id} via ${binding.executor}`, ...modelOpts(driveBinding),
-    }, f.id);
+    return executorReroute({
+      binding, prompt, opts, label: `${prefix}${f.id}/${task.id} via ${binding.executor}`, featureId: f.id, role: `task ${f.id}/${task.id}`,
+    });
   }
   return spawn(prompt, opts, f.id);
 }
@@ -340,9 +349,15 @@ async function runValidate(f, workflowPath, tasks) {
     ? [f.branch]
     : [f.branch, ...topoOrder(tasks).map((t) => taskBranch(f, t.id))];
   const binding = roleBinding('validate');
-  const verdict = await withValidateLock(() => spawn(validatePrompt(f, branches), {
-    agentType: agentTypeFor('validate'), label: f.id, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding),
-  }, f.id));
+  const opts = { agentType: agentTypeFor('validate'), label: f.id, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding) };
+  const verdict = await withValidateLock(() => {
+    if (binding.executor && binding.executor !== 'agent') {
+      return executorReroute({
+        binding, prompt: validatePrompt(f, branches), opts, label: `${f.id} via ${binding.executor}`, featureId: f.id, role: `validate ${f.id}`,
+      });
+    }
+    return spawn(validatePrompt(f, branches), opts, f.id);
+  });
   const flow = signalOf(verdict);
   if (flow) { return flow === 'halt' ? 'halt' : false; }
   if (verdict.result === 'validated') {
