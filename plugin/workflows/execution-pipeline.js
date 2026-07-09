@@ -78,9 +78,11 @@ let halted;
 
 // ---- calibration observation collector (ADR-0046): the script observes, the record
 // agent transcribes. Every awaited spawn is sampled at the one choke point below —
-// per-feature per-role counts and a per-role spend delta read as `budget.spent` (a
-// property: the single form the live harness serves, used identically here and at the
-// run-summary read site) — and concurrency is watched so the payload can flag whether
+// per-feature per-role counts and a per-role spend delta read from `budget.spent()` (a
+// method — the harness's budget metric throws "No default value" on any implicit
+// primitive coercion, so it must be called, never read as a property and used in
+// arithmetic or a template; called identically here and at the run-summary read site)
+// — and concurrency is watched so the payload can flag whether
 // the per-role split was measured serially or across overlapping spawns (approximate by
 // construction, and the record says so structurally).
 const ROLES = ['plan', 'build', 'drive', 'validate'];
@@ -114,7 +116,7 @@ function isBudgetExhausted(error) {
   return /budget/i.test(`${error?.name ?? ''} ${error?.code ?? ''}`);
 }
 async function spawn(prompt, opts, { featureId, role }) {
-  const spentBefore = budget.spent;
+  const spentBefore = budget.spent();
   spawnsInFlight += 1;
   if (spawnsInFlight > 1) { didSpawnsOverlap = true; }
   obsFor(featureId).agents[role] += 1;
@@ -126,7 +128,7 @@ async function spawn(prompt, opts, { featureId, role }) {
     return { stalled: { feature: featureId, agent: opts.agentType, note: error.message } };
   } finally {
     spawnsInFlight -= 1;
-    budgetByRole[role] += Math.max(0, budget.spent - spentBefore);
+    budgetByRole[role] += Math.max(0, budget.spent() - spentBefore);
   }
   if (r == null) { return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } }; }
   if (r.result === 'blocked' && r.kind === 'environment') {
@@ -525,7 +527,7 @@ await runConcurrencyPolicy({
   onUnreachable: (id) => { stalled.push({ feature: id, agent: 'scheduler', note: 'an in-scope dependency did not land this run' }); },
 });
 
-const result = { completed, blocked, stalled, budget: { spent: budget.spent, remaining: budget.remaining } };
+const result = { completed, blocked, stalled, budget: { spent: budget.spent(), remaining: budget.remaining() } };
 if (halted) { result.halted = halted; }
 
 // ---- calibration capture (ADR-0046): after the run summary is assembled — every path,

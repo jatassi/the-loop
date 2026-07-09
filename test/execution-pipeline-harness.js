@@ -38,6 +38,21 @@ const pipeline = () => {
  * @param {{agentReplies?: ScriptedReply[]|((prompt: *, opts: *, index: number) => ScriptedReply), args?: *, budget?: *}} [options]
  * @returns {Promise<{result: *, spawns: Array<{prompt: *, opts: *}>, logs: string[]}>}
  */
+// Mirror the live harness's `budget`: `spent`/`remaining` are metric methods (called,
+// never read), and the metric object throws "No default value" on any implicit primitive
+// coercion — so a script that reads `budget.spent` and uses it in arithmetic or a template
+// (instead of calling it) fails in the suite exactly as it does live. Fixtures may pass
+// plain numbers (`{ spent, remaining }`); those are wrapped, functions pass through.
+function metric(v) {
+  if (typeof v === 'function') { return v; }
+  const fn = () => v ?? 0;
+  fn[Symbol.toPrimitive] = () => { throw new Error('No default value'); };
+  return fn;
+}
+function harnessBudget(b = {}) {
+  return { total: b.total ?? null, spent: metric(b.spent), remaining: metric(b.remaining) };
+}
+
 export async function runWorkflowScript(scriptPath, options = {}) {
   const { agentReplies = [], args = {}, budget = {} } = options;
   const spawns = [];
@@ -61,7 +76,7 @@ export async function runWorkflowScript(scriptPath, options = {}) {
   const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
   const run = new AsyncFunction('agent', 'parallel', 'pipeline', 'log', 'args', 'budget', body);
 
-  const result = await run(agent, parallel, pipeline, log, args, budget);
+  const result = await run(agent, parallel, pipeline, log, args, harnessBudget(budget));
   return { result, spawns, logs };
 }
 
