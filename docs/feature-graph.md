@@ -183,7 +183,7 @@ features:
 
   - id: configure
     title: Configure — the hook inventory, four settings layers, and the recommended-answer interview
-    status: designed
+    status: validated
     depends_on: [the-loop-entry, model-selection]
     notes:
       - designed 2026-07-08 (ADR-0049) — replaces the configure-step-full backlog node together with onboard; brief at docs/briefs/configure-step-full.md

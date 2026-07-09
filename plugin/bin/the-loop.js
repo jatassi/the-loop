@@ -36,8 +36,16 @@
 //                                    branch name, and prune
 //   the-loop executors-list [dir]   the parsed executor-playbook registry as JSON
 //   the-loop models-list [defaults.json] [executors-dir]  resolved role table: plugin
-//                                    defaults < project < local (.claude/settings*.json,
+//                                    defaults < user < project < local
+//                                    (.claude/settings*.json + ~/.claude/settings.json,
 //                                    "the-loop".modelBindings); hard errors exit 1
+//   the-loop hooks-list             every real hook-family resolution (defaults < user
+//                                    < project < local) plus recorded-binding status
+//                                    from docs/architecture.md; missing architecture.md
+//                                    warns and treats bindings as absent
+//   the-loop hooks-set <family> <layer> <json-value>  persist one "the-loop".<family>
+//                                    entry into the named settings layer (user|project|local);
+//                                    creates the file when absent; unrelated keys survive
 
 import path from 'node:path';
 
@@ -47,6 +55,7 @@ import {
   prepareExecutionContextCommand, read, readRegistry, setStatusCommand, statusCommand,
   worktreeCreateCommand, worktreeRemoveCommand,
 } from './cli-commands.js';
+import { hooksListCommand, hooksSetCommand } from './hooks-commands.js';
 
 const [cmd, ...rest] = process.argv.slice(2);
 
@@ -93,8 +102,16 @@ try {
       modelsListCommand(rest);
       break;
     }
+    case 'hooks-list': {
+      hooksListCommand(rest);
+      break;
+    }
+    case 'hooks-set': {
+      hooksSetCommand(rest);
+      break;
+    }
     default: {
-      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]> [file…]\n');
+      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]|hooks-list|hooks-set <family> <layer> <json-value>> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }

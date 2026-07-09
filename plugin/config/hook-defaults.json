@@ -1,0 +1,13 @@
+{
+  "interview": { "skill": "grilling" },
+  "precommit": { "system": "none" },
+  "notification": { "channel": "chat" },
+  "artifactStores": {
+    "briefs": "local",
+    "designs": "local",
+    "features": "local",
+    "runbooks": "local",
+    "rcas": "local",
+    "calibration": "local"
+  }
+}

@@ -3,6 +3,7 @@
 // the actual command bodies and the small I/O helpers (read/out/clean/fail) they share.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,14 +14,14 @@ import { parsePlan, planPath, resolveTask, validatePlan } from '../src/plan.js';
 import { assembleExecutionContext, checkScope, featureBranch } from '../src/prepare-execution-context.js';
 import { machineOrientation } from '../src/propose-next-action.js';
 import { sectionAfter } from '../src/replace-fenced-block.js';
-import { resolveModels } from '../src/resolve-model-bindings.js';
+import { HOOK_INVENTORY, resolveFamily, resolveModels } from '../src/resolve-model-bindings.js';
 import { setStatus } from '../src/set-feature-status.js';
 import { describeRun, spliceRunDescription } from '../src/splice-workflow-description.js';
 import { renderStatusSummary } from '../src/status-summary.js';
 import { render } from '../src/write-feature-graph.js';
 
 const GRAPH = 'docs/feature-graph.md';
-const DESIGN = 'docs/architecture.md';
+export const DESIGN = 'docs/architecture.md';
 const DESIGNS_DIR = 'docs/designs';
 const BUGS_DIR = 'docs/bugs';
 const WORKTREES_DIR = '.claude/worktrees';
@@ -30,7 +31,7 @@ export const read = (file) => readFileSync(file || GRAPH, 'utf8');
 export const out = (obj) => process.stdout.write(`${JSON.stringify(obj, null, 2)}\n`);
 export const clean = ({ _blocks, ...rest }) => rest; // drop the yaml Documents from JSON output
 export const fail = (msg) => { process.stderr.write(`spine: ${msg}\n`); process.exit(1); };
-const warn = (msg) => process.stderr.write(`spine: warn — ${msg}\n`);
+export const warn = (msg) => process.stderr.write(`spine: warn — ${msg}\n`);
 
 // the-loop set-status <feature-id> <status> — flip one feature's status in feature-graph.md.
 export function setStatusCommand([featureId, status]) {
@@ -72,18 +73,64 @@ export function modelsListCommand([defaultsFile, executorsDir]) {
 }
 
 // The resolved role table + registry validation, shared by `models-list` and
-// `prepare-execution-context`: plugin defaults < project (.claude/settings.json) <
-// local (.claude/settings.local.json), both under the "the-loop".modelBindings key,
-// both read from cwd.
+// `prepare-execution-context`: plugin defaults < user (~/.claude/settings.json) <
+// project (.claude/settings.json) < local (.claude/settings.local.json), all under
+// "the-loop".modelBindings. An empty/missing user layer is byte-identical to the
+// historical three-layer merge.
 function buildModelsTable(defaultsFile, executorsDir) {
   const defaultsPath = defaultsFile || path.join(PLUGIN_ROOT, 'config/model-bindings.json');
   const defaults = readDefaults(defaultsPath);
-  const project = readSettingsLayer('.claude/settings.json');
-  const local = readSettingsLayer('.claude/settings.local.json');
-  const table = resolveModels({ defaults, project, local });
+  const user = readSettingsLayer(userSettingsPath(), 'modelBindings');
+  const project = readSettingsLayer('.claude/settings.json', 'modelBindings');
+  const local = readSettingsLayer('.claude/settings.local.json', 'modelBindings');
+  const table = resolveModels({ defaults, user, project, local });
   const registry = readRegistry(executorsDir || path.join(PLUGIN_ROOT, 'config/executors'));
   const { errors, warnings } = validateBindings(table, registry);
   return { table, errors, warnings };
+}
+
+// ~/.claude/settings.json — the user-scope layer. Same path construction every call
+// site uses so HOME overrides in tests reach readSettingsLayer uniformly.
+export function userSettingsPath() {
+  return path.join(homedir(), '.claude', 'settings.json');
+}
+
+// Resolve every real (non-synthetic) HOOK_INVENTORY family across the four layers.
+// modelBindings defaults come from plugin/config/model-bindings.json; every other
+// family's defaults come from plugin/config/hook-defaults.json (absent key →
+// undefined → resolveFamily's inventory fallback when nothing else binds it). Shared
+// by hooksListCommand (bin/hooks-commands.js) and prepareExecutionContextCommand.
+export function buildHooksTable() {
+  const modelDefaults = readDefaults(path.join(PLUGIN_ROOT, 'config/model-bindings.json'));
+  const hookDefaults = readDefaults(path.join(PLUGIN_ROOT, 'config/hook-defaults.json'));
+  const userFile = userSettingsPath();
+  const projectFile = '.claude/settings.json';
+  const localFile = '.claude/settings.local.json';
+
+  const hooks = {};
+  for (const family of Object.keys(HOOK_INVENTORY)) {
+    if (family === 'exampleBlock') { continue; } // synthetic — not a settings key
+    const defaults = family === 'modelBindings' ? modelDefaults : hookDefaults[family];
+    const layers = {
+      defaults,
+      user: familyLayer(family, readSettingsLayer(userFile, family)),
+      project: familyLayer(family, readSettingsLayer(projectFile, family)),
+      local: familyLayer(family, readSettingsLayer(localFile, family)),
+    };
+    hooks[family] = resolveFamily(family, layers);
+  }
+  return hooks;
+}
+
+// readSettingsLayer returns {} for a missing key (right for modelBindings role maps).
+// Single-entry families must leave the layer unset when unbound so mergeSingleEntry
+// does not treat an empty object as a wholesale win over lower layers / fallbacks.
+function familyLayer(family, value) {
+  if (family === 'modelBindings') { return value; }
+  if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+    return; // unbound — omit the layer
+  }
+  return value;
 }
 
 // Every *.md file in dir, parsed into the registry keyed by id; an absent dir is an
@@ -98,7 +145,7 @@ export function readRegistry(dir) {
 
 // The plugin-defaults file: expected to exist and parse — a read or parse failure
 // names the file.
-function readDefaults(file) {
+export function readDefaults(file) {
   let text;
   try {
     text = readFileSync(file, 'utf8');
@@ -112,10 +159,10 @@ function readDefaults(file) {
   }
 }
 
-// A settings layer (project or local): a missing file, or a present file missing the
-// "the-loop".modelBindings key, is an empty layer — never an error. Unparseable JSON
-// in a present file is an error naming the file.
-function readSettingsLayer(file) {
+// A settings layer (user, project, or local): a missing file, or a present file
+// missing the "the-loop".[family] key, is an empty layer — never an error.
+// Unparseable JSON in a present file is an error naming the file.
+export function readSettingsLayer(file, family) {
   if (!existsSync(file)) { return {}; }
   let settings;
   try {
@@ -123,7 +170,7 @@ function readSettingsLayer(file) {
   } catch (error) {
     throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error });
   }
-  return settings?.['the-loop']?.modelBindings ?? {};
+  return settings?.['the-loop']?.[family] ?? {};
 }
 
 // The plan subcommands: parse | check | task.
@@ -159,11 +206,12 @@ function taskCommand(featureId, [taskId, planFile, graphFile]) {
 // the-loop prepare-execution-context --features <id,id,…> --target-branch <ref>
 // [--script-out <path>] — the one-shot execution-context assembler (ADR-0036/0038):
 // gates the graph and the scope, gathers every per-feature input (design doc, plan
-// from the feature branch, task state from git), and prints the execution context the
-// workflow consumes as `args`. Any gate failure exits 1 with nothing printed to
-// stdout. No default target branch: a guessed target can silently diverge from the
-// branch the execution context's artifacts were read from, and the whole run inherits
-// the mismatch — the caller must name the ref the run integrates into.
+// from the feature branch, task state from git), the resolved model-bindings table,
+// and the full resolved hook table, and prints the execution context the workflow
+// consumes as `args`. Any gate failure exits 1 with nothing printed to stdout. No
+// default target branch: a guessed target can silently diverge from the branch the
+// execution context's artifacts were read from, and the whole run inherits the
+// mismatch — the caller must name the ref the run integrates into.
 // `--script-out` additionally writes a launch-ready copy of the canonical workflow
 // script (run-presentation), its meta description spliced to name this run's scope
 // and target — the harness reads a workflow's description only from that literal, so
@@ -185,6 +233,8 @@ export function prepareExecutionContextCommand(argv) {
   for (const w of warnings) { process.stderr.write(`warn ${w.code}: ${w.message} (${w.where})\n`); }
   failOnIssues(errors, 'model bindings failed executor validation — nothing prepared');
 
+  const hooks = buildHooksTable();
+
   const probe = existsSync(DESIGN) ? sectionAfter(readFileSync(DESIGN, 'utf8'), '## Validation runbook') : null;
   if (probe == null) { warn(`no "## Validation runbook" section in ${DESIGN} — validation runs without one`); }
 
@@ -193,7 +243,7 @@ export function prepareExecutionContextCommand(argv) {
     inputs[id] = gatherFeatureInputs(id, model);
   }
   const cli = `node "${path.join(PLUGIN_ROOT, 'bin/the-loop.js')}"`;
-  const executionContext = assembleExecutionContext({ model, scope, target, probe, models, inputs, cli });
+  const executionContext = assembleExecutionContext({ model, scope, target, probe, models, hooks, inputs, cli });
   if (opts.scriptOut) { writeSplicedWorkflowScript(opts.scriptOut, scope, target); }
   out(executionContext);
 }

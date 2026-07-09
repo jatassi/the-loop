@@ -19,7 +19,7 @@ as the recommended default, and wait for the human's confirm-or-override. Their
 answer sets the scope; nothing outside it starts.
 
 **Routes** — by proposal kind (fed by the status's `unconfigured` / `partial` /
-`configured` project state), or by explicit jump (`/begin define|design|build|release|diagnose`):
+`configured` project state), or by explicit jump (`/begin define|design|build|release|diagnose|configure`):
 
 - `onboard` → the `define` skill (brain-dump → brief), then the `design` skill. If a
   brief already exists, resume at Design.
@@ -28,6 +28,9 @@ answer sets the scope; nothing outside it starts.
   feature blocking stuck work, or the whole proposed backlog when nothing else is
   actionable) — write their design docs and acceptance, flipping them to designed.
 - `release` → the `release` skill.
+- `configure` → the `configure` skill — review the resolved hook inventory and, on the
+  human's confirmation, persist settings answers. A bare `configure` jump just prints
+  where configuration stands.
 - `new-intake` → ask what kind of intake this is. A bug — observed behavior
   deviating from contract, the *why* needing diagnosis — routes to the `diagnose`
   skill; an idea whose *what* needs sharpening routes to `define`; an obvious small

@@ -91,6 +91,7 @@ const EXECUTION_CONTEXT_INPUT = {
   target: 'main',
   probe: 'run the probe',
   models: { plan: { model: 'session', provenance: 'default' } },
+  hooks: { interview: { value: { enabled: true }, provenance: 'default' } },
   inputs: {
     a: {
       designDoc: '# a',
@@ -104,7 +105,7 @@ const EXECUTION_CONTEXT_INPUT = {
 
 test('assembleExecutionContext shapes the workflow args: target, scope, probe, models, per-feature entries, cli', () => {
   const ctx = assembleExecutionContext(EXECUTION_CONTEXT_INPUT);
-  assert.deepEqual(Object.keys(ctx), ['target', 'scope', 'probe', 'models', 'features', 'cli']);
+  assert.deepEqual(Object.keys(ctx), ['target', 'scope', 'probe', 'models', 'hooks', 'features', 'cli']);
   assert.equal(ctx.target, 'main');
   assert.deepEqual(ctx.scope, ['a', 'b']);
   assert.equal(ctx.probe, 'run the probe');
@@ -135,4 +136,42 @@ test('assembleExecutionContext shapes the workflow args: target, scope, probe, m
 test('assembleExecutionContext omits the cli key when none is given', () => {
   const { cli, ...rest } = EXECUTION_CONTEXT_INPUT;
   assert.ok(!('cli' in assembleExecutionContext(rest)));
+});
+
+test('assembleExecutionContext includes the full resolved hook table beside models', () => {
+  const hooks = {
+    interview: { value: { enabled: true }, provenance: 'default' },
+    modelBindings: { plan: { model: 'session', provenance: 'default' } },
+    testHarness: { value: 'detected-convention', provenance: 'project' },
+  };
+  const models = { plan: { model: 'session', provenance: 'default' } };
+  const ctx = assembleExecutionContext({
+    ...EXECUTION_CONTEXT_INPUT,
+    models,
+    hooks,
+  });
+  assert.deepEqual(ctx.hooks, hooks);
+  assert.deepEqual(ctx.models, models); // models is unaffected
+});
+
+test('fallback provenance and block-family gaps ride the context verbatim', () => {
+  const hooks = {
+    testHarness: { value: 'detected-convention', provenance: 'fallback' },
+    exampleBlock: { blocked: true, family: 'exampleBlock', gap: 'exampleBlock is not configured' },
+  };
+  const ctx = assembleExecutionContext({
+    ...EXECUTION_CONTEXT_INPUT,
+    hooks,
+  });
+  // byte-identical: "can't run" stays distinct from "ran and failed"
+  assert.deepEqual(ctx.hooks, hooks);
+  assert.deepEqual(ctx.hooks.testHarness, {
+    value: 'detected-convention',
+    provenance: 'fallback',
+  });
+  assert.deepEqual(ctx.hooks.exampleBlock, {
+    blocked: true,
+    family: 'exampleBlock',
+    gap: 'exampleBlock is not configured',
+  });
 });
