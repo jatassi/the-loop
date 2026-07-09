@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 25
+design_version: 26
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -331,4 +331,84 @@ features:
       - given a task in a 2+-task feature that routes to a registered executor, its drive spawn label is `(<pos>/<N>) <feature>/<task> via <executor>`
       - given a feature built via the small workflow path, or a standard plan with exactly one task, the build spawn label carries no prefix (the bare `<feature>/feature` / `<feature>/<task>`) — `(1/1)` never appears
       - given any of the above, branch names, commit subjects, and merge order are byte-identical to before the prefix — the prefix lives only in the display label
+
+  # ── rust replatform (ADR-0051): compiled binary + tool-owned JSON ────────
+  - id: rust-crate-scaffold
+    title: Rust workspace, clap CLI skeleton, and the clippy quality gate
+    status: designed
+    acceptance:
+      - cargo build --release at the repo root produces a the-loop binary from the cli/ crate, and running it with --version prints the crate version and exits 0
+      - the workspace lint profile denies warnings with the clippy all, pedantic, nursery, and cargo groups enabled and forbids reason-less allow attributes, and cargo fmt --check plus cargo clippy --all-targets plus cargo test all pass on the landed tree
+      - the repo's testHarness and lint hooks resolve to commands that run both toolchains (node and cargo) and both pass on the landed tree, with npm test staying green
+
+  - id: parity-oracle
+    title: Dual-driver black-box oracle over paired YAML/JSON fixtures
+    status: designed
+    depends_on: [rust-crate-scaffold]
+    acceptance:
+      - the oracle drives a CLI purely by subprocess — argv plus a fixture-repo cwd in, stdout JSON (key-order-insensitive), exit code, and refusal-path stderr presence asserted — with the binary under test selected by configuration, never imported in-process
+      - every oracle fixture repo is generated from one shared definition into two semantically equivalent variants — YAML artifacts for the JS CLI, JSON artifacts for the Rust binary
+      - the corpus covers every command of the current surface (status and status --json, list, check, set-status, plan parse|check|task, prepare-execution-context including --script-out, worktree-create, worktree-remove, executors-list, models-list, hooks-list, hooks-set, calibration-summarize) with at least one happy-path and one refusal case each, and runs 100% green against the JS CLI
+      - run against the Rust binary the oracle reports per-case pass/fail/pending so parity progress is one number, and pending cases are legal until json-cutover
+
+  - id: graph-commands-rust
+    title: feature-graph.json schema + status/list/check/set-status in Rust
+    status: designed
+    depends_on: [parity-oracle]
+    acceptance:
+      - the Rust binary reads docs/feature-graph.json and re-emits it canonically — schema key order, 2-space indent, trailing newline — so a hand-edit with shuffled keys and odd whitespace re-emits with content JSON-equal and bytes canonical
+      - the schema carries the feature-record contract (design_version, and features each with id, title, status proposed|designed|validated|shipped, depends_on, acceptance, optional section and notes), with the YAML era's comment groupings expressed as section values
+      - check exits 0 printing OK on a valid graph and exits 1 naming each offense — malformed JSON, unknown keys, missing/duplicate/malformed id, bad status, missing acceptance on a non-proposed feature, dangling or self or cyclic depends_on
+      - the oracle's status, status --json, list, check, and set-status cases pass against the Rust binary with stdout JSON-equal and exit codes equal to the JS CLI on paired fixtures
+
+  - id: plan-commands-rust
+    title: plan.json schema + plan parse/check/task in Rust
+    status: designed
+    depends_on: [graph-commands-rust]
+    acceptance:
+      - the plan schema at docs/plans/<id>/plan.json carries the task-contract shape — feature, design_version, and tasks each with id, title, covers, acceptance, footprint, size xs|s|m, judgment_level rote|standard|complex, depends_on, optional wiring — read and canonically re-emitted like the graph
+      - the oracle's plan parse, plan check, and plan task cases pass against the Rust binary, including the refusals (feature mismatch, covers index out of range, bad judgment level, task dependency cycle), with exit codes equal to the JS CLI
+
+  - id: config-commands-rust
+    title: models-list, executors-list, hooks-list, hooks-set in Rust
+    status: designed
+    depends_on: [parity-oracle]
+    acceptance:
+      - models-list resolves plugin defaults < user < project < local under the namespaced the-loop settings key with per-role provenance, JSON-equal to the JS CLI on paired fixtures, and exits 1 with no table on a binding naming an unregistered executor or a model outside its playbook
+      - hooks-list prints the full resolved inventory — every hook family plus the recorded bindings' present/absent/opted-out status — JSON-equal to the JS CLI on paired fixtures
+      - hooks-set writes the given value to the stated settings layer under the namespaced the-loop key, and unrelated keys in the target file byte-survive the write
+      - executors-list parses playbooks whose machine block is a fenced json block under the Machine block heading, refusing a malformed or duplicate-id playbook by naming the file
+
+  - id: run-commands-rust
+    title: prepare-execution-context, worktree verbs, calibration-summarize in Rust
+    status: designed
+    depends_on: [graph-commands-rust, plan-commands-rust, config-commands-rust]
+    acceptance:
+      - prepare-execution-context refuses (exit 1, nothing on stdout) on graph, scope, plan, or binding gate failures, and on success prints the execution context JSON-equal to the JS CLI on paired fixtures — design docs, plans read from feature branches, git-derived built tasks, models, hooks, probe, calibration digest — with preparedAt normalized and the cli field naming the Rust invocation as the one sanctioned difference
+      - with --script-out the command writes the spliced per-run workflow script byte-identical to the JS CLI's on the same canonical script, quote-safe, and shape-gated to exit 1 with nothing written when the meta line does not match
+      - the oracle's worktree-create and worktree-remove cases pass — create prints path/branch/created and is idempotent, remove resolves a path or a branch and prunes
+      - calibration-summarize reads docs/calibration/runs/*.json and regenerates docs/calibration/index.md byte-identical to the JS CLI's index on a paired corpus, exiting 1 naming the file on a malformed record
+
+  - id: binary-distribution
+    title: cargo-dist release matrix — checksummed binaries and installers on GitHub Releases
+    status: designed
+    depends_on: [rust-crate-scaffold]
+    acceptance:
+      - a tagged release publishes archives and sha256 checksums for aarch64-apple-darwin, x86_64-apple-darwin, x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, and x86_64-pc-windows-msvc, plus generated shell and powershell installers, from cargo-dist configuration committed in the repo — and no compiled artifact is committed to the git tree
+      - on a machine or container with no JS runtime on PATH, the shell-installer one-liner places the-loop on PATH with the fetched artifact checksum-verified before use, and the-loop --version succeeds
+      - the install one-liner is recorded where a missing binary surfaces — the README install section and the begin skill's missing-binary posture — so a command-not-found failure states its remedy
+
+  - id: json-cutover
+    title: The atomic swap — migrate artifacts to JSON, flip every invocation site, delete the JS CLI
+    status: designed
+    depends_on: [run-commands-rust, binary-distribution]
+    notes:
+      - executed as one human-gated session landing, never via the execution pipeline — the flip swaps the tool the pipeline's own post-merge machinery runs on, so self-edits take effect next run (the ADR-0034 posture at its limit)
+    acceptance:
+      - this repo's durable artifacts migrate in the landing — docs/feature-graph.md to docs/feature-graph.json, docs/calibration/runs/*.md to *.json, executor machine-block fences yaml to json — each verified semantically equal by comparing the JS CLI's parse of the old file with the Rust binary's parse of the new, and every YAML original deleted
+      - every living invocation site calls bare the-loop — skills, the workflow script, agents, and the recorded bindings (validation procedure, release runbook, operations toolkit) — the execution context's cli field says the-loop, and the-loop.js greps to zero outside historical records
+      - plugin/bin, plugin/src, and the vendored plugin/node_modules are gone, the yaml package appears nowhere in the tree, and the plugin bundle carries no runtime JavaScript except the harness-executed workflow script
+      - before the flip lands the full oracle corpus passes against the Rust binary with zero pending cases — the explicit regression pass — and the JS-side driver retires with the JS CLI
+      - bin/create-sample-repo.js seeds JSON-artifact fixture repos and the recorded validation procedure exercises bare the-loop against them
+      - the loop runs end to end on the flipped tree — the-loop status --json proposes correctly on the migrated graph and prepare-execution-context assembles a valid execution context — with cargo test, npm test, and npm run check green
 ```

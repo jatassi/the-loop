@@ -101,13 +101,13 @@ contract out of a plan). No agent contract says "read this whole file."
 | Artifact | Home | Nature |
 |---|---|---|
 | Architecture (this doc) | `docs/architecture.md` | living narrative + the recorded bindings below (validation, release, operations) |
-| Feature graph | `docs/feature-graph.md` | machine YAML; the durable state machine |
+| Feature graph | `docs/feature-graph.md` | machine YAML; the durable state machine (→ `feature-graph.json`, tool-owned JSON, at json-cutover — ADR-0051) |
 | Feature design docs | `docs/designs/<id>/design.md` | one per feature; the context slice agents get |
-| Plans | `docs/plans/<id>/plan.md` **on the feature branch** | task contracts only; never merged — gone when the feature lands |
+| Plans | `docs/plans/<id>/plan.md` **on the feature branch** | task contracts only; never merged — gone when the feature lands (→ `plan.json` at json-cutover — ADR-0051) |
 | Validation procedures | `docs/validation/<id>/procedure.md` | written at validation; replayed at release (their only replay point) |
 | Bug corpus | `docs/bugs/<bug-short-description>.md` | permanent; born at a diagnose intake, doubles as the fix's context slice |
 | Release records | `docs/releases/` (past: `ship-N.md`, historical; future: `v<version-number>/report.md`) | one short block per release |
-| Calibration records + index | `docs/calibration/` | per-run estimated-vs-actual evidence (permanent, ADR-0046) + wholly derived digest/index, CLI-regenerated (calibration-capture, designed 2026-07-08) |
+| Calibration records + index | `docs/calibration/` | per-run estimated-vs-actual evidence (permanent, ADR-0046) + wholly derived digest/index, CLI-regenerated (calibration-capture, designed 2026-07-08; records → `runs/<stamp>.json` at json-cutover — ADR-0051) |
 | ADRs / Glossary / brief / research | `docs/adr/` etc. | decision + vocabulary spine; never auto-loaded |
 
 ### Configuration — the hook inventory (ADR-0049)
@@ -186,6 +186,32 @@ lint reads the right Node floor) because the installed bundle is only `plugin/`;
 shipped default executor playbook lives beside `model-bindings.json` at
 `plugin/config/executors/`. Landed 2026-07-08 (feature `plugin-dir-restructure`,
 ADR-0048).
+
+### The Rust replatform (ADR-0051)
+
+Designed 2026-07-09; until the `json-cutover` feature lands, the node CLI and YAML
+artifacts described elsewhere in this doc remain the running truth. The deterministic
+toolchain replatforms to a **compiled Rust binary** named `the-loop` (crate at `cli/`,
+outside the plugin bundle), distributed the way `beads` distributes `bd`: cargo-dist
+publishes checksummed per-target archives and generated installers to GitHub Releases
+(five targets — mac arm64/x64, linux x64/arm64 musl-static, windows x64); the human
+installs once via the installer one-liner; every surface invokes bare `the-loop` on
+PATH; a missing binary fails loudly with the install one-liner as its stated remedy;
+no compiled artifact is ever committed. The invocation seam is unchanged — CLI via
+Bash, JSON stdout, exit codes as gates — and the execution context's `cli` field flips
+from `node "<plugin>/bin/the-loop.js"` to `the-loop` at cutover. Durable payloads
+become **pure tool-owned JSON** — `docs/feature-graph.json`, `docs/plans/<id>/plan.json`,
+`docs/calibration/runs/<stamp>.json`; executor playbooks keep their prose, machine-block
+fence flipping to json — emitted canonically (schema key order, 2-space indent) so a
+hand-edit's content survives while formatting normalizes; YAML comment groupings become
+`section`/`notes` fields; the round-trip-preservation machinery is deleted, not ported,
+and no YAML read path survives. Parity over the full command surface is guarded by a
+dual-driver black-box oracle (subprocess-only, paired YAML/JSON fixtures generated from
+one definition, run against both binaries; zero pending cases is a cutover
+precondition). The cutover itself is one human-gated **session** landing, never a
+pipeline run — it swaps the tool the pipeline's own post-merge machinery runs on.
+Dev-side node stays sanctioned for the harness-executed workflow script, its tests,
+fixtures, and eval; the zero-runtime-dependency constraint is about the user's machine.
 
 ## Key interface contracts
 
