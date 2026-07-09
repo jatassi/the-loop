@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 20
+design_version: 21
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -181,17 +181,35 @@ features:
       - a run ending blocked or environment-halted still lands its record; a record-agent failure or a budget-exhausted halt leaves the run summary unchanged, costing only that record and one log line
       - the record agent and calibration-summarize read and write only the target repository, and the design skill's slicing step consults docs/calibration/index.md when present
 
-  - id: configure-step-full
-    title: Full configure step (/loop-config — user/global + project scopes)
-    status: proposed
-    depends_on: [the-loop-entry]
+  - id: configure
+    title: Configure — the hook inventory, four settings layers, and the recommended-answer interview
+    status: designed
+    depends_on: [the-loop-entry, model-selection]
+    notes:
+      - designed 2026-07-08 (ADR-0049) — replaces the configure-step-full backlog node together with onboard; brief at docs/briefs/configure-step-full.md
+      - persistence is the namespaced "the-loop" settings key; the sanctioned userConfig/pluginConfigs path was re-verified 2026-07-08 and re-rejected (scalar-only types, no programmatic write)
     acceptance:
-      - bindings are set via recommended-answer interview and persisted to harness-native layers
+      - /the-loop configure (or the configure skill directly) prints every inventory hook with its resolved value, layer, and provenance (default|user|project|local|fallback), including the recorded bindings' present/absent/opted-out status
+      - an interview answer persists to its stated settings layer under the "the-loop" key with a per-answer destination override honored, and unrelated keys in the target file byte-survive the write
+      - the resolver merges defaults < user (~/.claude/settings.json) < project < local for every hook family, and models-list output is unchanged apart from the new layer and provenance stamp
+      - an unbound hook behaves as its declared fallback-or-block — fallback families resolve with a visible fallback line, block families report the named gap
+      - an artifact-store binding is captured per docs grouping with local as the default, readable back through the resolver (capture-only; adapters are ports-adapters-full)
+
+  - id: onboard
+    title: Onboard — configure's superset; greenfield hand-off and brownfield assess-and-fill
+    status: designed
+    depends_on: [configure, define, design]
+    notes:
+      - designed 2026-07-08 (ADR-0049) — replaces the configure-step-full backlog node together with configure
+    acceptance:
+      - on a fresh empty repo, the front door's onboarding route runs the configure leg before Define, with a recommended answer on every question
+      - on a brownfield fixture repo (code + tests + CI, no loop artifacts), one onboard pass detects the infrastructure, interviews only the gaps, and leaves the settings-side hooks and the three recorded-binding sections populated or explicitly opted out with every write human-confirmed
+      - Design's recorded-binding interviews confirm-or-fill instead of re-asking when onboard already recorded a section
 
   - id: ports-adapters-full
     title: Full ports/adapters (swapping + capability-contract enforcement)
     status: proposed
-    depends_on: [configure-step-full]
+    depends_on: [configure]
     notes:
       - the v1 port inventory (docs/ports/ports.md) was retired by ADR-0037 — the abstraction waits for a second adopter; reconstruct the inventory from git history if this feature nears the eligible set
     acceptance:
