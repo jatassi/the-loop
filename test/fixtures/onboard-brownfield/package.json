@@ -1,0 +1,14 @@
+{
+  "name": "onboard-brownfield-fixture",
+  "version": "1.0.0",
+  "description": "A brownfield fixture repo: real code, a real test, and CI, but never touched by the-loop.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.11"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "lint": "eslint ."
+  }
+}

@@ -13,7 +13,11 @@ downstream agent. Three artifacts come out (ADR-0037):
   boundaries, cross-feature interface contracts, non-goals, error posture — plus two
   recorded bindings under exact headings: `## Validation runbook` (bring-up / exercise /
   teardown commands; "none" is a recorded opt-out) and `## Release runbook` (ready
-  checks, deploy commands, health check, rollback path).
+  checks, deploy commands, health check, rollback path). These interviews are
+  **confirm-or-fill**: if a section already carries content — written by onboard's
+  brownfield assess-and-fill or a prior Design pass — read it back and confirm it's
+  still accurate rather than re-asking from scratch; interview only the gaps a
+  section is missing. Only a genuinely empty section gets the full interview.
 - `docs/feature-graph.md` — the machine feature graph, one ```yaml block under
   `## Feature graph`:
 
@@ -54,6 +58,14 @@ downstream agent. Three artifacts come out (ADR-0037):
    where comprehension of the existing system is paid once and cached. For a
    contested, hard-to-reverse choice, sketching 2–3 alternatives with subagents is
    available — a judgment call, not a mandate.
+
+   The moment the stack is chosen, capture the settings-side project hooks that only
+   exist once a stack is known — test harness, lint, pre-commit — via
+   `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" hooks-set <family> <layer>
+   <json-value>` (the `testHarness`, `lint`, and `precommit` families). This is where
+   the **lint-policy elicitation** lives: recommend the stricter policy for the
+   chosen stack and land it in the project's real lint config — never a parallel
+   policy blob; `hooks-set lint` binds the run command only.
 3. **Slice features — the human owns the knife.** A feature is a vertical slice:
    independently validatable and shippable. Order for a walking skeleton — any prefix
    of the build order is a viable system. Extra is a failure like missing. Consult

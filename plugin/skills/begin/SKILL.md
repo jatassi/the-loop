@@ -19,10 +19,12 @@ as the recommended default, and wait for the human's confirm-or-override. Their
 answer sets the scope; nothing outside it starts.
 
 **Routes** — by proposal kind (fed by the status's `unconfigured` / `partial` /
-`configured` project state), or by explicit jump (`/begin define|design|build|release|diagnose|configure`):
+`configured` project state), or by explicit jump (`/begin onboard|define|design|build|release|diagnose|configure`):
 
-- `onboard` → the `define` skill (brain-dump → brief), then the `design` skill. If a
-  brief already exists, resume at Design.
+- `onboard` → the `onboard` skill — it runs the configure leg (environment and
+  personal hooks), branches by scenario (greenfield hands off straight to Define →
+  Design; brownfield runs assess-and-fill first), then hands off. If a brief already
+  exists, resume at Design.
 - `advance-eligible-set` / `build` jump → the prepare-execution-context leg below.
 - `design` → the `design` skill, amending the design for the named ids (a proposed
   feature blocking stuck work, or the whole proposed backlog when nothing else is

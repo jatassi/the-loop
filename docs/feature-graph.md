@@ -197,7 +197,7 @@ features:
 
   - id: onboard
     title: Onboard — configure's superset; greenfield hand-off and brownfield assess-and-fill
-    status: designed
+    status: validated
     depends_on: [configure, define, design]
     notes:
       - designed 2026-07-08 (ADR-0049) — replaces the configure-step-full backlog node together with configure
