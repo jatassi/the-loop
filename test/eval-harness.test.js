@@ -23,6 +23,7 @@ test('buildCells expands units × models × reps per leg and honors filter/leg/r
   assert.equal(all.length, 5);
   assert.equal(buildCells({ units, matrix: MATRIX, opts: { leg: 'validate' } }).length, 1);
   assert.equal(buildCells({ units, matrix: MATRIX, opts: { filter: 'u-build', reps: 1 } }).length, 2);
+  assert.equal(buildCells({ units, matrix: MATRIX, opts: { filter: 'u-build,u-val', reps: 1 } }).length, 3);
   assert.equal(buildCells({ units, matrix: MATRIX, opts: { models: ['opus'], leg: 'build' } }).length, 2);
 });
 

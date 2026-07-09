@@ -22,6 +22,7 @@ function parseArgs(argv) {
     '--reps': (v) => { opts.reps = Number(v); },
     '--models': (v) => { opts.models = v.split(','); },
     '--results': (v) => { opts.results = v; },
+    '--validate-kernel': (v) => { opts.validateKernel = v; },
   };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--dry') { opts.dry = true; continue; }
@@ -111,6 +112,6 @@ if (opts.dry) {
   process.exit(0);
 }
 await writeRunMeta(resultsDir, { ...matrix, opts });
-const ctx = { evalRoot, repoRoot, resultsDir, rowsPath, matrix, cacheDir: path.join(evalRoot, 'fixtures-cache') };
+const ctx = { evalRoot, repoRoot, resultsDir, rowsPath, matrix, cacheDir: path.join(evalRoot, 'fixtures-cache'), validateKernel: opts.validateKernel ?? 'validate' };
 await runPool({ cells, caps: matrix.concurrency, ctx });
 console.log(`done — rows at ${rowsPath}`);

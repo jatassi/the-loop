@@ -89,7 +89,8 @@ export async function runCell(cell, ctx) {
   await rm(cellDir, { recursive: true, force: true });
   await mkdir(fixtureDir, { recursive: true });
   await (cell.unit.leg === 'build' ? materializeBuild({ cell, ctx, fixtureDir }) : materializeValidate({ cell, ctx, fixtureDir }));
-  const kernel = await readFile(path.join(ctx.evalRoot, 'kernels', cell.unit.leg === 'build' ? 'build.md' : 'validate.md'), 'utf8');
+  const kernelName = cell.unit.leg === 'build' ? 'build' : (ctx.validateKernel ?? 'validate');
+  const kernel = await readFile(path.join(ctx.evalRoot, 'kernels', `${kernelName}.md`), 'utf8');
   const brief = await readFile(path.join(cell.unit.dir, 'prompt.md'), 'utf8');
   const promptPath = path.join(cellDir, 'prompt.md');
   await writeFile(promptPath, `${kernel}\n\n---\n\n${brief}`);
@@ -102,19 +103,20 @@ export async function runCell(cell, ctx) {
   const canary = await canaryFields({ cell, fixtureDir, invocation, transcript });
   await writeFile(path.join(cellDir, 'diff.patch'), canary.diffText);
   const promptText = await readFile(promptPath, 'utf8');
-  const row = buildRow({ cell, started, invocation, graded, canary, cost: costFields({ cell, invocation, promptChars: promptText.length, transcript }) });
+  const row = buildRow({ cell, started, invocation, graded, canary, cost: costFields({ cell, invocation, promptChars: promptText.length, transcript }), kernelName });
   await appendFile(ctx.rowsPath, `${JSON.stringify(row)}\n`);
   const isOk = (graded.verify?.verdict === 'pass') || graded.validate_score?.verdict_match === true;
   if (isOk && canary.canary_leak.length === 0) { await rm(fixtureDir, { recursive: true, force: true }); }
   return row;
 }
 
-function buildRow({ cell, started, invocation, graded, canary, cost }) {
+function buildRow({ cell, started, invocation, graded, canary, cost, kernelName }) {
   const m = cell.unit.manifest;
   return {
     unit_id: cell.unit.id,
     unit_kind: m.kind,
     leg: cell.unit.leg,
+    kernel: kernelName,
     feature_source: m.feature_source,
     landing_sha: m.landing_sha,
     parent_sha: m.parent_sha,

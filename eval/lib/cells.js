@@ -48,8 +48,9 @@ export async function loadDoneKeys(rowsPath) {
   return new Set(keys);
 }
 
+// filter accepts a comma-separated list of substrings; a unit matches on any.
 function unitSelected(unit, opts) {
-  if (opts.filter && !unit.id.includes(opts.filter)) { return false; }
+  if (opts.filter && opts.filter.split(',').every((f) => !unit.id.includes(f))) { return false; }
   return !opts.leg || opts.leg === 'all' || unit.leg === opts.leg;
 }
 
