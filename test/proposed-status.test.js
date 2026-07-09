@@ -1,5 +1,5 @@
 // proposed-status's cross-cutting acceptance: a proposed feature is refused at the
-// prepare-execution-context gate, the /the-loop route table names the new `design`
+// prepare-execution-context gate, the /begin route table names the new `design`
 // proposal, and every living surface stating the feature-status enum lists all
 // four values — the old three-value statement greps to zero outside historical
 // records (ADRs, the founding design docs, per-feature design docs, and the other
@@ -46,8 +46,8 @@ features:
 });
 
 // ── criterion 5a: the route table maps a `design` proposal to the design skill ──
-test('commands/the-loop.md routes a design proposal to the design skill, and new-intake mentions parking an idea as a proposed record', () => {
-  const cmd = read('plugin/commands/the-loop.md');
+test('plugin/skills/begin/SKILL.md routes a design proposal to the design skill, and new-intake mentions parking an idea as a proposed record', () => {
+  const cmd = read('plugin/skills/begin/SKILL.md');
   assert.match(cmd, /`design`\s*→\s*the `design` skill, amending the design for the named ids/);
   assert.match(cmd, /parked as a `proposed` record by amendment/);
 });
@@ -55,7 +55,7 @@ test('commands/the-loop.md routes a design proposal to the design skill, and new
 // The six living surfaces the design names explicitly (docs/feature-graph.md's
 // header, docs/architecture.md's Operating model paragraph + Feature record
 // contract, docs/glossary.md's [[feature graph]] entry, README.md's status-field
-// line, skills/design/SKILL.md's yaml sample, commands/the-loop.md's routes) each
+// line, skills/design/SKILL.md's yaml sample, plugin/skills/begin/SKILL.md's routes) each
 // list all four values together.
 const SURFACES = ['docs/feature-graph.md', 'docs/architecture.md', 'docs/glossary.md',
   'README.md', 'plugin/skills/design/SKILL.md', 'plugin/bin/the-loop.js'];

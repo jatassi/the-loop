@@ -122,7 +122,7 @@ operations). Settings resolve plugin defaults < user (`~/.claude/settings.json`)
 inventory. Every hook declares its unbound behavior — visible fallback where a
 sane default exists, blocked-with-named-gap where none does — and the consuming
 phase checks its hooks as a precondition. The `configure` skill (plus the
-`/the-loop configure` jump) is the re-runnable knob-turner; `onboard` is its
+`/begin configure` jump) is the re-runnable knob-turner; `onboard` is its
 superset for adoption — greenfield hands off to Define → Design, brownfield
 assesses existing infrastructure and fills the gaps, human-confirmed. The
 sanctioned `userConfig`/`pluginConfigs` path was re-verified and re-rejected

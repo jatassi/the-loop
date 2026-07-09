@@ -8,7 +8,7 @@ export { JUDGMENT_LEVELS, parsePlan, planPath, resolveTask, TASK_SIZES, validate
 // The execution-context assembler's pure core — scope gates, git-derived task state,
 // execution-context shape.
 export { assembleExecutionContext, builtTaskIds, checkScope, featureBranch, taskBranch, taskCommitPrefix } from './prepare-execution-context.js';
-// /the-loop's orientation core.
+// /begin's orientation core.
 export { detectState, eligibleSet, machineOrientation, propose } from './propose-next-action.js';
 export { findBlocks, replaceBlock, sectionAfter, yamlBlockAfter } from './replace-fenced-block.js';
 // The model-binding resolver — role → model/effort/executor merge across defaults <

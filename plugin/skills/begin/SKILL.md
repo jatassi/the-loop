@@ -1,5 +1,6 @@
 ---
-description: "the-loop's front door — states where the project stands and proposes the next action; /the-loop <phase> jumps straight to a phase"
+name: begin
+description: "the-loop's front door — begin a working session: states where the project stands and proposes the next action; /begin <phase> jumps straight to a phase"
 argument-hint: "[phase]"
 allowed-tools: Bash(node *), Bash(git *), Read, Workflow
 ---
@@ -11,14 +12,14 @@ allowed-tools: Bash(node *), Bash(git *), Read, Workflow
 
 !`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status --json 2>&1`
 
-## /the-loop
+## /begin
 
 State where the project stands (from the orientation JSON), propose the next action
 as the recommended default, and wait for the human's confirm-or-override. Their
 answer sets the scope; nothing outside it starts.
 
 **Routes** — by proposal kind (fed by the status's `unconfigured` / `partial` /
-`configured` project state), or by explicit jump (`/the-loop define|design|build|release|diagnose`):
+`configured` project state), or by explicit jump (`/begin define|design|build|release|diagnose`):
 
 - `onboard` → the `define` skill (brain-dump → brief), then the `design` skill. If a
   brief already exists, resume at Design.

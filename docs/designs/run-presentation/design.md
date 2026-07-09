@@ -51,7 +51,7 @@ existing split):
   pin meta to one physical line (workflow-phase-grouping); the splice must
   preserve that.
 
-**Launch leg** (`commands/the-loop.md`): the prepare-execution-context step
+**Launch leg** (`plugin/skills/begin/SKILL.md`): the prepare-execution-context step
 passes `--script-out` with a session-scratch path, and the Workflow call's
 `scriptPath` becomes that path — the canonical `workflows/` file is never
 launched directly. The scratch copy is session-managed (the harness persists
@@ -112,5 +112,5 @@ Accepted consequences:
   the usage text in `bin/the-loop.js`
 - `workflows/execution-pipeline.js` label sites +
   `test/execution-pipeline-*.test.js` re-keying
-- `commands/the-loop.md` launch leg
+- `plugin/skills/begin/SKILL.md` launch leg
 - `docs/designs/workflow-phase-grouping/design.md` label-format line

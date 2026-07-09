@@ -6,7 +6,7 @@ replaces the `configure-step-full` backlog node together with `configure`).
 Onboard is the experience that leaves a project fully hooked: configure's settings
 pass *plus* the `docs/architecture.md` recorded bindings a greenfield Design pass
 would have written. It is a `skills/onboard/SKILL.md` (bare-verb family) that the
-front door's onboarding route runs; `/the-loop onboard` jumps straight to it.
+front door's onboarding route runs; `/begin onboard` jumps straight to it.
 
 ## The two flows
 
@@ -42,9 +42,9 @@ The skill detects the scenario — no bespoke marker, just the tree:
 
 ## Front door
 
-`commands/the-loop.md`'s `onboard` route changes from "define skill, then design
+`plugin/skills/begin/SKILL.md`'s `onboard` route changes from "define skill, then design
 skill" to "the onboard skill" (which runs configure, branches by scenario, and
-hands off). `/the-loop onboard` and `/the-loop configure` join the jump list.
+hands off). `/begin onboard` and `/begin configure` join the jump list.
 `src/propose-next-action.js` (`detectState`) is untouched — mode stays
 artifact-derived; "fully hooked" is never a stored marker, it is what `hooks-list`
 reports when asked (derive-don't-mark, the repo's standing posture).
@@ -52,7 +52,7 @@ reports when asked (derive-don't-mark, the repo's standing posture).
 ## Interfaces touched
 
 - `skills/onboard/SKILL.md` — new.
-- `commands/the-loop.md` — onboard route text + jump list.
+- `plugin/skills/begin/SKILL.md` — onboard route text + jump list.
 - `skills/design/SKILL.md` — binding interviews become confirm-or-fill when a
   section exists; gains the lint-policy elicitation and the stack-time capture of
   settings-side project hooks.

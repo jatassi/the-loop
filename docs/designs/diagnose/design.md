@@ -15,8 +15,8 @@ a human-gated amendment to `docs/feature-graph.md`, then the unchanged engine:
 - a bug — observed behavior deviating from contract, the **why** needing diagnosis
   → **this door**: RCA → fix + permanent RCA doc → gate → the same engine.
 
-Triage between the doors lives where routing already lives: `/the-loop`'s route
-table (`commands/the-loop.md`), whose orientation already returns a `new-intake`
+Triage between the doors lives where routing already lives: `/begin`'s route
+table (`plugin/skills/begin/SKILL.md`), whose orientation already returns a `new-intake`
 proposal kind. Diagnose builds no pipeline of its own — it is the diagnosis
 discipline bolted onto the front of the existing amendment gate.
 
@@ -152,7 +152,7 @@ stays the picture of the system, not its repair log.
   drafting the skill invokes `/writing-great-skills` FIRST — before writing a line
   of the skill — and drafts to its standard; fully self-contained (no ADR or
   internal-doc references); a final `/writing-great-skills` pass before landing.
-- **`commands/the-loop.md`** — one route line: a bug-shaped intake (or the
+- **`plugin/skills/begin/SKILL.md`** — one route line: a bug-shaped intake (or the
   `new-intake` proposal when the answer is "a bug") → the diagnose skill.
 - **`bin/cli-commands.js`** — the slice lookup fallback in `gatherFeatureInputs`,
   currently:

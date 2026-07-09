@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: Run a bug report through root-cause diagnosis to a human-gated fix and a permanent RCA doc. Use when the user reports a bug or asks to investigate one, or /the-loop routes a bug-shaped intake here.
+description: Run a bug report through root-cause diagnosis to a human-gated fix and a permanent RCA doc. Use when the user reports a bug or asks to investigate one, or /begin routes a bug-shaped intake here.
 ---
 
 # Diagnose — the bug door
