@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 23
+design_version: 24
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -319,6 +319,18 @@ features:
       - npm test and npm run check pass green on the landed tree, with every test that read plugin/commands/the-loop.md reading plugin/skills/begin/SKILL.md
       - ADR-0002 is byte-identical apart from one appended amendment note recording the /begin rename and the dissolved command-vs-skill constraint
       - in a live session against the installed plugin, /begin renders with the status JSON injected ahead of the instructions, and /the-loop no longer resolves
+
+  - id: fix-environment-halt-accounting
+    title: task-level environment block halts the run and silently erases its feature from the summary
+    status: designed
+    depends_on: []
+    notes:
+      - "diagnosed 2026-07-08 from run wf_a53a5f81-dbb; RCA and fix design in docs/bugs/fix-environment-halt-accounting.md — environment blocks demote to feature stalls, run halts remain budget-only"
+    acceptance:
+      - given a two-feature run where P's build returns blocked/kind=environment while M's build is mid-flight, when the run summary returns, then P appears in stalled carrying the block detail, M completes (its validate still spawns), and halted is absent
+      - given a single-feature run whose build returns blocked/kind=environment, when the run ends, then the feature is in stalled (the retry lane) and the run is not halted
+      - given any engine test's summary, every in-scope feature id appears in exactly one of completed/blocked/stalled — budget-halt remainder excepted, explained by halted
+      - drive.md requires the blocked return's detail field to be self-contained (the engine surfaces only detail), and the-loop.md plus ADR-0029 carry the corrected halt taxonomy (environment blocks stall the feature; halts are budget-only)
 
   - id: build-agent-title-progress
     title: Task-position prefix on divided-feature build agent titles
