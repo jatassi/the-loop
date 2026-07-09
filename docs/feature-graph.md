@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 18
+design_version: 19
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -168,12 +168,18 @@ features:
 
   - id: calibration-capture
     title: Calibration Memory (per-project capture, recalled at Plan/Design)
-    status: proposed
-    depends_on: [plan, design]
+    status: designed
+    depends_on: [execution-pipeline, plan, design]
     notes:
-      - capture must separate loop-overhead tokens (validator, orchestration) from build tokens, so "earns its context" is measured against the founding thesis, not assumed (2026-07-01 review); the v2 benchmark forensics (docs/TODO.md) are the seed methodology
+      - designed 2026-07-08 from docs/briefs/calibration-capture.md; capture separates loop-overhead tokens from build tokens so "earns its context" is measured, not assumed (2026-07-01 review; seed methodology = the v2 benchmark forensics); ADR-0046 exempts the capture commit from ADR-0034's no-bookkeeping rule
+      - "`record` (agent role) and `calibration-summarize` (CLI verb) blind-generated and human-approved 2026-07-08 per the naming standard"
     acceptance:
-      - actual-vs-estimated task cost + re-slice events are captured and recalled
+      - given a run that reaches its run summary, exactly one calibration commit lands on the target branch adding docs/calibration/runs/<date>-<seq>.md whose yaml payload carries per feature the workflow path, planned task sizes/judgment levels/footprints, per-role agent counts, outcome with reason, and any re-slice detail — and per run prepared_at, scope, target, and tokens spent with per-role sampled deltas and their serial-or-overlapped attribution flag — with zero human or session action
+      - the payload is computed in the workflow script as a deterministic function of observed run events (same observations produce a byte-identical payload); the record agent writes it verbatim and adds only git-derived enrichment (per-feature duration, files touched, insertions/deletions, commit count) — no free-text interpretation appears anywhere in the record
+      - the-loop calibration-summarize regenerates docs/calibration/index.md wholesale and deterministically from the record corpus (same corpus yields a byte-identical file; the digest section stays within 40 lines) with one line per run below the digest, and exits 1 naming the offending file on a malformed record
+      - prepare-execution-context carries the index's digest section in the execution context when docs/calibration/index.md exists and omits the field otherwise; the plan prompt includes the digest only when present; a repo with no calibration history yields an execution context and prompts byte-identical to today's
+      - a run ending blocked or environment-halted still lands its record; a record-agent failure or a budget-exhausted halt leaves the run summary unchanged, costing only that record and one log line
+      - the record agent and calibration-summarize read and write only the target repository, and the design skill's slicing step consults docs/calibration/index.md when present
 
   - id: configure-step-full
     title: Full configure step (/loop-config — user/global + project scopes)

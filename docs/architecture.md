@@ -107,6 +107,7 @@ contract out of a plan). No agent contract says "read this whole file."
 | Runbooks | `docs/runbooks/<id>/runbook.md` | written at validation; replayed at release (their only replay point) |
 | Bug corpus | `docs/bugs/<bug-short-description>.md` | permanent; born at a diagnose intake, doubles as the fix's context slice |
 | Release records | `docs/releases/` (past: `ship-N.md`, historical; future: `v<version-number>/report.md`) | one short block per release |
+| Calibration records + index | `docs/calibration/` | per-run estimated-vs-actual evidence (permanent, ADR-0046) + wholly derived digest/index, CLI-regenerated (calibration-capture, designed 2026-07-08) |
 | ADRs / Glossary / brief / research | `docs/adr/` etc. | decision + vocabulary spine; never auto-loaded |
 
 ### Roles and models (ADR-0030/0040)
@@ -173,6 +174,12 @@ Cross-feature shapes, in prose (per-feature detail lives in the feature docs):
   resolved with provenance by `the-loop models-list`.
 - **Validation runbook** — `bringUp → exercise(acceptance) → teardown`, recorded per
   project in the section below and passed verbatim into validate prompts.
+- **Calibration record** — `docs/calibration/runs/<date>-<seq>.md`: a script-computed
+  yaml payload (per-feature planned-vs-actual, per-role agent counts and sampled token
+  deltas) that the run's final `record` agent lands verbatim plus git-derived
+  enrichment; `docs/calibration/index.md` is wholly derived by
+  `the-loop calibration-summarize`, and its digest section rides the execution
+  context as `calibration` when present (calibration-capture, designed 2026-07-08).
 
 ## Non-goals
 
