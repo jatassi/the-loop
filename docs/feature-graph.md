@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 17
+design_version: 18
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -151,11 +151,20 @@ features:
       - /the-loop routes a bug-shaped intake to the diagnose skill, whose diagnosis loop is a port binding (/diagnosing-bugs unless the project binds another)
 
   - id: operate-tooling
-    title: Operate (on-demand ops/debug tooling + observability-solution guidance)
-    status: proposed
+    title: Operate (recorded per-project ops toolkit + thin operate skill + runbook-genre rename)
+    status: designed
     depends_on: [diagnose]
+    notes:
+      - designed 2026-07-08 from docs/briefs/operate-tooling.md; guardrails are prescriptive routing, never enforcement — a direct human ask trumps the skill's routing; nothing scheduled or autonomous (ADR-0034 stands)
     acceptance:
-      - the human invokes ops/debug tooling reactively; a resulting fix files a diagnose intake; never acts on prod unattended
+      - the design skill's binding interview asks the ops-toolkit questions and "how will you know something's wrong?" (a recommendation fitted to the project offered; "skip"/"none" legal), and the answers land as a `## Operations toolkit` section in docs/architecture.md holding deployment targets, capability entries each tagged read or mutate, the observability answer with each recorded apprisal path naming the runbook it routes to, runbook pointers, and a never-do list — or a recorded opt-out
+      - given an ops ask in a project with a recorded toolkit, the operate skill routes the ask onto the recorded capability entries and runbook pointers, reads a routed runbook fully before acting, and precedes any mutating action with a one-line preamble naming what will run and why — mutation only via entries tagged mutate
+      - the operate skill carries the instance-vs-repo action boundary — read-only ops freely; mutating instance actions via the recorded toolkit only; repo changes never, exiting to a diagnose intake that names the originating operate session; observed toolkit/runbook doc drift corrected in the same session
+      - invoked in a project with no `## Operations toolkit` section, the operate skill runs the binding interview first, records the section, then proceeds with the original ask — no graph amendment, no re-entering Design
+      - this repo's docs/architecture.md carries its own recorded Operations toolkit section
+      - the operate skill text names no particular deployment target, observability product, or vendor toolchain
+      - the rename landed atomically with npm test and npm run check green — heading `## Validation procedure` replaces `## Validation runbook` everywhere living code reads it, validator-recorded procedures live at docs/validation/<feature-id>/procedure.md (the existing seven moved content-identical), and unqualified "runbook" means the operational genre on every living surface, the validation sense grepping to zero outside historical records (docs/adr/, docs/research/, docs/briefs/, docs/releases/, docs/bugs/) and the pinned eval corpus
+      - the glossary's `runbook` entry is redefined to the operational genre and a `validation procedure` entry carries "runbook (validation sense)" as a historical alias, inheriting the pre-sweep alias already on today's `runbook` entry
 
   - id: calibration-capture
     title: Calibration Memory (per-project capture, recalled at Plan/Design)

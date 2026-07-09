@@ -100,7 +100,7 @@ contract out of a plan). No agent contract says "read this whole file."
 
 | Artifact | Home | Nature |
 |---|---|---|
-| Architecture (this doc) | `docs/architecture.md` | living narrative + the two recorded runbooks below |
+| Architecture (this doc) | `docs/architecture.md` | living narrative + the recorded bindings below (validation, release, operations) |
 | Feature graph | `docs/feature-graph.md` | machine YAML; the durable state machine |
 | Feature design docs | `docs/designs/<id>/design.md` | one per feature; the context slice agents get |
 | Plans | `docs/plans/<id>/plan.md` **on the feature branch** | task contracts only; never merged — gone when the feature lands |
@@ -234,3 +234,33 @@ rollback pointer for code is the previous release tag. Note: the health check fa
 by design after a rollback (the plugin is gone) — that reads as
 `rollback_verified: false`, the correct "needs human eyes" signal, and a restart is
 required before a live session runs the new version.
+
+## Operations toolkit
+
+The self-hosting binding (this repo's own, recorded at the operate-tooling design,
+2026-07-08): the deployed instance is the installed plugin in the human's Claude
+Code environment. Near-trivial by design — first-consumer evidence for the shape.
+
+Deployment targets: the user-scope plugin installation on this machine; agents
+reach it through the `claude plugin` CLI.
+
+Capabilities — each entry tagged read or mutate at recording time:
+
+- installed-state inspection (read): `claude plugin list --json`,
+  `claude plugin details the-loop@the-loop`
+- deploy (mutate): the Release runbook's marketplace chain above — releases ride
+  the release skill's gate, never a second path
+- rollback (mutate): the Release runbook's rollback path
+  (`claude plugin uninstall the-loop@the-loop --scope user`)
+
+Observability: none bound — the human notices (a failing run, wrong behavior in a
+live session). If an apprisal path is ever recorded, it names the runbook it
+routes to.
+
+Runbooks: none yet; operational lore accretes in the Release runbook section above
+(marketplace-chain gotchas).
+
+Never do:
+
+- never run the deploy chain outside the release skill's human gate
+- never `claude plugin uninstall` outside a release rollback
