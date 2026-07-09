@@ -124,10 +124,13 @@ docs were the squatters (naming law, ADR-0044). Mapping:
   `docs/architecture.md`. `## Release runbook` stays — it already names the
   operational genre.
 - **Files**: `docs/runbooks/<id>/runbook.md` → `docs/validation/<id>/procedure.md`,
-  content-identical moves (seven exist: build-agent-title-progress, diagnose,
-  naming-map, proposed-status, rename-sweep, run-presentation,
-  worktree-parallelism). `docs/runbooks/<topic>.md` is thereby freed for
-  operational runbooks.
+  content-identical moves. **Re-list the set from the live tree at build time —
+  never trust a frozen count.** Every `docs/runbooks/<id>/runbook.md` present when
+  the rename builds is a validation-sense record and must move; features validating
+  concurrently (or after this design was written) keep adding more — as of 2026-07-09
+  the set is eleven, not the seven this doc first enumerated (the added four:
+  begin-front-door-rename, plugin-dir-restructure, configure, role-agent-binding).
+  `docs/runbooks/<topic>.md` is thereby freed for operational runbooks.
 - **Glossary**: the `runbook` entry is redefined to the operational genre; a new
   `validation procedure` entry carries `runbook (validation sense)` as a
   historical alias and inherits the pre-sweep alias already on today's `runbook`
@@ -164,6 +167,9 @@ Blast radius (enumerated 2026-07-08 from the live tree — the heading string is
 Sweep bar, inherited from rename-sweep: every living surface updated; the
 validation sense of "runbook" greps to zero outside the exclusions; `npm test`
 and `npm run check` green on the landed tree. File-by-file sequencing is Plan's.
+The runbook file move-set is re-derived by listing `docs/runbooks/` at build time
+(dynamic, not the count this doc first enumerated) — this is the criterion the
+first build attempt missed.
 
 ## Dogfood
 
