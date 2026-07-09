@@ -81,7 +81,7 @@ resolution.
 **aliases:** the snapshot, launch snapshot (historical) · **status:** active
 The single JSON `the-loop prepare-execution-context` assembles and gates —
 per-feature design docs, plans read from feature branches, git-derived task state,
-the model table, the validation-runbook binding — consumed by the Workflow as
+the model table, the validation-procedure binding — consumed by the Workflow as
 `args`. The orchestrator pushes each worker's task brief out of it; workers fetch
 nothing to start. *See:* ADR-0036.
 
@@ -125,10 +125,18 @@ The dependency-ready set: features still `designed` whose dependencies are all
 `validated|shipped` — what the next-action proposal offers to run.
 
 ### runbook
-**aliases:** probe pack (historical) · **status:** active
-`docs/runbooks/<id>/runbook.md` — the pinned bring-up / exercise / expected-observations /
+**aliases:** — · **status:** active
+`docs/runbooks/<topic>.md` — an operational runbook: the bring-up, troubleshooting,
+or deploy-adjacent procedure for running a live instance, pointed to by the
+`## Operations toolkit` binding's Runbooks field and any recorded apprisal path.
+*Not to be confused with:* [[validation procedure]] — the validation-sense record
+this term named before the 2026-07-09 rename. *See:* ADR-0044.
+
+### validation procedure
+**aliases:** runbook (validation sense) (historical), probe pack (historical) · **status:** active
+`docs/validation/<id>/procedure.md` — the pinned bring-up / exercise / expected-observations /
 teardown steps a validator recorded while exercising a feature end-to-end. Replayed
-only at Release (its one replay point); the seed of Operate. *See:* ADR-0035/0039.
+only at Release (its one replay point); the seed of Operate. *See:* ADR-0035/0039/0044.
 
 ### run summary
 **aliases:** BoundaryResult (historical) · **status:** active
@@ -192,6 +200,6 @@ An ordinary feature record born at a diagnose intake — id `fix-<slug>`,
 regression-shaped acceptance, context slice at `docs/bugs/<bug-short-description>.md`
 instead of `docs/designs/<id>/design.md` — and **transient**: pruned from the
 [[feature graph]] in the release commit while its bug doc and release record remain.
-Its regression check folds into the affected feature's [[runbook]], never a
-standalone runbook. Passed the ratchet because no standard term ("hotfix", "bugfix")
+Its regression check folds into the affected feature's [[validation procedure]], never a
+standalone validation procedure. Passed the ratchet because no standard term ("hotfix", "bugfix")
 names the transient-record-over-permanent-bug-doc lifecycle. *See:* ADR-0043.

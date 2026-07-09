@@ -57,7 +57,7 @@ function commitFile(root, rel, { contents, message }) {
 
 // Fixture bodies as single source lines so this file stays under max-lines (content matches the prior multi-line templates).
 const GRAPH = `# Fixture — Feature graph\n\n## Feature graph\n\n\`\`\`yaml\ndesign_version: 1\nfeatures:\n  - id: widget\n    title: Widget\n    status: designed\n    depends_on: []\n    acceptance: [renders a widget, persists a widget]\n  - id: gadget\n    title: Gadget\n    status: designed\n    depends_on: [widget]\n    acceptance: renders a gadget\n  - id: base\n    title: Base\n    status: validated\n    depends_on: []\n    acceptance: base works\n\`\`\`\n`;
-const DESIGN = `# Fixture — Architecture\n\nNarrative.\n\n## Validation runbook\n\nRun the fixture CLI and expect pong on stdout.\n\n## Release runbook\n\nTag it.\n`;
+const DESIGN = `# Fixture — Architecture\n\nNarrative.\n\n## Validation procedure\n\nRun the fixture CLI and expect pong on stdout.\n\n## Release runbook\n\nTag it.\n`;
 const PLAN = `# Plan — widget\n\n## Tasks\n\n\`\`\`yaml\nfeature: widget\ndesign_version: 1\ntasks:\n  - id: t1\n    title: Render pipeline\n    covers: [1]\n    acceptance: markup renders\n    footprint: [src/render.js]\n    size: s\n    judgment_level: standard\n    depends_on: []\n  - id: t2\n    title: Persistence\n    covers: [2]\n    acceptance: a widget persists\n    footprint: [src/save.js]\n    size: xs\n    judgment_level: standard\n    depends_on: [t1]\n\`\`\`\n`;
 
 test('spine list prints the parsed model without internals; spine check reports OK/FAIL and sets the exit code', () => {

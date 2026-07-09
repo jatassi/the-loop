@@ -8,12 +8,13 @@ import { test } from 'node:test';
 
 import * as recordedBindings from '../plugin/src/recorded-bindings.js';
 import { recordedBindingsStatus } from '../plugin/src/recorded-bindings.js';
+import { sectionAfter } from '../plugin/src/replace-fenced-block.js';
 
 test('recordedBindingsStatus reports present, absent, and opted-out from section text', () => {
   const text = [
     '# Fixture — Architecture',
     '',
-    '## Validation runbook',
+    '## Validation procedure',
     '',
     'Bring up the fixture, exercise the CLI, tear down.',
     '',
@@ -25,7 +26,7 @@ test('recordedBindingsStatus reports present, absent, and opted-out from section
   ].join('\n');
 
   const status = recordedBindingsStatus(text);
-  assert.deepEqual(status.validationRunbook, { status: 'present', gap: null });
+  assert.deepEqual(status.validationProcedure, { status: 'present', gap: null });
   assert.deepEqual(status.releaseRunbook, { status: 'opted-out', gap: null });
   assert.deepEqual(status.operationsToolkit, {
     status: 'absent',
@@ -44,7 +45,7 @@ test('absent release-runbook and operations-toolkit carry named gap wording; val
   ].join('\n');
 
   const status = recordedBindingsStatus(text);
-  assert.deepEqual(status.validationRunbook, { status: 'absent', gap: null });
+  assert.deepEqual(status.validationProcedure, { status: 'absent', gap: null });
   assert.deepEqual(status.releaseRunbook, {
     status: 'absent',
     gap: 'blocked — no guessed deploys',
@@ -57,7 +58,7 @@ test('absent release-runbook and operations-toolkit carry named gap wording; val
 
 test('opted-out is whole-section body "none" (trimmed, case-insensitive) for every binding', () => {
   const text = [
-    '## Validation runbook',
+    '## Validation procedure',
     '',
     'NONE',
     '',
@@ -71,14 +72,14 @@ test('opted-out is whole-section body "none" (trimmed, case-insensitive) for eve
   ].join('\n');
 
   const status = recordedBindingsStatus(text);
-  assert.deepEqual(status.validationRunbook, { status: 'opted-out', gap: null });
+  assert.deepEqual(status.validationProcedure, { status: 'opted-out', gap: null });
   assert.deepEqual(status.releaseRunbook, { status: 'opted-out', gap: null });
   assert.deepEqual(status.operationsToolkit, { status: 'opted-out', gap: null });
 });
 
 test('present / opted-out bindings carry no gap wording', () => {
   const text = [
-    '## Validation runbook',
+    '## Validation procedure',
     '',
     'some procedure',
     '',
@@ -92,10 +93,10 @@ test('present / opted-out bindings carry no gap wording', () => {
   ].join('\n');
 
   const status = recordedBindingsStatus(text);
-  assert.equal(status.validationRunbook.gap, null);
+  assert.equal(status.validationProcedure.gap, null);
   assert.equal(status.releaseRunbook.gap, null);
   assert.equal(status.operationsToolkit.gap, null);
-  assert.equal(status.validationRunbook.status, 'present');
+  assert.equal(status.validationProcedure.status, 'present');
   assert.equal(status.releaseRunbook.status, 'opted-out');
   assert.equal(status.operationsToolkit.status, 'present');
 });
@@ -103,9 +104,40 @@ test('present / opted-out bindings carry no gap wording', () => {
 test('this repo\'s docs/architecture.md has all three bindings present', () => {
   const text = readFileSync('docs/architecture.md', 'utf8');
   const status = recordedBindingsStatus(text);
-  assert.deepEqual(status.validationRunbook, { status: 'present', gap: null });
+  assert.deepEqual(status.validationProcedure, { status: 'present', gap: null });
   assert.deepEqual(status.releaseRunbook, { status: 'present', gap: null });
   assert.deepEqual(status.operationsToolkit, { status: 'present', gap: null });
+});
+
+test('this repo\'s Operations toolkit section binds deployed instance, deploy/rollback, and observability, sibling to the release and validation-procedure bindings, and reads present (operate-tooling repo-ops-toolkit-section)', () => {
+  const text = readFileSync('docs/architecture.md', 'utf8');
+  const body = sectionAfter(text, '## Operations toolkit');
+
+  assert.notEqual(body, null, 'docs/architecture.md must carry an ## Operations toolkit section');
+  assert.match(body, /installed plugin/i, 'deployed instance must be the installed plugin');
+  assert.match(
+    body,
+    /deploy[^\n]*Release runbook/i,
+    'deploy must route through the Release runbook\'s recorded chain',
+  );
+  assert.match(
+    body,
+    /rollback[^\n]*Release runbook/i,
+    'rollback must route through the Release runbook\'s recorded chain',
+  );
+  assert.match(body, /human notices/i, 'observability must be recorded as "the human notices"');
+
+  // Sibling to the release and validation-procedure bindings: same heading level,
+  // both preceding headings present in the doc.
+  const validationIdx = text.indexOf('## Validation procedure');
+  const releaseIdx = text.indexOf('## Release runbook');
+  const opsIdx = text.indexOf('## Operations toolkit');
+  assert.ok(validationIdx !== -1 && releaseIdx !== -1 && opsIdx !== -1,
+    'all three recorded-binding headings must be present at the same (##) level');
+  assert.ok(opsIdx > validationIdx && opsIdx > releaseIdx,
+    'Operations toolkit is a sibling section, ordered after the other two bindings');
+
+  assert.deepEqual(recordedBindingsStatus(text).operationsToolkit, { status: 'present', gap: null });
 });
 
 test('reader is pure and never proposes writes — only status, no write-content exports', () => {
@@ -115,7 +147,7 @@ test('reader is pure and never proposes writes — only status, no write-content
   assert.equal(typeof recordedBindings.recordedBindingsStatus, 'function');
 
   const text = [
-    '## Validation runbook',
+    '## Validation procedure',
     '',
     'procedure',
     '',
@@ -129,7 +161,7 @@ test('reader is pure and never proposes writes — only status, no write-content
   assert.deepEqual(first, second);
   // input string is never mutated
   assert.equal(text, [
-    '## Validation runbook',
+    '## Validation procedure',
     '',
     'procedure',
     '',

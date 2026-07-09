@@ -27,7 +27,7 @@ instinct sneaking back in.
 
 One file per **nondefault** binding, created at capture. A default (local) project
 has zero files in `docs/adapters/` — the pattern's carrying cost is pay-per-swap.
-The three recorded bindings in `architecture.md` (validation runbook, release
+The three recorded bindings in `architecture.md` (validation procedure, release
 runbook, operations toolkit) are Design's narrative artifacts and do not migrate.
 
 Template (the operations-toolkit shape, generalized):

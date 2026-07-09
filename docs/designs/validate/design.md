@@ -14,8 +14,8 @@ The one independent look a feature gets. A fresh-context validator
 2. **Judge** — read the diff and touched files; each acceptance criterion met/unmet
    with self-observed evidence; full suite + lint once; tests must actually bite
    (a test that passes without exercising the new surface isn't evidence). If a
-   validation-runbook binding rides the prompt: bring up, exercise each criterion,
-   tear down, and write `docs/runbooks/<feature>/runbook.md` — the pinned
+   validation-procedure binding rides the prompt: bring up, exercise each criterion,
+   tear down, and write `docs/validation/<feature>/procedure.md` — the pinned
    end-to-end steps release replays later (their only replay point).
 3. **Verdict** — pass: `the-loop set-status <id> validated`, collapse to ONE squash
    commit (`git reset --soft` to the target tip, commit `"<id>: <title>"`), publish
@@ -27,7 +27,7 @@ The one independent look a feature gets. A fresh-context validator
 ## What v2 deleted (ADR-0035)
 
 The blind derive stage, the integrity-forensics leg, the delta-proof second
-bring-up, per-feature replay of prior runbooks (O(F²) — regression protection is
+bring-up, per-feature replay of prior validation procedures (O(F²) — regression protection is
 the suite's job), persisted verdict files, and the remediation-round machinery. The
 verdict is the structured return; the graph flip + squash commit are the durable
 trace.

@@ -102,7 +102,7 @@ the-loop/                          # repo root — the human's dev tree, NOT the
   the bundle free of any `docs/` directory (criterion 1) and homes the shipped default
   playbook beside `model-bindings.json`, its natural sibling.
 - **`create-sample-repo.js` stays out.** It imports only node builtins (no `src/`
-  deps) and is invoked only by tests, the validation runbook, and eval traps — never by
+  deps) and is invoked only by tests, the validation procedure, and eval traps — never by
   a loop run. It is dev tooling, so it stays at repo-root `bin/`; only `the-loop.js` and
   `cli-commands.js` move into `plugin/bin/`.
 
@@ -131,7 +131,7 @@ root. Surfaces that carry a repo-root-relative path to the moved code:
 - **`workflows/execution-pipeline.js`** — the dead fallback string `'node bin/the-loop.js'`
   (superseded by the always-present `cli` field) becomes `'node plugin/bin/the-loop.js'`.
 - **`README.md`** — the directory-layout section and the "one dependency: yaml" note.
-- **Architecture runbooks** — the Validation runbook's `<plugin-root>/bin/the-loop.js`
+- **Architecture bindings** — the Validation procedure's `<plugin-root>/bin/the-loop.js`
   placeholder still resolves; the health-check `require("./.claude-plugin/plugin.json")`
   path and the marketplace `source` change land in the **Release runbook** update below.
 

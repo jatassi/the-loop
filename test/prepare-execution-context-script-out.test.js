@@ -75,7 +75,7 @@ const DESIGN = `# Fixture — Architecture
 
 Narrative.
 
-## Validation runbook
+## Validation procedure
 
 Run the fixture CLI and expect pong on stdout.
 `;

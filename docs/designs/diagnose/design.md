@@ -95,7 +95,7 @@ Permanent from birth (posterity + pattern recognition over accumulating issue
 classes), and **it doubles as the fix's context slice** — the doc the plan /
 build / validate agents receive as their task brief. One doc, one home, whole life.
 Filename = record id, keeping the id↔path identity used everywhere else
-(`designs/<id>/design.md`, `runbooks/<id>/runbook.md`, branch `loop/<id>`).
+(`designs/<id>/design.md`, `validation/<id>/procedure.md`, branch `loop/<id>`).
 
 Default shape (header greppable for pattern mining):
 
@@ -122,8 +122,9 @@ never worked | unknown
                          or the inspection path that established the cause
 ## Fix design          ← the approach, interfaces touched, constraints for the builder
 ## Regression          ← what the fix's acceptance criteria pin (mirrors the record)
-## Runbook             ← fold-in instruction: which affected feature's runbook
-                         gains which exercise step (never a standalone fix runbook)
+## Validation procedure ← fold-in instruction: which affected feature's validation
+                         procedure gains which exercise step (never a standalone
+                         fix validation procedure)
 ```
 
 ## The fix — an ordinary feature record, transient

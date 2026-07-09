@@ -227,7 +227,7 @@ function validatePrompt(f, branches) {
     'acceptance criteria to judge:',
     criteriaList(f.acceptance),
     '',
-    'validation-runbook binding:',
+    'validation-procedure binding:',
     executionContext.probe || '(none recorded — skip the runtime leg and say so)',
     '',
     '--- feature design doc ---',

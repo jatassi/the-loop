@@ -68,7 +68,7 @@ stage's meaning and next step. Human-approved at this amendment's gate.
   covered by a test asserting the four-stage counts render.
 - `src/set-feature-status.js` — no change (validates against STATUS).
 - `bin/create-sample-repo.js` — the fixture repo seeds one proposed record
-  (id + title only) so the validation runbook can exercise the gates against it.
+  (id + title only) so the validation procedure can exercise the gates against it.
 - `bin/the-loop.js` — the `set-status` usage comment lists the four values.
 
 ## Prose surfaces (land atomically with the code, sweep-style)

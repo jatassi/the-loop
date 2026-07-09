@@ -12,8 +12,8 @@ deploy commands, health check, rollback path). The skill (skills/release/SKILL.m
 is a thin runner:
 
 1. **Verify ready** — pin the tip; full suite + recipe ready-checks + replay
-   `docs/runbooks/<id>/runbook.md` for the releasing features (runbook replay's
-   only home).
+   `docs/validation/<id>/procedure.md` for the releasing features (validation
+   procedure replay's only home).
 2. **The gate** — features, diff-stat vs the last release tag, results, rollback
    pointer, presented in the chat; explicit approval; the one synchronous gate in
    the loop. Tip moved → re-run step 1, don't re-litigate.

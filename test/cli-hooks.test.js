@@ -121,7 +121,7 @@ test('spine hooks-list: fresh install resolves shipped defaults and visible fall
     assert.equal(body.hooks.modelBindings.plan.provenance, 'default');
     assert.equal(body.hooks.modelBindings.plan.model, 'session');
     assert.match(result.stderr, /architecture\.md/);
-    assert.deepEqual(body.recordedBindings.validationRunbook, { status: 'absent', gap: null });
+    assert.deepEqual(body.recordedBindings.validationProcedure, { status: 'absent', gap: null });
     assert.deepEqual(body.recordedBindings.releaseRunbook, { status: 'absent', gap: 'blocked — no guessed deploys' });
     assert.deepEqual(body.recordedBindings.operationsToolkit, { status: 'absent', gap: 'lazy retrofit (operate-tooling)' });
   } finally { cleanup(root, home); }
@@ -141,11 +141,11 @@ test('spine hooks-list: artifactStores bound in project settings reads back with
 
 test('spine hooks-list: recordedBindings reflect architecture.md present / opted-out / absent', () => {
   const home = emptyHome();
-  const arch = '# Fixture\n\n## Validation runbook\n\nRun the suite.\n\n## Release runbook\n\nnone\n';
+  const arch = '# Fixture\n\n## Validation procedure\n\nRun the suite.\n\n## Release runbook\n\nnone\n';
   const root = fixture({ 'docs/architecture.md': arch });
   try {
     const body = JSON.parse(spine(['hooks-list'], withHome(home, { cwd: root })));
-    assert.deepEqual(body.recordedBindings.validationRunbook, { status: 'present', gap: null });
+    assert.deepEqual(body.recordedBindings.validationProcedure, { status: 'present', gap: null });
     assert.deepEqual(body.recordedBindings.releaseRunbook, { status: 'opted-out', gap: null });
     assert.deepEqual(body.recordedBindings.operationsToolkit, { status: 'absent', gap: 'lazy retrofit (operate-tooling)' });
   } finally { cleanup(root, home); }

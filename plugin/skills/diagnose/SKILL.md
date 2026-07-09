@@ -90,14 +90,15 @@ never worked | unknown
 ## Actual result       ← the observed behavior, verbatim output where useful
 ## Root cause(s)       ← the why, not the symptom; plural when honest — separate the
                          trigger (what set it off) from the underlying cause(s), cite
-                         file:line evidence, and say why no existing test or runbook
-                         caught it
+                         file:line evidence, and say why no existing test or validation
+                         procedure caught it
 ## Evidence            ← the diagnosis trail: logs, instrumentation, bisection, or
                          the inspection path that established the cause
 ## Fix design          ← the approach, interfaces touched, constraints for the builder
 ## Regression          ← what the fix's acceptance criteria pin (mirrors the record)
-## Runbook             ← which affected feature's runbook gains this as an
-                         exercise step — never a standalone runbook for the fix itself
+## Validation procedure ← which affected feature's validation procedure gains this
+                         as an exercise step — never a standalone validation
+                         procedure for the fix itself
 ```
 
 ### The fix — for `docs/feature-graph.md`
@@ -140,7 +141,7 @@ bumped). Then offer the prepare-execution-context leg: `the-loop prepare-executi
    targeted instrumentation — never log-everything.
 7. **Root cause(s), not symptom.** No fix design until the why is explained;
    separate the trigger from the underlying cause(s); note why no existing test or
-   runbook caught it.
+   validation procedure caught it.
 8. **Pin the regression before the fix.** The minimal repro becomes the fix's
    first acceptance criterion and the RCA doc's Regression section — the builder
    derives the failing test from it; diagnosis pins what must fail, building it is

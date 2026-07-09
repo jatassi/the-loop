@@ -9,7 +9,7 @@ The last human-gated phase before autonomous execution. Turns the brief into the
 three v2 design artifacts (skills/design/SKILL.md):
 
 1. `docs/architecture.md` — system narrative + the two recorded bindings
-   (`## Validation runbook`, `## Release runbook`).
+   (`## Validation procedure`, `## Release runbook`).
 2. `docs/feature-graph.md` — the machine feature graph (three durable statuses).
 3. `docs/designs/<id>/design.md` — one self-contained doc per feature; this IS the
    context slice a stateless plan/build/validate agent receives.

@@ -35,9 +35,9 @@ it — plans never land on the target.
   weakened test, or a test that passes without exercising the surface it claims to
   cover is a defect on its own — fail and name it in findings, no matter how green
   the suite and lint runs look.
-- If a validation-runbook binding was provided: bring the system up, exercise each
+- If a validation-procedure binding was provided: bring the system up, exercise each
   criterion's observable behavior, tear down. Record what you did and observed in
-  `docs/runbooks/<feature>/runbook.md` (bring-up / exercise / expected observations /
+  `docs/validation/<feature>/procedure.md` (bring-up / exercise / expected observations /
   teardown) — release replays this file later.
 
 ## 3 · Verdict

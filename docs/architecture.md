@@ -42,7 +42,7 @@ idempotent re-run from what git already holds.
 mechanically (graph validity, scope readiness, model-binding validity — refusing
 loudly replaces prose checklists) and assembles the **execution context** —
 per-feature design docs, plans read from feature branches, git-derived task state,
-the model table, and the validation-runbook binding — that the workflow consumes as
+the model table, and the validation-procedure binding — that the workflow consumes as
 `args`. With `--script-out <path>` it also writes the launch-ready per-run workflow
 script: the canonical engine with the run's scope spliced into its meta description
 (the harness reads a workflow's description only from that pure literal, so a
@@ -104,7 +104,7 @@ contract out of a plan). No agent contract says "read this whole file."
 | Feature graph | `docs/feature-graph.md` | machine YAML; the durable state machine |
 | Feature design docs | `docs/designs/<id>/design.md` | one per feature; the context slice agents get |
 | Plans | `docs/plans/<id>/plan.md` **on the feature branch** | task contracts only; never merged — gone when the feature lands |
-| Runbooks | `docs/runbooks/<id>/runbook.md` | written at validation; replayed at release (their only replay point) |
+| Validation procedures | `docs/validation/<id>/procedure.md` | written at validation; replayed at release (their only replay point) |
 | Bug corpus | `docs/bugs/<bug-short-description>.md` | permanent; born at a diagnose intake, doubles as the fix's context slice |
 | Release records | `docs/releases/` (past: `ship-N.md`, historical; future: `v<version-number>/report.md`) | one short block per release |
 | Calibration records + index | `docs/calibration/` | per-run estimated-vs-actual evidence (permanent, ADR-0046) + wholly derived digest/index, CLI-regenerated (calibration-capture, designed 2026-07-08) |
@@ -209,7 +209,7 @@ Cross-feature shapes, in prose (per-feature detail lives in the feature docs):
   the graph at release while the bug doc and release record remain.
 - **Model binding** — `{ <role>: { model | "session", effort?, executor? } }`,
   resolved with provenance by `the-loop models-list`.
-- **Validation runbook** — `bringUp → exercise(acceptance) → teardown`, recorded per
+- **Validation procedure** — `bringUp → exercise(acceptance) → teardown`, recorded per
   project in the section below and passed verbatim into validate prompts.
 - **Calibration record** — `docs/calibration/runs/<date>-<seq>.md`: a script-computed
   yaml payload (per-feature planned-vs-actual, per-role agent counts and sampled token
@@ -234,7 +234,7 @@ runs; validators treat "can't tell" as a fail; failed features leave their
 branches for inspection; nothing self-heals by writing state — re-running derives
 fresh truth from git. The one synchronous gate is Release's human approval.
 
-## Validation runbook
+## Validation procedure
 
 The fixture-repo binding (this repo's own binding): validation exercises the CLI
 from the outside, as a user would — never in-process imports.
@@ -253,7 +253,7 @@ from the outside, as a user would — never in-process imports.
 ## Release runbook
 
 Ready checks: `npm test` and `npm run check` green at the pinned tip; replay every
-`docs/runbooks/*/runbook.md` for the releasing features.
+`docs/validation/*/procedure.md` for the releasing features.
 
 Deploy (marketplace-on-main; each command idempotent, run from the repo root):
 

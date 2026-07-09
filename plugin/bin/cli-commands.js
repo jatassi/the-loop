@@ -263,8 +263,8 @@ export function prepareExecutionContextCommand(argv) {
 
   const hooks = buildHooksTable();
 
-  const probe = existsSync(DESIGN) ? sectionAfter(readFileSync(DESIGN, 'utf8'), '## Validation runbook') : null;
-  if (probe == null) { warn(`no "## Validation runbook" section in ${DESIGN} — validation runs without one`); }
+  const probe = existsSync(DESIGN) ? sectionAfter(readFileSync(DESIGN, 'utf8'), '## Validation procedure') : null;
+  if (probe == null) { warn(`no "## Validation procedure" section in ${DESIGN} — validation runs without one`); }
 
   // Wall-clock stamp once at the bin edge — the only legal clock read for this command.
   const preparedAt = new Date().toISOString();

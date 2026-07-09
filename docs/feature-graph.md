@@ -122,7 +122,7 @@ features:
     status: shipped
     depends_on: [validate, escalation-queue]
     acceptance:
-      - release replays the runbooks and suite at a pinned tip, holds the human gate, deploys per the recorded release runbook, verifies health, and records the outcome
+      - release replays the validation procedures and suite at a pinned tip, holds the human gate, deploys per the recorded release runbook, verifies health, and records the outcome
 
   # ── deferred: built BY self-hosting ─────────────────────────────────────
   - id: worktree-parallelism
@@ -147,12 +147,12 @@ features:
       - a bug intake yields a human-approved fix (id fix-<slug>) in the graph and a permanent RCA doc at docs/bugs/fix-<slug>.md that leads with the reproduction record (steps, expected vs actual, environment, determinism, regression window), then root cause(s) with evidence (reproduced, or inspection with the waiver recorded) and the fix design
       - an environment-shaped obstacle to diagnosis (unavailable tooling, access, or logs) is surfaced to the human as a named blocker with its quality cost before proceeding — the inspection waiver is the human's grant, never a silent fallback
       - the-loop prepare-execution-context --features fix-<slug> assembles the execution context with the RCA doc as the fix's designDoc via the designs/-then-bugs/ lookup fallback, and the fix runs the unmodified execution pipeline to a validated merge
-      - a shipped fix is pruned from the graph in the release commit while its RCA doc survives; the fix's regression check rides the affected feature's runbook, never an orphaned fix runbook
+      - a shipped fix is pruned from the graph in the release commit while its RCA doc survives; the fix's regression check rides the affected feature's validation procedure, never an orphaned fix validation procedure
       - /begin routes a bug-shaped intake to the diagnose skill, whose diagnosis loop is a port binding (/diagnosing-bugs unless the project binds another)
 
   - id: operate-tooling
     title: Operate (recorded per-project ops toolkit + thin operate skill + runbook-genre rename)
-    status: designed
+    status: validated
     depends_on: [diagnose]
     notes:
       - designed 2026-07-08 from docs/briefs/operate-tooling.md; guardrails are prescriptive routing, never enforcement — a direct human ask trumps the skill's routing; nothing scheduled or autonomous (ADR-0034 stands)

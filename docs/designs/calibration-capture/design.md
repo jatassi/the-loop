@@ -41,7 +41,7 @@ recall-time work. Digest math is CLI code, never LLM arithmetic.
 
 The bin edge gathers two new fields (mirroring how `probe` is gathered —
 `bin/cli-commands.js`: `sectionAfter(readFileSync(DESIGN,'utf8'), '## Validation
-runbook')`):
+procedure')`):
 
 - `preparedAt` — ISO-8601 UTC timestamp stamped by the CLI. This is the script's
   only legal clock (`Date.now()` is banned in workflow scripts for resume

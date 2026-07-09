@@ -31,7 +31,7 @@ features:
     status: proposed
 \`\`\`
 `);
-  writeFileSync(path.join(root, 'docs/architecture.md'), '# Fixture — Architecture\n\n## Validation runbook\n\nnone\n');
+  writeFileSync(path.join(root, 'docs/architecture.md'), '# Fixture — Architecture\n\n## Validation procedure\n\nnone\n');
   try {
     execFileSync('node', [BIN, 'prepare-execution-context', '--features', 'backlog-item', '--target-branch', 'main'],
       { encoding: 'utf8', cwd: root });

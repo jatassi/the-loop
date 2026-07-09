@@ -68,7 +68,7 @@ const DESIGN = `# Design
 
 System narrative.
 
-## Validation runbook
+## Validation procedure
 
 Run \`node bin/app.js ping\` and expect \`pong\` on stdout.
 A second probe line.
@@ -80,7 +80,7 @@ Tag the release.
 
 test('sectionAfter excerpts the prose under a heading up to the next "## " heading, trimmed', () => {
   assert.equal(
-    sectionAfter(DESIGN, '## Validation runbook'),
+    sectionAfter(DESIGN, '## Validation procedure'),
     'Run `node bin/app.js ping` and expect `pong` on stdout.\nA second probe line.',
   );
 });

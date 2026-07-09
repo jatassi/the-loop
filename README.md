@@ -28,8 +28,8 @@ doc per feature), [`docs/adr/`](docs/adr/) (the *why*),
   (`proposed | designed | validated | shipped`, `proposed` the backlog stage);
   plans live on feature branches and vanish when the feature's squash-merge lands;
   a blocked feature is a question in the chat at the run boundary.
-- **`/the-loop release`** replays the runbooks, holds the one human gate, and runs
-  the project's recorded release runbook.
+- **`/the-loop release`** replays the validation procedures, holds the one human gate,
+  and runs the project's recorded release runbook.
 
 ## Layout
 
@@ -55,7 +55,7 @@ plugin/                        the plugin root — the entire shipped bundle
   node_modules/yaml/           the one runtime dep, vendored (tracked, no build step)
 bin/create-sample-repo.js      dev/test fixture generator (repo root — not shipped)
 test/                          node:test suites
-docs/                          durable artifacts: architecture, adr, glossary, runbooks, releases
+docs/                          durable artifacts: architecture, adr, glossary, validation, releases
 ```
 
 ## Develop

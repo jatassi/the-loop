@@ -1,5 +1,5 @@
 // The recorded-bindings status reader: derives present / absent / opted-out for
-// architecture.md's three recorded bindings (validation runbook, release runbook,
+// architecture.md's three recorded bindings (validation procedure, release runbook,
 // operations toolkit) from their heading/section text. Pure — takes the
 // architecture.md text as a string, touches no filesystem, process, or clock
 // (the pure-core/thin-CLI discipline). A thin CLI layer (later) reads the file
@@ -8,7 +8,7 @@
 import { sectionAfter } from './replace-fenced-block.js';
 
 const HEADINGS = {
-  validationRunbook: '## Validation runbook',
+  validationProcedure: '## Validation procedure',
   releaseRunbook: '## Release runbook',
   operationsToolkit: '## Operations toolkit',
 };
@@ -34,11 +34,11 @@ const GAPS = {
  * insensitive) is a recorded opt-out. Absent block-family bindings carry their
  * named-gap wording; validation has none. Read-only — never proposes writes.
  * @param {string} architectureText  docs/architecture.md's full text
- * @returns {{validationRunbook: BindingStatus, releaseRunbook: BindingStatus, operationsToolkit: BindingStatus}}
+ * @returns {{validationProcedure: BindingStatus, releaseRunbook: BindingStatus, operationsToolkit: BindingStatus}}
  */
 export function recordedBindingsStatus(architectureText) {
   return {
-    validationRunbook: statusOf(architectureText, 'validationRunbook'),
+    validationProcedure: statusOf(architectureText, 'validationProcedure'),
     releaseRunbook: statusOf(architectureText, 'releaseRunbook'),
     operationsToolkit: statusOf(architectureText, 'operationsToolkit'),
   };
@@ -46,7 +46,7 @@ export function recordedBindingsStatus(architectureText) {
 
 /**
  * @param {string} text
- * @param {'validationRunbook'|'releaseRunbook'|'operationsToolkit'} key
+ * @param {'validationProcedure'|'releaseRunbook'|'operationsToolkit'} key
  * @returns {BindingStatus}
  */
 function statusOf(text, key) {

@@ -82,7 +82,7 @@ export function builtTaskIds(featureId, plan, branchHeads) {
  * @param {import('./parse-feature-graph.js').DesignModel} input.model
  * @param {string[]} input.scope
  * @param {string} input.target
- * @param {string|null} input.probe        verbatim "## Validation runbook" section text
+ * @param {string|null} input.probe        verbatim "## Validation procedure" section text
  * @param {Object} input.models            resolved role → binding table
  * @param {Object} input.hooks             resolved hook-family table
  * @param {Object<string, {designDoc: string|null, plan: Object|null, branchHeads: Object<string, string>}>} input.inputs

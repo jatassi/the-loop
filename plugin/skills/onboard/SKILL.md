@@ -95,7 +95,7 @@ resolved inventory afterward with
 ### 3.3 · Fill the three recorded-binding sections
 
 Write the recorded bindings into `docs/architecture.md` under the exact section headings
-the tree uses today — `## Validation runbook`, `## Release runbook`, and
+the tree uses today — `## Validation procedure`, `## Release runbook`, and
 `## Operations toolkit` — from evidence plus interview. Detected commands (the CI test
 step, the deploy chain, the observability wiring) are the recommended fill; the human
 confirms each. `none` is a legal per-section opt-out: a section may be recorded as `none`

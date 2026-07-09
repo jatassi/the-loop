@@ -102,8 +102,8 @@ test('the brownfield route fills the three recorded-binding sections with a none
   const text = read(ONBOARD);
 
   // the three recorded-binding section headings, exactly as the tree names them today
-  assert.match(text, /## Validation runbook|`## Validation runbook`|Validation runbook/,
-    'names the Validation runbook section');
+  assert.match(text, /## Validation procedure|`## Validation procedure`|Validation procedure/,
+    'names the Validation procedure section');
   assert.match(text, /Release runbook/, 'names the Release runbook section');
   assert.match(text, /Operations toolkit/, 'names the Operations toolkit section');
 

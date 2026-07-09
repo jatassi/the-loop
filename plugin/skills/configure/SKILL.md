@@ -13,7 +13,7 @@ just prints the resolved table and stops.
 
 Two channels hold configuration. Settings layers hold machine config; configure owns
 that side and persists to it only on the human's confirmation. `docs/architecture.md`
-holds the recorded bindings (validation runbook, release runbook, operations toolkit) —
+holds the recorded bindings (validation procedure, release runbook, operations toolkit) —
 project truth with narrative weight that Design and onboard own. Configure *reports* the
 recorded side (present / absent / opted-out) but never writes it.
 

@@ -49,10 +49,10 @@ export function findBlocks(text) {
  * Extract the prose under a line-anchored "## Heading" until the next "## " heading
  * (or end of text), heading line excluded, outer blank lines trimmed. The
  * execution-context assembler uses this to excerpt architecture.md's recorded
- * bindings (validation runbook, release runbook) verbatim — prose stays prose;
+ * bindings (validation procedure, release runbook) verbatim — prose stays prose;
  * nothing here parses it.
  * @param {string} text
- * @param {string} heading  e.g. "## Validation runbook"
+ * @param {string} heading  e.g. "## Validation procedure"
  * @returns {string|null}   null when the heading is absent
  */
 export function sectionAfter(text, heading) {

@@ -10,10 +10,20 @@ before autonomous execution — ambiguity that survives it is inherited by every
 downstream agent. Three artifacts come out (ADR-0037):
 
 - `docs/architecture.md` — the **system** narrative: what this is, architecture,
-  boundaries, cross-feature interface contracts, non-goals, error posture — plus two
-  recorded bindings under exact headings: `## Validation runbook` (bring-up / exercise /
-  teardown commands; "none" is a recorded opt-out) and `## Release runbook` (ready
-  checks, deploy commands, health check, rollback path). These interviews are
+  boundaries, cross-feature interface contracts, non-goals, error posture — plus three
+  recorded bindings under exact headings: `## Validation procedure` (bring-up / exercise /
+  teardown commands; "none" is a recorded opt-out), `## Release runbook` (ready
+  checks, deploy commands, health check, rollback path), and `## Operations toolkit`
+  (how this project's deployed instances get operated). The toolkit interview asks:
+  where instances run and how an agent reaches them (deployment targets); what an
+  agent can do there, each capability tagged `read` or `mutate` at recording time so
+  safety is never judged at runtime; and **"how will you know something's wrong?"**
+  — observability, where each recorded apprisal path names the runbook it routes to
+  ("the human notices" is a legal answer); then runbook pointers (default
+  `docs/runbooks/<topic>.md`, held loosely) and a never-do list of project-specific
+  prohibitions. Offer a recommendation fitted to the project's nature — "skip" is a
+  legal recommendation for a toy, and whole-section "none" is a recorded opt-out
+  same as the other two bindings. These interviews are
   **confirm-or-fill**: if a section already carries content — written by onboard's
   brownfield assess-and-fill or a prior Design pass — read it back and confirm it's
   still accurate rather than re-asking from scratch; interview only the gaps a

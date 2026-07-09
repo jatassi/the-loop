@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// bringUp for the fixture-repo probe (this repo's validation-runbook binding): create
+// bringUp for the fixture-repo probe (this repo's validation-procedure binding): create
 // a temp git repo seeded as a plausible v2 target repository and print its path. Exercises
 // then drive `node bin/the-loop.js` (and, sparingly, headless agents) against it from
 // the outside, as a user would; teardown is `rm -rf` of the printed path.
@@ -18,7 +18,7 @@ const GRAPH = `# Fixture project — Feature graph
 
 A three-feature target repository for probe exercises: one validated feature, one
 designed behind it, and one proposed record (backlog stage, no design doc yet) so
-the validation runbook can exercise the not-designed and missing-acceptance gates
+the validation procedure can exercise the not-designed and missing-acceptance gates
 against it.
 
 ## Feature graph
@@ -49,7 +49,7 @@ A tiny greeting tool: a pure core module (greet-core) that the CLI entry point
 exercises; the recorded bindings below are what the execution-context assembler
 excerpts.
 
-## Validation runbook
+## Validation procedure
 
 Run \`node bin/greet.js Ada\` and expect a greeting containing "Ada" on stdout.
 
