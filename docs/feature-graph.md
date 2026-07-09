@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 22
+design_version: 23
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -306,6 +306,19 @@ features:
       - a designed feature depending on a proposed one is excluded from the eligible set, and the machine orientation proposes kind `design` naming the blocking proposed id
       - on a graph whose only unshipped features are proposed, the machine orientation proposes kind `design` naming them (never `new-intake`), and the human status summary counts the proposed stage
       - the /the-loop route table maps a `design` proposal to the design skill, and every living surface stating the status enum lists the four values — the three-value statement greps to zero outside historical records
+
+  - id: begin-front-door-rename
+    title: Front door renamed /the-loop → /begin and converted to a skill (plugin/commands/ retires)
+    status: designed
+    depends_on: [the-loop-entry]
+    notes:
+      - "designed 2026-07-08 from docs/briefs/begin-front-door-rename.md; kills the /the-loop:the-loop namespace stutter and lands the begin-a-session semantic; the upstream commands→skills merge (verified 2026-07-08: `!` dynamic-context injection works in SKILL.md) dissolved ADR-0002's reason to be a command — 0002 gets an appended amendment"
+    acceptance:
+      - the front door lives at plugin/skills/begin/SKILL.md — frontmatter carries the session-opener description, the retired command's argument-hint and allowed-tools, and no disable-model-invocation; the body is content-identical to the retired plugin/commands/the-loop.md apart from the /begin name, with the orientation preamble in the documented start-of-line inline `!` form; plugin/commands/ no longer exists
+      - slash-form /the-loop greps to zero across living surfaces (plugin/, test/, docs/architecture.md, docs/glossary.md, docs/feature-graph.md, docs/designs/) — remaining hits live only in historical records (docs/adr/, docs/research/, docs/briefs/, docs/releases/, docs/bugs/, docs/design/naming-map.md, eval/)
+      - npm test and npm run check pass green on the landed tree, with every test that read plugin/commands/the-loop.md reading plugin/skills/begin/SKILL.md
+      - ADR-0002 is byte-identical apart from one appended amendment note recording the /begin rename and the dissolved command-vs-skill constraint
+      - in a live session against the installed plugin, /begin renders with the status JSON injected ahead of the instructions, and /the-loop no longer resolves
 
   - id: build-agent-title-progress
     title: Task-position prefix on divided-feature build agent titles
