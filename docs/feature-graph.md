@@ -152,7 +152,7 @@ features:
 
   - id: operate-tooling
     title: Operate (recorded per-project ops toolkit + thin operate skill + runbook-genre rename)
-    status: validated
+    status: shipped
     depends_on: [diagnose]
     notes:
       - designed 2026-07-08 from docs/briefs/operate-tooling.md; guardrails are prescriptive routing, never enforcement — a direct human ask trumps the skill's routing; nothing scheduled or autonomous (ADR-0034 stands)
@@ -168,7 +168,7 @@ features:
 
   - id: calibration-capture
     title: Calibration Memory (per-project capture, recalled at Plan/Design)
-    status: validated
+    status: shipped
     depends_on: [execution-pipeline, plan, design]
     notes:
       - designed 2026-07-08 from docs/briefs/calibration-capture.md; capture separates loop-overhead tokens from build tokens so "earns its context" is measured, not assumed (2026-07-01 review; seed methodology = the v2 benchmark forensics); ADR-0046 exempts the capture commit from ADR-0034's no-bookkeeping rule
@@ -183,7 +183,7 @@ features:
 
   - id: configure
     title: Configure — the hook inventory, four settings layers, and the recommended-answer interview
-    status: validated
+    status: shipped
     depends_on: [the-loop-entry, model-selection]
     notes:
       - designed 2026-07-08 (ADR-0049) — replaces the configure-step-full backlog node together with onboard; brief at docs/briefs/configure-step-full.md
@@ -197,7 +197,7 @@ features:
 
   - id: onboard
     title: Onboard — configure's superset; greenfield hand-off and brownfield assess-and-fill
-    status: validated
+    status: shipped
     depends_on: [configure, define, design]
     notes:
       - designed 2026-07-08 (ADR-0049) — replaces the configure-step-full backlog node together with configure
@@ -208,7 +208,7 @@ features:
 
   - id: role-agent-binding
     title: Phase-agent swap — an agent field on the role-binding table
-    status: validated
+    status: shipped
     notes:
       - designed 2026-07-08 (ADR-0050) — split from ports-adapters-full; independently shippable, no configure dependency
     acceptance:
@@ -218,7 +218,7 @@ features:
 
   - id: ports-adapters-full
     title: Adapters — documented external-surface bindings, consumed (features→Linear proof)
-    status: validated
+    status: shipped
     depends_on: [configure]
     notes:
       - rescoped 2026-07-08 from "swapping + capability-contract enforcement" (brief docs/briefs/ports-adapters-full.md, ADR-0050) — documentation-as-adapter; enforcement machinery stays dead
