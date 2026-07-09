@@ -53,13 +53,16 @@ export function calibrationSummarizeCommand() {
   out({ written: 'docs/calibration/index.md', runs: records.length });
 }
 
-// the-loop set-status <feature-id> <status> — flip one feature's status in feature-graph.md.
-export function setStatusCommand([featureId, status]) {
-  if (!featureId || !status) { fail('usage: spine set-status <feature-id> <status>'); }
-  const text = read();
+// the-loop set-status <feature-id> <status> [graph-path] — flip one feature's status in
+// the feature graph (default docs/feature-graph.md). When graph-path is supplied, read
+// and write that file only — never the default path.
+export function setStatusCommand([featureId, status, graphPath]) {
+  if (!featureId || !status) { fail('usage: spine set-status <feature-id> <status> [graph-path]'); }
+  const file = graphPath || GRAPH;
+  const text = read(graphPath);
   const model = parse(text);
   setStatus(model, featureId, status);
-  writeFileSync(GRAPH, render(text, model));
+  writeFileSync(file, render(text, model));
   out(model.features.find((f) => f.id === featureId));
 }
 
@@ -224,7 +227,7 @@ function taskCommand(featureId, [taskId, planFile, graphFile]) {
 }
 
 // the-loop prepare-execution-context --features <id,id,…> --target-branch <ref>
-// [--script-out <path>] — the one-shot execution-context assembler (ADR-0036/0038):
+// [--script-out <path>] [--graph-path <path>] — the one-shot execution-context assembler (ADR-0036/0038):
 // gates the graph and the scope, gathers every per-feature input (design doc, plan
 // from the feature branch, task state from git), the resolved model-bindings table,
 // and the full resolved hook table, and prints the execution context the workflow
@@ -239,14 +242,19 @@ function taskCommand(featureId, [taskId, planFile, graphFile]) {
 // canonical script's meta doesn't carry the expected `description: '…'` shape) throws,
 // bubbling to the shared top-level catch: exit 1, nothing written — stdout included.
 export function prepareExecutionContextCommand(argv) {
-  const opts = parseFlags(argv, { '--features': 'scope', '--target-branch': 'target', '--script-out': 'scriptOut' });
-  if (!opts.scope || !opts.target) { fail('usage: the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> [--script-out <path>]'); }
+  const opts = parseFlags(argv, {
+    '--features': 'scope', '--target-branch': 'target', '--script-out': 'scriptOut', '--graph-path': 'graphPath',
+  });
+  if (!opts.scope || !opts.target) {
+    fail('usage: the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> [--script-out <path>] [--graph-path <path>]');
+  }
   const scope = opts.scope.split(',').map((s) => s.trim()).filter(Boolean);
   const target = opts.target;
+  const graphFile = opts.graphPath || GRAPH;
 
-  const model = parse(read());
+  const model = parse(read(opts.graphPath));
   const graphIssues = validate(model);
-  failOnIssues(graphIssues.errors, `the feature graph fails validation — fix ${GRAPH} first`);
+  failOnIssues(graphIssues.errors, `the feature graph fails validation — fix ${graphFile} first`);
   failOnIssues(checkScope(model, scope).errors, 'scope gate failed — nothing prepared');
 
   const { table: models, errors, warnings } = buildModelsTable();

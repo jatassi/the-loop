@@ -77,11 +77,38 @@ also ships its own notification knobs that partly cover the same ground —
 the human's own harness settings; point them at those knobs, and write them
 **only at the human's request** — never fold them into a confirmed loop binding yourself.
 
-## 4 · Artifact stores — capture-only
+## 4 · Artifact stores — the capture gate
 
-Capture an artifact-store answer per docs grouping, `local` as the default. A non-local
+Capture an artifact-store answer per docs grouping, `local` as the default. A nondefault
 value takes the shape `{ "system": "notion | confluence | linear | jira | …",
-…locator fields }`. These bindings are **capture-only**: the loop still reads and writes
-local `docs/` for every phase until the ports-and-adapters work lands the adapters. Record
-the human's intent now; it resolves back through `hooks-list` for whoever wires the
-adapter later.
+…locator fields }`, and binds that surface as **sole truth** for its grouping — the loop
+reads and writes it through a documented adapter, not local `docs/`.
+
+The `local` default is a plain capture — confirm it and persist like any other family. A
+**nondefault** binding is a swap, and swaps go through the gate below. Never fold these
+steps into a single silent write.
+
+1. **Surface the trade-offs, then get explicit acceptance.** Before proceeding, state in
+   plain prose what binding this surface forfeits versus the in-repo default — e.g.
+   `features → Linear` gives up git-versioned history, offline greppability, and
+   atomic-with-code commits. Acceptance is the gate: do not proceed until the human
+   explicitly accepts the trade-offs. If they decline, leave the grouping `local`.
+2. **Run a reachability probe before any write.** Whatever the shape implies — MCP server
+   connected, CLI on PATH, the target path readable/writable. On a failed probe, surface
+   it and offer **fix-now** (the human repairs auth/connectivity, then re-probe) or
+   **bind-anyway** (record the binding knowing it is currently unreachable). Never a
+   silent write on failure, and never a hard block — the human always chooses.
+3. **Write the adapter doc and the settings pointer.** Write `docs/adapters/<surface>.md`
+   describing how an agent reaches the surface (shape, auth/workspace, the concrete
+   read/mutate calls), then persist the settings pointer under `"the-loop".artifactStores`
+   with `hooks-set` on confirmation, exactly like every other family.
+4. **Migrate truth in — after offering a backup.** Where the surface replaces an existing
+   local artifact, push the current local truth into the bound surface via its documented
+   access and verify the round-trip. Before the local artifact is retired, **offer a
+   backup**: a pre-swap git tag marking the last local-truth commit (the default), or a
+   stamped copy if the human prefers one. Only once the backup is placed and the human
+   confirms is the local file retired; the migration import is human-confirmed like every
+   configure write.
+
+Each captured nondefault binding resolves back through `hooks-list`, and its adapter doc
+is the contract the run's launch leg follows to reach the surface.

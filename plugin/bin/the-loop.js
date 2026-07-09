@@ -9,14 +9,17 @@
 //                                    eligible set, and the next-action proposal
 //   the-loop list   [feature-graph.md]  the parsed feature graph (minus internals)
 //   the-loop check  [feature-graph.md]  validate + round-trip; report; exit 1 on failure
-//   the-loop set-status <id> <status>  flip one feature's durable status in feature-graph.md
+//   the-loop set-status <id> <status> [graph-path]
+//                                    flip one feature's durable status in the feature graph
+//                                    (default docs/feature-graph.md; when graph-path is
+//                                    supplied, read and write that file only)
 //                                    (proposed|designed|validated|shipped); prints the
 //                                    updated node; exit 1, unwritten, on an unknown id or status
 //   the-loop plan parse <id> [plan.md]              the parsed plan model
 //   the-loop plan check <id> [plan.md] [feature-graph.md]   validate against the graph + round-trip
 //   the-loop plan task <id> <task-id> [plan.md] [feature-graph.md]  one build task's task brief
 //   the-loop prepare-execution-context --features <id,…> --target-branch <ref>
-//                                    [--script-out <path>]
+//                                    [--script-out <path>] [--graph-path <path>]
 //                                    the one-shot execution context (ADR-0036/0038):
 //                                    gates the graph, the scope, and the model table,
 //                                    gathers per-feature design docs + plans (from
@@ -120,7 +123,7 @@ try {
       break;
     }
     default: {
-      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|calibration-summarize|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]|hooks-list|hooks-set <family> <layer> <json-value>> [file…]\n');
+      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status> [graph-path]|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>] [--graph-path <path>]|calibration-summarize|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]|hooks-list|hooks-set <family> <layer> <json-value>> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }

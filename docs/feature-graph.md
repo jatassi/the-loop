@@ -218,7 +218,7 @@ features:
 
   - id: ports-adapters-full
     title: Adapters — documented external-surface bindings, consumed (features→Linear proof)
-    status: designed
+    status: validated
     depends_on: [configure]
     notes:
       - rescoped 2026-07-08 from "swapping + capability-contract enforcement" (brief docs/briefs/ports-adapters-full.md, ADR-0050) — documentation-as-adapter; enforcement machinery stays dead

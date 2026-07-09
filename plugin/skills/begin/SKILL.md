@@ -39,6 +39,48 @@ answer sets the scope; nothing outside it starts.
 - `repair` / `blocked` → name exactly what the orientation reports missing or
   invalid, propose the repair, and stop. Never guess forward.
 
+## Bound artifact stores — when the feature graph lives on an external surface
+
+Resolve `artifactStores.features` (it rides the `hooks-list` inventory) before the
+orientation and the launch leg. When it resolves `local` — the default — everything
+above and below runs unchanged against `docs/feature-graph.md`. When it resolves to a
+**nondefault** binding, the feature graph is no longer an in-repo file: its records,
+dependency edges, acceptance prose, and statuses are sole truth on the bound surface,
+and both the status orientation and the launch leg run against an ephemeral snapshot
+instead of the local file:
+
+1. **Materialize the snapshot.** Follow `docs/adapters/features.md` — its Access
+   section names the surface's shape (MCP server, CLI, …), the auth/workspace context,
+   and the read calls — read the bound surface, and materialize the same YAML graph
+   model as an ephemeral snapshot file under session scratch. The snapshot is
+   gitignored, never committed, and torn down at run end (leave nothing behind, the way
+   the loop sweeps its own temp files). Materialize it before any graph read.
+2. **Point the subcommands at the snapshot.** Pass its path as `--graph-path` to every
+   graph-consuming subcommand — `status`, `prepare-execution-context`, `set-status`,
+   `check` — so the pure core runs against the snapshot while the default
+   `docs/feature-graph.md` path stays untouched for local projects.
+3. **Invert status writes — surface-first.** Where an unbound run would `set-status`
+   on the file, a bound run updates the bound surface first (the mutate operation the
+   adapter doc's Operations names), then refreshes the snapshot from it. Truth lands on
+   the surface ahead of the cache, so a crash leaves truth ahead of the snapshot, never
+   behind it.
+4. **Tear the snapshot down** once the run — or the status leg — finishes.
+
+**A bound-but-unreachable surface at use time is a can't-run, never a fallback.** If
+the surface can't be reached when the snapshot must be materialized or a mutate
+written, stop and report a can't-run naming the surface (e.g. `features is bound to
+Linear and Linear is unreachable`). Never fall back to local `docs/feature-graph.md` —
+a stale or absent local file would fork project truth. This is a surfaced can't-run,
+distinct from a run that started and failed.
+
+**Unbinding is a migration, not a settings toggle.** To return a bound project to
+local, follow the adapter doc's caveats: export the surface's truth back to
+`docs/feature-graph.md` — one final materialized snapshot, this time committed — then
+remove the `artifactStores.features` pointer and the adapter doc. Once
+`artifactStores.features` resolves `local` again, subsequent runs read the in-repo
+graph and print a visible fallback line noting the feature graph is served from local
+`docs/feature-graph.md`.
+
 ## The prepare-execution-context leg
 
 1. Confirm the scope: the dependency-ready eligible set, or the human's subset.
@@ -50,8 +92,12 @@ answer sets the scope; nothing outside it starts.
    names any writable session-scratch path; the command writes a launch-ready copy
    of the canonical `workflows/execution-pipeline.js` there, its `meta` description
    spliced to name this run's scope and target (the harness persists each
-   invocation's own script for resume, so the scratch copy needs no teardown). The
-   command refuses with reasons on any gate failure (invalid graph, bad scope,
+   invocation's own script for resume, so the scratch copy needs no teardown). On a
+   bound project (nondefault `artifactStores.features`, per the section above) add
+   `--graph-path <snapshot path>` so the context is assembled from the materialized
+   snapshot rather than the local file, and the validator inherits that same snapshot
+   path in its execution context. The command refuses with reasons on any gate failure
+   (invalid graph, bad scope,
    broken model bindings, or a malformed canonical script). Don't work around a
    refusal; fix what it names or tell the human.
 3. Call the Workflow: `scriptPath` = the `--script-out` path from step 2 — never

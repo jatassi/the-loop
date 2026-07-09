@@ -92,6 +92,51 @@ test('spine set-status flips one feature in feature-graph.md and prints it as JS
   } finally { cleanup(root); }
 });
 
+// Default path (no graph-path) is byte-for-byte identical to pre-graph-path-arg behavior.
+test('spine set-status and prepare-execution-context with no graph-path still read/write only docs/feature-graph.md', () => {
+  const root = gitFixture({
+    'docs/feature-graph.md': GRAPH,
+    'docs/architecture.md': DESIGN,
+    'docs/designs/widget/design.md': '# widget — design\n',
+  });
+  try {
+    const defaultPath = path.join(root, 'docs/feature-graph.md');
+    const before = readFileSync(defaultPath, 'utf8');
+    assert.equal(before, GRAPH);
+    const node = JSON.parse(spine(['set-status', 'widget', 'validated'], { cwd: root }));
+    assert.equal(node.status, 'validated');
+    const afterSet = readFileSync(defaultPath, 'utf8');
+    assert.equal(afterSet, GRAPH.replace('status: designed', 'status: validated'));
+    // restore designed so prepare-execution-context's scope gate passes
+    writeFileSync(defaultPath, GRAPH);
+    const home = emptyHome();
+    const ctx = JSON.parse(spine(
+      ['prepare-execution-context', '--features', 'widget', '--target-branch', 'main'],
+      withHome(home, { cwd: root }),
+    ));
+    assert.deepEqual(ctx.scope, ['widget']);
+    assert.equal(ctx.features.widget.designDoc, '# widget — design\n');
+    assert.equal(readFileSync(defaultPath, 'utf8'), GRAPH); // prepare-execution-context is read-only on the graph
+  } finally { cleanup(root); }
+});
+
+// Supplied path is the sole read (and for set-status, write) target — never docs/feature-graph.md.
+test('spine set-status [graph-path] reads and writes only the supplied path; docs/feature-graph.md is never created', () => {
+  const ALT = GRAPH.replace('title: Widget', 'title: Alt Widget');
+  const root = fixture({ 'snapshot/feature-graph.md': ALT });
+  try {
+    const altPath = path.join(root, 'snapshot/feature-graph.md');
+    const defaultPath = path.join(root, 'docs/feature-graph.md');
+    assert.ok(!existsSync(defaultPath));
+    const node = JSON.parse(spine(['set-status', 'widget', 'validated', 'snapshot/feature-graph.md'], { cwd: root }));
+    assert.equal(node.id, 'widget');
+    assert.equal(node.status, 'validated');
+    assert.equal(node.title, 'Alt Widget');
+    assert.equal(readFileSync(altPath, 'utf8'), ALT.replace('status: designed', 'status: validated'));
+    assert.ok(!existsSync(defaultPath));
+  } finally { cleanup(root); }
+});
+
 test('spine status prints the human-readable status summary to stdout and writes nothing', () => {
   const root = fixture({ 'docs/feature-graph.md': GRAPH });
   try {
@@ -203,6 +248,37 @@ test('spine prepare-execution-context falls back to docs/bugs/<id>.md for a fix\
     assert.ok(!existsSync(path.join(root, 'docs/designs/fix-widget/design.md')));
     const ctx = JSON.parse(spine(['prepare-execution-context', '--features', 'fix-widget', '--target-branch', 'main'], { cwd: root }));
     assert.equal(ctx.features['fix-widget'].designDoc, '# fix-widget — race drops an update\n');
+  } finally { cleanup(root); }
+});
+
+// --graph-path is the sole feature-graph read; a different/absent default graph cannot be the source.
+test('spine prepare-execution-context --graph-path reads only the supplied graph file, not docs/feature-graph.md', () => {
+  const BAD_DEFAULT = GRAPH.replace('status: designed', 'status: proposed'); // widget not designed → scope gate fails if used
+  const root = gitFixture({
+    'docs/feature-graph.md': BAD_DEFAULT,
+    'snapshot/feature-graph.md': GRAPH,
+    'docs/architecture.md': DESIGN,
+    'docs/designs/widget/design.md': '# widget — design\n',
+  });
+  try {
+    const home = emptyHome();
+    // Without --graph-path, the bad default graph fails the scope gate.
+    const error = spineFails(
+      ['prepare-execution-context', '--features', 'widget', '--target-branch', 'main'],
+      withHome(home, { cwd: root }),
+    );
+    assert.equal(error.stdout, '');
+    assert.match(error.stderr, /not-designed/);
+    // With --graph-path, the snapshot graph is used and succeeds.
+    const ctx = JSON.parse(spine(
+      ['prepare-execution-context', '--features', 'widget', '--target-branch', 'main', '--graph-path', 'snapshot/feature-graph.md'],
+      withHome(home, { cwd: root }),
+    ));
+    assert.deepEqual(ctx.scope, ['widget']);
+    assert.equal(ctx.features.widget.designDoc, '# widget — design\n');
+    // Sole target: default graph was never written (still the bad proposed status).
+    assert.equal(readFileSync(path.join(root, 'docs/feature-graph.md'), 'utf8'), BAD_DEFAULT);
+    assert.equal(readFileSync(path.join(root, 'snapshot/feature-graph.md'), 'utf8'), GRAPH);
   } finally { cleanup(root); }
 });
 
