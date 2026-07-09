@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { assembleExecutionContext, builtTaskIds, checkScope, featureBranch, taskBranch, taskCommitPrefix } from '../src/prepare-execution-context.js';
+import { assembleExecutionContext, builtTaskIds, checkScope, featureBranch, taskBranch, taskCommitPrefix } from '../plugin/src/prepare-execution-context.js';
 
 const feature = (id, status, extra = {}) =>
   ({ id, title: id, status, depends_on: [], acceptance: `${id} works`, ...extra });

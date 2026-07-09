@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import * as statusSummaryModule from '../src/status-summary.js';
+import * as statusSummaryModule from '../plugin/src/status-summary.js';
 
 const { renderStatusSummary } = statusSummaryModule;
 

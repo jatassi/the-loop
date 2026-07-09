@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { STATUS, validate } from '../src/feature-schema.js';
-import { parse } from '../src/parse-feature-graph.js';
+import { STATUS, validate } from '../plugin/src/feature-schema.js';
+import { parse } from '../plugin/src/parse-feature-graph.js';
 
 // Build a model from a feature-graph body.
 function model(featuresYaml) {

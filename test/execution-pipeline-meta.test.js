@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const SCRIPT = 'workflows/execution-pipeline.js';
+const SCRIPT = 'plugin/workflows/execution-pipeline.js';
 
 // ── criteria 1 & 2: `phases` deep-equals the three title-only SDLC entries in order,
 // extracted from the meta declaration's single physical line — the regex has no `s`

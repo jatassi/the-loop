@@ -7,8 +7,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-import { parse } from '../src/parse-feature-graph.js';
-import { detectState, eligibleSet, machineOrientation, propose } from '../src/propose-next-action.js';
+import { parse } from '../plugin/src/parse-feature-graph.js';
+import { detectState, eligibleSet, machineOrientation, propose } from '../plugin/src/propose-next-action.js';
 
 const feat = (id, status, deps = []) =>
   `  - id: ${id}\n    title: ${id}\n    status: ${status}\n    depends_on: [${deps.join(', ')}]\n    acceptance: x\n`;

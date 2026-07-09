@@ -40,14 +40,14 @@ export default defineConfig([
       'max-nested-callbacks': ['error', 2],
 
       // ── Architecture as lint: import direction is downward-only ─
-      // bin (CLI surface) → src (library). src imports nothing above it.
+      // plugin/bin (CLI surface) → plugin/src (library). src imports nothing above it.
       'import-x/no-restricted-paths': [
         'error',
         {
           zones: [
-            { target: './src', from: './bin', message: 'src is the library layer; it must not reach up into the CLI surface.' },
-            { target: './src', from: './test', message: 'src must not import test code.' },
-            { target: './bin', from: './test', message: 'bin must not import test code.' },
+            { target: './plugin/src', from: './plugin/bin', message: 'src is the library layer; it must not reach up into the CLI surface.' },
+            { target: './plugin/src', from: './test', message: 'src must not import test code.' },
+            { target: './plugin/bin', from: './test', message: 'bin must not import test code.' },
           ],
         },
       ],
@@ -84,7 +84,8 @@ export default defineConfig([
   },
   {
     // The CLI surface owns exit codes; process.exit at this boundary is the contract.
-    files: ['bin/**/*.js'],
+    // plugin/bin is the shipped CLI; the repo-root bin holds the dev fixture generator.
+    files: ['bin/**/*.js', 'plugin/bin/**/*.js'],
     rules: {
       'n/no-process-exit': 'off',
       'unicorn/no-process-exit': 'off',
@@ -121,7 +122,7 @@ export default defineConfig([
     // mirrors it at parse time only, so every other rule below still runs against the
     // real code, just shifted one function deeper (postprocess below un-shifts line
     // numbers by the one line the wrapper adds).
-    files: ['workflows/**/*.js'],
+    files: ['plugin/workflows/**/*.js'],
     processor: {
       preprocess: (text) => [
         // `void meta` gives the neutralized binding a use, so the harness-mandated

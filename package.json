@@ -6,17 +6,17 @@
   "private": true,
   "author": "Jackson Atassi <jackson.atassi@outlook.com>",
   "bin": {
-    "the-loop": "./bin/the-loop.js",
+    "the-loop": "./plugin/bin/the-loop.js",
     "create-sample-repo": "./bin/create-sample-repo.js"
   },
   "exports": {
-    ".": "./src/index.js"
+    ".": "./plugin/src/index.js"
   },
   "scripts": {
     "test": "node --test test/*.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check": "node bin/the-loop.js check && eslint ."
+    "check": "node plugin/bin/the-loop.js check && eslint ."
   },
   "engines": {
     "node": ">=22.11"

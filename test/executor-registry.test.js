@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parseExecutor, parseExecutors, validateBindings } from '../src/executor-registry.js';
+import { parseExecutor, parseExecutors, validateBindings } from '../plugin/src/executor-registry.js';
 
 // Plain string (not a template literal): the machine block's own invocation syntax
 // uses literal {model}/{prompt}/{worktree} placeholders, which a template literal's

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { describeRun, spliceRunDescription } from '../src/splice-workflow-description.js';
+import { describeRun, spliceRunDescription } from '../plugin/src/splice-workflow-description.js';
 
 // ── describeRun ──
 test('describeRun lists every in-scope id, in scope order, arrow-joined to the target', () => {

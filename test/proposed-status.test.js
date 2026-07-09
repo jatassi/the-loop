@@ -13,7 +13,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 
 const read = (p) => readFileSync(p, 'utf8');
-const BIN = path.resolve('bin/the-loop.js');
+const BIN = path.resolve('plugin/bin/the-loop.js');
 
 // ── criterion 2: prepare-execution-context refuses a proposed feature ──
 test('spine prepare-execution-context refuses a proposed feature, naming it must be designed first, with nothing on stdout', () => {
@@ -47,7 +47,7 @@ features:
 
 // ── criterion 5a: the route table maps a `design` proposal to the design skill ──
 test('commands/the-loop.md routes a design proposal to the design skill, and new-intake mentions parking an idea as a proposed record', () => {
-  const cmd = read('commands/the-loop.md');
+  const cmd = read('plugin/commands/the-loop.md');
   assert.match(cmd, /`design`\s*→\s*the `design` skill, amending the design for the named ids/);
   assert.match(cmd, /parked as a `proposed` record by amendment/);
 });
@@ -58,7 +58,7 @@ test('commands/the-loop.md routes a design proposal to the design skill, and new
 // line, skills/design/SKILL.md's yaml sample, commands/the-loop.md's routes) each
 // list all four values together.
 const SURFACES = ['docs/feature-graph.md', 'docs/architecture.md', 'docs/glossary.md',
-  'README.md', 'skills/design/SKILL.md', 'bin/the-loop.js'];
+  'README.md', 'plugin/skills/design/SKILL.md', 'plugin/bin/the-loop.js'];
 const FOUR_VALUES = /proposed\s*\|\s*designed\s*\|\s*validated\s*\|\s*shipped|proposed\|designed\|validated\|shipped/;
 
 test('every named living surface lists all four status values together', () => {

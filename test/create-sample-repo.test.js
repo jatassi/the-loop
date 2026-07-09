@@ -7,7 +7,7 @@ import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
-import { detectState, machineOrientation } from '../src/propose-next-action.js';
+import { detectState, machineOrientation } from '../plugin/src/propose-next-action.js';
 
 const bringUp = (variant = '') => execSync(`node bin/create-sample-repo.js ${variant}`, { encoding: 'utf8' }).trim();
 
@@ -15,7 +15,7 @@ test('populated fixture: a committed repo on main whose feature-graph.md passes 
   const root = bringUp();
   try {
     assert.ok(existsSync(path.join(root, '.git')));
-    const check = execSync(`node bin/the-loop.js check ${path.join(root, 'docs/feature-graph.md')}`, { encoding: 'utf8' });
+    const check = execSync(`node plugin/bin/the-loop.js check ${path.join(root, 'docs/feature-graph.md')}`, { encoding: 'utf8' });
     assert.match(check, /^OK +3 features/);
 
     const o = machineOrientation(root);

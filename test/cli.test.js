@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const BIN = path.resolve('bin/the-loop.js');
+const BIN = path.resolve('plugin/bin/the-loop.js');
 
 function spine(args, opts = {}) {
   return execFileSync('node', [BIN, ...args], { encoding: 'utf8', ...opts });

@@ -1,7 +1,7 @@
 // bin/the-loop.js's executor-registry CLI surface (`the-loop executors-list`, and
 // `the-loop models-list`'s binding-validation pass), exercised as an agent would —
 // spawned as a real subprocess against throwaway fixture dirs and, for the
-// real-registry case, against this plugin's own shipped docs/executors/ dir.
+// real-registry case, against this plugin's own shipped config/executors/ dir.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const BIN = path.resolve('bin/the-loop.js');
+const BIN = path.resolve('plugin/bin/the-loop.js');
 
 function spine(args, opts = {}) {
   return execFileSync('node', [BIN, ...args], { encoding: 'utf8', ...opts });
@@ -74,7 +74,7 @@ function playbook(id, { models = ['model-a', 'model-b'], concurrency = 1 } = {})
   ].join('\n');
 }
 
-test('spine executors-list with no dir argument reads the real plugin docs/executors/ dir: grok appears with worktree driver-made and the pinned models list', () => {
+test('spine executors-list with no dir argument reads the real plugin config/executors/ dir: grok appears with worktree driver-made and the pinned models list', () => {
   const registry = JSON.parse(spine(['executors-list']));
   assert.equal(registry.grok.worktree, 'driver-made');
   assert.deepEqual(registry.grok.models, ['grok-4.5', 'grok-composer-2.5-fast']);

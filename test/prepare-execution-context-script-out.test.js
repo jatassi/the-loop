@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const BIN = path.resolve('bin/the-loop.js');
+const BIN = path.resolve('plugin/bin/the-loop.js');
 
 function spine(args, opts = {}) {
   return execFileSync('node', [BIN, ...args], { encoding: 'utf8', ...opts });
@@ -40,14 +40,15 @@ function gitFixture(files) {
   return root;
 }
 
-// A standalone `PLUGIN_ROOT` — a real copy of bin/ + src/ + config/ + docs/executors
-// (node_modules symlinked in, the same trick worktree-create uses) plus a
-// caller-supplied workflows/execution-pipeline.js — so a test can drive the real CLI
-// against a canonical script it controls, without touching this repo's own copy.
+// A standalone `PLUGIN_ROOT` — a real copy of the plugin's bin/ + src/ + config/
+// (config/executors included) with node_modules symlinked in (the same trick
+// worktree-create uses) plus a caller-supplied workflows/execution-pipeline.js — so a
+// test can drive the real CLI against a canonical script it controls, without touching
+// this repo's own copy.
 function pluginRootFixture(workflowScript) {
   const root = mkdtempSync(path.join(tmpdir(), 'spine-plugin-'));
-  for (const dir of ['bin', 'src', 'config', 'docs/executors']) {
-    cpSync(dir, path.join(root, dir), { recursive: true });
+  for (const dir of ['bin', 'src', 'config']) {
+    cpSync(path.join('plugin', dir), path.join(root, dir), { recursive: true });
   }
   symlinkSync(path.resolve('node_modules'), path.join(root, 'node_modules'), 'dir');
   mkdirSync(path.join(root, 'workflows'), { recursive: true });
@@ -89,7 +90,7 @@ test("spine prepare-execution-context --script-out writes a spliced copy of the 
     const withFlag = spine(['prepare-execution-context', '--features', 'widget', '--target-branch', 'main', '--script-out', scriptOut], { cwd: root });
     assert.equal(withFlag, withoutFlag); // stdout is the unchanged execution context either way
 
-    const canonical = readFileSync('workflows/execution-pipeline.js', 'utf8');
+    const canonical = readFileSync('plugin/workflows/execution-pipeline.js', 'utf8');
     const spliced = readFileSync(scriptOut, 'utf8');
     const metaLine = /^export const meta\b.*;$/m;
     assert.notEqual(spliced, canonical);

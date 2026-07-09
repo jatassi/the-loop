@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "the-loop",
-      "source": "./"
+      "source": "./plugin"
     }
   ]
 }

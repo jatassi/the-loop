@@ -37,7 +37,7 @@ idempotent re-run from what git already holds.
 
 ### The CLI and the execution context (ADR-0036/0038)
 
-`bin/the-loop.js` is the one CLI over the artifacts. Its load-bearing command is
+`plugin/bin/the-loop.js` is the one CLI over the artifacts. Its load-bearing command is
 **`the-loop prepare-execution-context --features <ids>`**: it gates everything
 mechanically (graph validity, scope readiness, model-binding validity — refusing
 loudly replaces prose checklists) and assembles the **execution context** —
@@ -54,7 +54,7 @@ disk), `plan parse|check|task`, `worktree-create|worktree-remove`, `models-list`
 ### The execution pipeline (ADR-0038)
 
 The execution pipeline (nicknamed "the engine") is a **Claude Code Workflow**
-(`workflows/execution-pipeline.js`): script = brain, agents = hands. The script has
+(`plugin/workflows/execution-pipeline.js`): script = brain, agents = hands. The script has
 no filesystem — it consumes the execution context and spawns agents; every
 repo-touching action is an agent's. It runs a **concurrency policy** over the scoped
 subgraph: every feature whose dependencies are satisfied runs concurrently; as each
@@ -162,10 +162,11 @@ allowlist, no `.gitignore` respect) and an installed plugin cannot reference fil
 outside it. `PLUGIN_ROOT` (derived from `import.meta.url`) and braced
 `${CLAUDE_PLUGIN_ROOT}` self-rehome, so the move is near-mechanical. The one runtime
 dependency (`yaml`) is **vendored** under the plugin root as tracked content — no build
-step — and a `plugin/package.json` carries `"type": "module"` because the installed
-bundle is only `plugin/`; the shipped default executor playbook moves beside
-`model-bindings.json` at `plugin/config/executors/`. Designed 2026-07-08 (feature
-`plugin-dir-restructure`); the moves land when it builds.
+step — and a `plugin/package.json` carries `"type": "module"` (and `engines`/`bin`, so
+lint reads the right Node floor) because the installed bundle is only `plugin/`; the
+shipped default executor playbook lives beside `model-bindings.json` at
+`plugin/config/executors/`. Landed 2026-07-08 (feature `plugin-dir-restructure`,
+ADR-0048).
 
 ## Key interface contracts
 
@@ -249,7 +250,7 @@ both, each a benign no-op in the other's state (both paths observed 2026-07-04).
 Health check:
 
 ```sh
-node -e 'const cp=require("child_process");const v=require("./.claude-plugin/plugin.json").version;const l=JSON.parse(cp.execSync("claude plugin list --json",{encoding:"utf8"}));const e=l.find(x=>x.id==="the-loop@the-loop");if(!(e&&e.enabled&&e.version===v))process.exit(1);cp.execSync("claude plugin details the-loop@the-loop",{stdio:"ignore"})'
+node -e 'const cp=require("child_process");const v=require("./plugin/.claude-plugin/plugin.json").version;const l=JSON.parse(cp.execSync("claude plugin list --json",{encoding:"utf8"}));const e=l.find(x=>x.id==="the-loop@the-loop");if(!(e&&e.enabled&&e.version===v))process.exit(1);cp.execSync("claude plugin details the-loop@the-loop",{stdio:"ignore"})'
 ```
 
 Rollback: `claude plugin uninstall the-loop@the-loop --scope user` (removes the
@@ -259,12 +260,11 @@ by design after a rollback (the plugin is gone) — that reads as
 `rollback_verified: false`, the correct "needs human eyes" signal, and a restart is
 required before a live session runs the new version.
 
-**Packaging note (designed, ADR-0048):** feature `plugin-dir-restructure` moves plugin
-content under `plugin/` and re-points the marketplace `source` to `./plugin`. When it
-builds, `add "$PWD"` above still resolves (`marketplace.json` stays at the repo root)
-and the health check's `require("./.claude-plugin/plugin.json")` becomes
-`require("./plugin/.claude-plugin/plugin.json")`. Until then the live commands above
-deploy the current flat layout unchanged.
+**Packaging note (ADR-0048):** plugin content lives under `plugin/`, so the marketplace
+`source` is `./plugin`. `add "$PWD"` still resolves because `marketplace.json` stays at
+the repo root; the health check above reads `./plugin/.claude-plugin/plugin.json`. The
+marketplace re-point itself is exercised end-to-end only by the real deploy chain — the
+first release after plugin-dir-restructure is that verification.
 
 ## Operations toolkit
 

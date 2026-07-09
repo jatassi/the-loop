@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parse } from '../src/parse-feature-graph.js';
-import { render } from '../src/write-feature-graph.js';
+import { parse } from '../plugin/src/parse-feature-graph.js';
+import { render } from '../plugin/src/write-feature-graph.js';
 
 const TEXT = `# Fixture — Feature graph
 

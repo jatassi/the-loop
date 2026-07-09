@@ -1,6 +1,6 @@
 // rename-sweep/skills-and-command-sweep's acceptance, executable: the six skill
 // packs and commands/the-loop.md speak the approved vocabulary (docs/design/naming-map.md).
-// This task's footprint is prose only (skills/, commands/the-loop.md) — every
+// This task's footprint is prose only (plugin/skills/, plugin/commands/the-loop.md) — every
 // assertion here reads the shipped files' text directly, the same way a human or
 // a downstream agent would.
 import assert from 'node:assert/strict';
@@ -14,18 +14,18 @@ const frontmatterName = (text) => text.match(/^name:\s*(\S+)\s*$/m)?.[1];
 // name matches directory; the old directories are gone; design/diagnose/write-skills
 // keep their directory names ──
 test('frame, ship, and craft skill directories are renamed with matching frontmatter', () => {
-  assert.ok(!existsSync('skills/frame'), 'skills/frame should no longer exist');
-  assert.ok(!existsSync('skills/ship'), 'skills/ship should no longer exist');
-  assert.ok(!existsSync('skills/craft'), 'skills/craft should no longer exist');
+  assert.ok(!existsSync('plugin/skills/frame'), 'plugin/skills/frame should no longer exist');
+  assert.ok(!existsSync('plugin/skills/ship'), 'plugin/skills/ship should no longer exist');
+  assert.ok(!existsSync('plugin/skills/craft'), 'plugin/skills/craft should no longer exist');
 
   for (const [dir, name] of [['define', 'define'], ['release', 'release'], ['code-quality', 'code-quality']]) {
-    const skill = read(`skills/${dir}/SKILL.md`);
-    assert.equal(frontmatterName(skill), name, `skills/${dir}/SKILL.md name should be ${name}`);
+    const skill = read(`plugin/skills/${dir}/SKILL.md`);
+    assert.equal(frontmatterName(skill), name, `plugin/skills/${dir}/SKILL.md name should be ${name}`);
   }
 
   // design, diagnose, and write-skills keep their directory names (swept in place)
   for (const dir of ['design', 'diagnose', 'write-skills']) {
-    assert.ok(existsSync(`skills/${dir}/SKILL.md`), `skills/${dir}/SKILL.md should still exist`);
+    assert.ok(existsSync(`plugin/skills/${dir}/SKILL.md`), `plugin/skills/${dir}/SKILL.md should still exist`);
   }
 });
 
@@ -33,7 +33,7 @@ test('frame, ship, and craft skill directories are renamed with matching frontma
 // project-state values, and eligible-set proposal kind, and names the renamed
 // workflow script path ──
 test('commands/the-loop.md routes on the collapsed status subcommand, prepare-execution-context flags, and the new project states', () => {
-  const cmd = read('commands/the-loop.md');
+  const cmd = read('plugin/commands/the-loop.md');
 
   assert.match(cmd, /the-loop\.js"\s+status\s+--json/, 'the context call should read `status --json`');
   assert.match(cmd, /\bnode "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/the-loop\.js" status\b(?!\s*--json)/, 'the closing call should read bare `status`');
@@ -70,8 +70,8 @@ test('every CLAUDE_PLUGIN_ROOT reference in commands/ and skills/ is brace-wrapp
       }
     }
   };
-  walk('commands');
-  walk('skills');
+  walk('plugin/commands');
+  walk('plugin/skills');
 
   for (const file of mdFiles) {
     // `$CLAUDE_PLUGIN_ROOT` (dollar followed directly by the name) is the unsubstituted
@@ -85,7 +85,7 @@ test('every CLAUDE_PLUGIN_ROOT reference in commands/ and skills/ is brace-wrapp
 // Workflow call's scriptPath is that spliced per-run script — never the canonical
 // workflows/ file launched directly ──
 test('commands/the-loop.md passes --script-out on the prepare-execution-context call, and scriptPath is bound to that path rather than the canonical workflow file', () => {
-  const cmd = read('commands/the-loop.md');
+  const cmd = read('plugin/commands/the-loop.md');
 
   assert.match(cmd, /prepare-execution-context --features <id,id,…> --target-branch <ref>.*--script-out/);
   assert.match(cmd, /scriptPath.*--script-out/);
@@ -98,13 +98,13 @@ test('commands/the-loop.md passes --script-out on the prepare-execution-context 
 // ── criterion 3: interview replaces grilling in prose; the literal /grilling
 // binding id survives wherever the port's default binding is named ──
 test('interview replaces grilling in prose, except the literal /grilling binding id', () => {
-  const files = ['skills/define/SKILL.md', 'skills/design/SKILL.md', 'commands/the-loop.md'];
+  const files = ['plugin/skills/define/SKILL.md', 'plugin/skills/design/SKILL.md', 'plugin/commands/the-loop.md'];
   for (const f of files) {
     const text = read(f);
     assert.ok(!/\bgrilling\b/.test(text.replaceAll('/grilling', '')),
       `${f} should use "interview", not "grilling", outside the literal /grilling binding id`);
   }
-  const define = read('skills/define/SKILL.md');
+  const define = read('plugin/skills/define/SKILL.md');
   assert.match(define, /\/grilling/, 'the literal /grilling binding id should survive');
   assert.match(define, /interview port/);
   assert.match(define, /bound interview skill/);
@@ -115,15 +115,15 @@ test('interview replaces grilling in prose, except the literal /grilling binding
 // design amendment→amendment, and the paths they touch) are swept through the
 // skill and command prose actually reachable in this footprint ──
 test('the code-quality baseline carries the distilled naming rule, and mapped terms are swept through skill and command prose', () => {
-  const codeQuality = read('skills/code-quality/SKILL.md');
+  const codeQuality = read('plugin/skills/code-quality/SKILL.md');
   assert.match(codeQuality, /identifiers follow the naming standard's glossary rules/i);
   assert.match(codeQuality, /no coined\s+proper nouns/i);
 
   const allText = [
-    ...readdirSync('skills', { recursive: true })
+    ...readdirSync('plugin/skills', { recursive: true })
       .filter((f) => f.endsWith('.md'))
-      .map((f) => read(`skills/${f}`)),
-    read('commands/the-loop.md'),
+      .map((f) => read(`plugin/skills/${f}`)),
+    read('plugin/commands/the-loop.md'),
   ].join('\n');
 
   // old terms gone (outside this footprint's reach)

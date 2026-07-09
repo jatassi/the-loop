@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parse } from '../src/parse-feature-graph.js';
-import { setStatus } from '../src/set-feature-status.js';
-import { render } from '../src/write-feature-graph.js';
+import { parse } from '../plugin/src/parse-feature-graph.js';
+import { setStatus } from '../plugin/src/set-feature-status.js';
+import { render } from '../plugin/src/write-feature-graph.js';
 
 const TEXT = `## Feature graph
 

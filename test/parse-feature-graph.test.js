@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parse } from '../src/parse-feature-graph.js';
-import { findBlocks, replaceBlock, sectionAfter } from '../src/replace-fenced-block.js';
+import { parse } from '../plugin/src/parse-feature-graph.js';
+import { findBlocks, replaceBlock, sectionAfter } from '../plugin/src/replace-fenced-block.js';
 
 const DOC = `# Title
 

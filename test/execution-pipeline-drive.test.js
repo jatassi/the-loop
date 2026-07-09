@@ -8,7 +8,7 @@ import { test } from 'node:test';
 
 import { byLabel, runWorkflowScript } from './execution-pipeline-harness.js';
 
-const SCRIPT = 'workflows/execution-pipeline.js';
+const SCRIPT = 'plugin/workflows/execution-pipeline.js';
 
 function executionContextOf(models) {
   const plan = { designVersion: 1, tasks: [

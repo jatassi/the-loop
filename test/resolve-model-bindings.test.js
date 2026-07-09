@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { bindingFor, EFFORTS, resolveModels } from '../src/resolve-model-bindings.js';
+import { bindingFor, EFFORTS, resolveModels } from '../plugin/src/resolve-model-bindings.js';
 
 test('resolveModels merges defaults < project < local, whole-entry replacement per role, stamping per-layer provenance', () => {
   const defaults = { build: { model: 'opus', effort: 'low' }, drive: { model: 'sonnet' } };
