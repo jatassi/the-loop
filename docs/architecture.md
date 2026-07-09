@@ -150,6 +150,23 @@ sharpened ADR-0037 ratchet. Historical records are never rewritten; renamed term
 carry `(historical)` aliases. The clean-slate application to the existing repo is
 the `naming-map` → `rename-sweep` feature pair.
 
+### Plugin packaging (ADR-0048)
+
+The repo root is not the plugin root. Plugin content lives under `plugin/` — the
+marketplace `source` (`.claude-plugin/marketplace.json`, kept at the repo root) points
+there, and `plugin/.claude-plugin/plugin.json` is the manifest. The repo root holds
+dev tooling that never ships: `docs/`, `test/`, `eval/`, the root
+`package.json`/`eslint.config.js`, and the dev `node_modules/`. The directory boundary
+is the whole ignore mechanism — installation copies the plugin root wholesale (no
+allowlist, no `.gitignore` respect) and an installed plugin cannot reference files
+outside it. `PLUGIN_ROOT` (derived from `import.meta.url`) and braced
+`${CLAUDE_PLUGIN_ROOT}` self-rehome, so the move is near-mechanical. The one runtime
+dependency (`yaml`) is **vendored** under the plugin root as tracked content — no build
+step — and a `plugin/package.json` carries `"type": "module"` because the installed
+bundle is only `plugin/`; the shipped default executor playbook moves beside
+`model-bindings.json` at `plugin/config/executors/`. Designed 2026-07-08 (feature
+`plugin-dir-restructure`); the moves land when it builds.
+
 ## Key interface contracts
 
 Cross-feature shapes, in prose (per-feature detail lives in the feature docs):
@@ -241,6 +258,13 @@ rollback pointer for code is the previous release tag. Note: the health check fa
 by design after a rollback (the plugin is gone) — that reads as
 `rollback_verified: false`, the correct "needs human eyes" signal, and a restart is
 required before a live session runs the new version.
+
+**Packaging note (designed, ADR-0048):** feature `plugin-dir-restructure` moves plugin
+content under `plugin/` and re-points the marketplace `source` to `./plugin`. When it
+builds, `add "$PWD"` above still resolves (`marketplace.json` stays at the repo root)
+and the health check's `require("./.claude-plugin/plugin.json")` becomes
+`require("./plugin/.claude-plugin/plugin.json")`. Until then the live commands above
+deploy the current flat layout unchanged.
 
 ## Operations toolkit
 

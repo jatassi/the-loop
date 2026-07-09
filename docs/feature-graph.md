@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 19
+design_version: 20
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -215,14 +215,16 @@ features:
 
   - id: plugin-dir-restructure
     title: Plugin content into a source subdirectory (repo root stops being the plugin root)
-    status: proposed
+    status: designed
     depends_on: [release]
     notes:
       - "blocks releasing: the installer copies the plugin root wholesale — no ignore mechanism exists (docs checked 2026-07-08), so eval/ and dev node_modules ship in the bundle; the sanctioned pattern is a marketplace source subdirectory (v0.4.6 release aborted at the gate on this)"
+      - designed 2026-07-08 (ADR-0048) — plugin content → plugin/, marketplace source → ./plugin, the one runtime dep (yaml) vendored under the new root; PLUGIN_ROOT and braced CLAUDE_PLUGIN_ROOT self-rehome, so the move is near-mechanical
     acceptance:
-      - the shipped bundle contains only plugin content — eval/, dev dependencies, and gitignored artifacts stay out
-      - every plugin surface resolves under the new root (braced CLAUDE_PLUGIN_ROOT paths, agents, commands, skills, config, workflows)
-      - the release runbook deploys the subdirectory source end-to-end (marketplace re-point included)
+      - a fresh copy of the plugin source subdirectory (the installed cache or a git-subdir clone) contains agents/, commands/, skills/, workflows/, config/, bin/, src/, and the vendored yaml, and contains no eval/, no docs/, no test/, no dev devDependencies, and no repo-root gitignored artifacts
+      - the loop runs end to end from the installed plugin — the-loop status --json, prepare-execution-context, models-list, plan check, and check all succeed with ${CLAUDE_PLUGIN_ROOT} resolving to the subdirectory, and no plugin surface references a path outside the plugin root
+      - the recorded Release runbook, run verbatim, deploys the plugin from the subdirectory source (marketplace.json source → ./plugin, plugin.json relocated under it) and its health check passes against the installed version
+      - npm test and npm run check pass green from the repo root after the move — every src/bin import, package.json bin/scripts/exports, and eslint target resolves to the new plugin/ locations, and the feature graph still byte-round-trips
 
   # ── naming redesign (ADR-0044): clean-slate rename below the brand tier ──
   - id: naming-map
