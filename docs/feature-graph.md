@@ -309,7 +309,7 @@ features:
 
   - id: begin-front-door-rename
     title: Front door renamed /the-loop → /begin and converted to a skill (plugin/commands/ retires)
-    status: validated
+    status: shipped
     depends_on: [the-loop-entry]
     notes:
       - "designed 2026-07-08 from docs/briefs/begin-front-door-rename.md; kills the /the-loop:the-loop namespace stutter and lands the begin-a-session semantic; the upstream commands→skills merge (verified 2026-07-08: `!` dynamic-context injection works in SKILL.md) dissolved ADR-0002's reason to be a command — 0002 gets an appended amendment"
