@@ -1,6 +1,6 @@
 # calibration-capture — Calibration Memory
 
-**Status:** designed.
+**Status:** proposed.
 
 Capture which decompositions held, what task sizes actually fit, and which blocks
 recur, then recall it at Plan/Design so the loop decomposes better over time.
