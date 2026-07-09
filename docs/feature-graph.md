@@ -213,6 +213,17 @@ features:
     acceptance:
       - a sev-1 intake takes an expedited, still-gated path
 
+  - id: plugin-dir-restructure
+    title: Plugin content into a source subdirectory (repo root stops being the plugin root)
+    status: proposed
+    depends_on: [release]
+    notes:
+      - "blocks releasing: the installer copies the plugin root wholesale — no ignore mechanism exists (docs checked 2026-07-08), so eval/ and dev node_modules ship in the bundle; the sanctioned pattern is a marketplace source subdirectory (v0.4.6 release aborted at the gate on this)"
+    acceptance:
+      - the shipped bundle contains only plugin content — eval/, dev dependencies, and gitignored artifacts stay out
+      - every plugin surface resolves under the new root (braced CLAUDE_PLUGIN_ROOT paths, agents, commands, skills, config, workflows)
+      - the release runbook deploys the subdirectory source end-to-end (marketplace re-point included)
+
   # ── naming redesign (ADR-0044): clean-slate rename below the brand tier ──
   - id: naming-map
     title: Name inventory + blind candidates → the human-approved rename map
