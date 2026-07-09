@@ -154,6 +154,27 @@ for (const [code, bindings] of WARN_CASES) {
   });
 }
 
+// role-agent-binding: agent+executor is a resolved-entry gap stamp, not a models-list
+// hard error — the table still prints so the conflict is visible next to provenance.
+test('spine models-list surfaces an agent+executor configuration gap on the resolved entry without hard-failing', () => {
+  const root = fixture({
+    'playbooks/custom.md': playbook('custom', { models: ['model-a'] }),
+    'defaults.json': JSON.stringify({
+      validate: { model: 'model-a', agent: 'my-validator', executor: 'custom' },
+    }),
+  });
+  try {
+    const { stdout } = spineOk(['models-list', 'defaults.json', path.join(root, 'playbooks')], { cwd: root });
+    const table = JSON.parse(stdout);
+    assert.equal(table.validate.agent, 'my-validator');
+    assert.equal(table.validate.executor, 'custom');
+    assert.equal(table.validate.gap, 'agent-and-executor');
+    assert.equal(table.validate.provenance, 'default');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('the usage string names both new command forms: "executors-list [dir]" and "models-list [defaults.json] [executors-dir]"', () => {
   const usage = spine([]);
   assert.match(usage, /executors-list \[dir]/);

@@ -7,6 +7,9 @@
 /** The effort enum a binding's `effort` field may take (absent inherits session effort). */
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
+/** Named configuration gap: a role binds both `agent` and `executor` (mutually exclusive). */
+export const GAP_AGENT_AND_EXECUTOR = 'agent-and-executor';
+
 // Layers in merge order, paired with the provenance stamp a role bound there gets.
 const LAYERS = [
   ['defaults', 'default'],
@@ -19,6 +22,8 @@ const LAYERS = [
  * @property {string} model    a Claude alias, a full model id, or the literal "session"
  * @property {string} [effort] one of EFFORTS
  * @property {string} [executor] "agent" (default) or a registered executor id
+ * @property {string} [agent]  a subagent type (harness registry resolves it; unbound → bundled)
+ * @property {string} [gap]    a named configuration gap code when the entry is unusable as-is
  */
 
 /**
@@ -26,7 +31,9 @@ const LAYERS = [
  * `{ <role>: Binding & { provenance } }`, defaults < project < local, whole-entry
  * replacement per role (a role bound in a higher layer replaces the entire entry, no
  * field-level merge). Throws on a malformed entry — non-object, missing or non-string
- * `model`, out-of-enum `effort` — naming the role and the layer it came from.
+ * `model`, out-of-enum `effort`, non-string `agent` — naming the role and the layer
+ * it came from. A role carrying both `agent` and `executor` is not thrown: it is
+ * stamped with gap `agent-and-executor` so the resolved view still shows the conflict.
  * @param {{defaults?: Object<string, Binding>, project?: Object<string, Binding>, local?: Object<string, Binding>}} layers
  * @returns {Object<string, Binding & {provenance: 'default'|'project'|'local'}>}
  */
@@ -37,7 +44,7 @@ export function resolveModels({ defaults = {}, project = {}, local = {} } = {}) 
     const layer = sources[key];
     for (const [role, entry] of Object.entries(layer)) {
       validateEntry(entry, role, provenance);
-      table[role] = { ...entry, provenance };
+      table[role] = resolveEntry(entry, provenance);
     }
   }
   return table;
@@ -55,6 +62,14 @@ export function bindingFor(table, role) {
   return table[role] || { model: 'session', provenance: 'fallback' };
 }
 
+function resolveEntry(entry, provenance) {
+  const resolved = { ...entry, provenance };
+  if (entry.agent !== undefined && entry.executor !== undefined) {
+    resolved.gap = GAP_AGENT_AND_EXECUTOR;
+  }
+  return resolved;
+}
+
 function validateEntry(entry, role, layer) {
   if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
     throw new Error(`role "${role}" in the ${layer} layer must be an object binding (got ${JSON.stringify(entry)})`);
@@ -64,5 +79,8 @@ function validateEntry(entry, role, layer) {
   }
   if (entry.effort !== undefined && !EFFORTS.includes(entry.effort)) {
     throw new Error(`role "${role}" in the ${layer} layer has an out-of-enum effort (got ${JSON.stringify(entry.effort)}); must be one of ${EFFORTS.join('|')}`);
+  }
+  if (entry.agent !== undefined && typeof entry.agent !== 'string') {
+    throw new TypeError(`role "${role}" in the ${layer} layer has a non-string "agent" (got ${JSON.stringify(entry.agent)})`);
   }
 }

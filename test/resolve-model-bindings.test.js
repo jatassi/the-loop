@@ -31,10 +31,31 @@ test('a bound executor rides the merge into the resolved entry untouched', () =>
   assert.deepEqual(table.build, { model: 'sonnet', executor: 'my-executor', provenance: 'local' });
 });
 
+// role-agent-binding: the optional agent field rides the same whole-entry merge and
+// provenance stamp as model/effort/executor; agent+executor on one role is a named
+// configuration gap (stamped, never thrown — the resolved view must still show it).
+test('a bound agent rides the merge into the resolved entry with layer provenance', () => {
+  const defaults = { validate: { model: 'opus' } };
+  const project = { validate: { model: 'opus', agent: 'my-validator' } };
+  const table = resolveModels({ defaults, project });
+  assert.deepEqual(table.validate, { model: 'opus', agent: 'my-validator', provenance: 'project' });
+});
+
+test('agent+executor on one role is rejected as a named configuration gap without throwing', () => {
+  const table = resolveModels({
+    local: { validate: { model: 'opus', agent: 'my-validator', executor: 'grok' } },
+  });
+  assert.equal(table.validate.agent, 'my-validator');
+  assert.equal(table.validate.executor, 'grok');
+  assert.equal(table.validate.gap, 'agent-and-executor');
+  assert.equal(table.validate.provenance, 'local');
+});
+
 test('resolveModels rejects a malformed entry, naming the role and the layer', () => {
   assert.deepEqual(EFFORTS, ['low', 'medium', 'high', 'xhigh', 'max']);
   assert.throws(() => resolveModels({ defaults: { build: 'opus' } }), /build.*default/);
   assert.throws(() => resolveModels({ defaults: { build: {} } }), /build.*default/);
   assert.throws(() => resolveModels({ project: { build: { model: 42 } } }), /build.*project/);
   assert.throws(() => resolveModels({ local: { build: { model: 'sonnet', effort: 'blazing' } } }), /build.*local/);
+  assert.throws(() => resolveModels({ project: { plan: { model: 'session', agent: 7 } } }), /plan.*project/);
 });

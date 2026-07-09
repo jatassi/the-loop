@@ -21,11 +21,16 @@ const CLI = executionContext.cli || 'node plugin/bin/the-loop.js';
 // name) or set it to '' to spawn the bare names.
 const AGENT_NS = executionContext.agentNamespace ?? 'the-loop';
 const agentTypeFor = (role) => (AGENT_NS ? `${AGENT_NS}:${role}` : role);
+// role-agent-binding (ADR-0050): a bound `agent` is the spawn's agentType as-is
+// (harness registry resolves the name); unbound keeps the namespaced bundled type.
+const agentTypeForRole = (role, binding) => binding.agent || agentTypeFor(role);
 
 const asList = (x) => (Array.isArray(x) ? x : [x]);
 
-// ---- model bindings (ADR-0030): role → {model, effort?, executor?}; unbound falls
-// back to the session model with one visible log line.
+// ---- model bindings (ADR-0030/0050): role → {model, effort?, executor?, agent?};
+// unbound falls back to the session model with one visible log line. agent+executor
+// on one role is a named configuration gap — can't-run, reported as blocked (a human
+// must fix the config; distinct from stalled, which the scheduler silently retries).
 const modelTable = executionContext.models || {};
 const hasRole = (role) => Object.prototype.hasOwnProperty.call(modelTable, role);
 function roleBinding(role) {
@@ -234,9 +239,12 @@ async function withValidateLock(fn) {
 async function runPlan(f) {
   if (f.plan) { return { workflow_path: 'standard', tasks: f.plan.tasks }; }
   const binding = roleBinding('plan');
-  const planned = await spawn(planPrompt(f), {
-    agentType: agentTypeFor('plan'), label: f.id, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
-  }, f.id);
+  // Configuration gap short-circuits as a blocked agent reply so the path below pushes blocked.
+  const planned = binding.gap
+    ? { result: 'blocked', detail: binding.gap }
+    : await spawn(planPrompt(f), {
+      agentType: agentTypeForRole('plan', binding), label: f.id, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
+    }, f.id);
   const flow = signalOf(planned);
   if (flow) { return { flow }; }
   if (planned.result === 'needs_refinement' || planned.result === 'blocked') {
@@ -248,7 +256,7 @@ async function runPlan(f) {
 }
 
 function buildSpawnOpts(f, task, { binding, prefix = '' }) {
-  return { agentType: agentTypeFor('build'), label: `${prefix}${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
+  return { agentType: agentTypeForRole('build', binding), label: `${prefix}${f.id}/${task.id}`, phase: 'Build', schema: BUILD_SCHEMA, ...modelOpts(binding) };
 }
 
 // `prefix` is `(<pos>/<N>) ` when the feature built as 2+ tasks (computed by `runBuild`
@@ -260,15 +268,19 @@ function buildSpawnOpts(f, task, { binding, prefix = '' }) {
 // the drive model comes from drive.<executor> when bound, else drive.
 function executorReroute({ binding, prompt, opts, label, featureId, role }) {
   const driveBinding = hasRole(`drive.${binding.executor}`) ? modelTable[`drive.${binding.executor}`] : roleBinding('drive');
+  if (driveBinding.gap) { return { result: 'blocked', detail: driveBinding.gap }; }
   log(`model-selection — ${role} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
   return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
-    ...opts, agentType: agentTypeFor('drive'), label, ...modelOpts(driveBinding),
+    ...opts, agentType: agentTypeForRole('drive', driveBinding), label, ...modelOpts(driveBinding),
   }, featureId);
 }
 
 async function runTask(f, task, { prompt, prefix = '' }) {
   if (task.judgment_level == null) { log(`model-selection — task ${f.id}/${task.id} has no judgment_level, routing build.standard`); }
-  const binding = roleBinding(`build.${task.judgment_level ?? 'standard'}`);
+  const role = `build.${task.judgment_level ?? 'standard'}`;
+  const binding = roleBinding(role);
+  // Same shape a blocked agent reply takes — taskOutcome's existing branch pushes blocked.
+  if (binding.gap) { return { result: 'blocked', detail: binding.gap }; }
   const opts = buildSpawnOpts(f, task, { binding, prefix });
   if (binding.executor && binding.executor !== 'agent') {
     return executorReroute({
@@ -349,15 +361,18 @@ async function runValidate(f, workflowPath, tasks) {
     ? [f.branch]
     : [f.branch, ...topoOrder(tasks).map((t) => taskBranch(f, t.id))];
   const binding = roleBinding('validate');
-  const opts = { agentType: agentTypeFor('validate'), label: f.id, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding) };
-  const verdict = await withValidateLock(() => {
-    if (binding.executor && binding.executor !== 'agent') {
-      return executorReroute({
-        binding, prompt: validatePrompt(f, branches), opts, label: `${f.id} via ${binding.executor}`, featureId: f.id, role: `validate ${f.id}`,
-      });
-    }
-    return spawn(validatePrompt(f, branches), opts, f.id);
-  });
+  const opts = { agentType: agentTypeForRole('validate', binding), label: f.id, phase: 'Validate', schema: VALIDATE_SCHEMA, ...modelOpts(binding) };
+  // Configuration gap short-circuits as a non-validated verdict — existing branch pushes blocked.
+  const verdict = binding.gap
+    ? { result: 'blocked', detail: binding.gap }
+    : await withValidateLock(() => {
+      if (binding.executor && binding.executor !== 'agent') {
+        return executorReroute({
+          binding, prompt: validatePrompt(f, branches), opts, label: `${f.id} via ${binding.executor}`, featureId: f.id, role: `validate ${f.id}`,
+        });
+      }
+      return spawn(validatePrompt(f, branches), opts, f.id);
+    });
   const flow = signalOf(verdict);
   if (flow) { return flow === 'halt' ? 'halt' : false; }
   if (verdict.result === 'validated') {

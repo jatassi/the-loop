@@ -11,7 +11,7 @@ export { assembleExecutionContext, builtTaskIds, checkScope, featureBranch, task
 // /begin's orientation core.
 export { detectState, eligibleSet, machineOrientation, propose } from './propose-next-action.js';
 export { findBlocks, replaceBlock, sectionAfter, yamlBlockAfter } from './replace-fenced-block.js';
-// The model-binding resolver — role → model/effort/executor merge across defaults <
+// The model-binding resolver — role → model/effort/executor/agent merge across defaults <
 // project < local layers, with provenance.
 export { bindingFor, EFFORTS, resolveModels } from './resolve-model-bindings.js';
 // The run-presentation splice — scope-derived description shaping + the meta-line splice.

@@ -365,9 +365,10 @@ test('spine models-list merges an overridden defaults file with project < local 
     const withProject = JSON.parse(spine(['models-list', 'defaults.json'], { cwd: root }));
     assert.deepEqual(withProject.build, { model: 'haiku', provenance: 'project' }); // wholesale replacement — effort is gone
 
-    writeFileSync(path.join(root, '.claude/settings.local.json'), JSON.stringify({ 'the-loop': { modelBindings: { build: { model: 'opus', effort: 'high' } } } }));
+    // agent rides the same whole-entry replacement + provenance stamp (role-agent-binding)
+    writeFileSync(path.join(root, '.claude/settings.local.json'), JSON.stringify({ 'the-loop': { modelBindings: { build: { model: 'opus', effort: 'high', agent: 'my-builder' } } } }));
     const withLocal = JSON.parse(spine(['models-list', 'defaults.json'], { cwd: root }));
-    assert.deepEqual(withLocal.build, { model: 'opus', effort: 'high', provenance: 'local' }); // local beats project too
+    assert.deepEqual(withLocal.build, { model: 'opus', effort: 'high', agent: 'my-builder', provenance: 'local' });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
