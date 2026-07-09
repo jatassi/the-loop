@@ -139,3 +139,30 @@ The pure core stays file-substrate and unchanged. The interchange is a
   fallback line.
 - A bound-but-unreachable surface reports can't-run naming the surface — never a
   silent fallback to local state.
+
+## Validation notes — criterion 4 live proof (2026-07-09, session-run)
+
+The loop's `validate` agent has no MCP access, so the autonomous run validated
+criteria 1,2,3,5,6 (fixture/snapshot-based) and the merged feature landed; the
+live features→Linear round-trip (criterion 4) was proven by the session against a
+sandbox Linear team (workspace `the-loop-jatassi`, team **The-loop**):
+
+- **Derive-from-Linear:** two issues — `THE-5` (graph-core, state Todo→designed)
+  and `THE-6` (front-door, state Backlog→proposed, `blockedBy` THE-5) — were
+  materialized into an ephemeral snapshot graph (issue→feature record,
+  blockedBy→depends_on, workflow state→loop status, description `## Acceptance`→
+  acceptance prose). `the-loop prepare-execution-context --features graph-core
+  --target-branch main --graph-path <snapshot>` derived its context from that
+  Linear-sourced snapshot (scope resolved to graph-core; front-door correctly
+  ineligible while proposed).
+- **Status transition, Linear-first:** graph-core designed→validated was written
+  to Linear first (THE-5 Todo→In Progress via the MCP mutate), THEN the snapshot
+  was refreshed from Linear. Proof it flowed through: after also flipping THE-6 to
+  designed, `prepare-execution-context --features front-door --graph-path
+  <refreshed-snapshot>` newly resolved front-door as eligible — buildable ONLY
+  because its dependency's Linear status had changed.
+- **Ephemeral:** the snapshot lived in session scratch, was never `git add`-ed, and
+  was torn down at proof end.
+
+The sandbox proof issues THE-5/THE-6 are labeled "safe to delete"; they are the
+human's to clean up (per the sandbox-only, never-this-repo's-graph constraint).

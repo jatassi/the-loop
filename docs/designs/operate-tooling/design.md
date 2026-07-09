@@ -169,7 +169,20 @@ validation sense of "runbook" greps to zero outside the exclusions; `npm test`
 and `npm run check` green on the landed tree. File-by-file sequencing is Plan's.
 The runbook file move-set is re-derived by listing `docs/runbooks/` at build time
 (dynamic, not the count this doc first enumerated) — this is the criterion the
-first build attempt missed.
+first two build attempts missed (14 validation-sense records live as of 2026-07-09,
+incl. configure/, role-agent-binding/, calibration-capture/, onboard/,
+ports-adapters-full/).
+
+**Mandatory completeness regression test (both prior attempts passed a green suite
+while incomplete — this closes that gap).** Plan MUST include a test that, at test
+time, dynamically re-lists `docs/runbooks/*/runbook.md` and **fails unless the set
+is empty**, and greps the living surfaces (everything outside the historical-record
+and `eval/` exclusions — including `plugin/skills/`, `plugin/agents/`, living
+`docs/designs/*/design.md`, `README.md`, and the feature graph) and **fails on any
+remaining validation-sense `runbook`/`docs/runbooks` reference**. The test re-lists
+and re-greps rather than pinning a frozen file list, so a future stray old-path
+record or unswept surface fails it. This test is part of the sweep task's footprint;
+a green `npm test` then genuinely evidences the rename's completeness.
 
 ## Dogfood
 
