@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 25
+design_version: 26
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -331,4 +331,16 @@ features:
       - given a task in a 2+-task feature that routes to a registered executor, its drive spawn label is `(<pos>/<N>) <feature>/<task> via <executor>`
       - given a feature built via the small workflow path, or a standard plan with exactly one task, the build spawn label carries no prefix (the bare `<feature>/feature` / `<feature>/<task>`) — `(1/1)` never appears
       - given any of the above, branch names, commit subjects, and merge order are byte-identical to before the prefix — the prefix lives only in the display label
+
+  # ── backlog: toolchain replatform ───────────────────────────────────────
+  - id: rust-cli-replatform
+    title: Replatform the deterministic CLI to a self-contained Rust binary + tool-owned JSON
+    status: proposed
+    notes:
+      - "brief at docs/briefs/rust-cli-replatform.md (committed 2026-07-09); a full Design pass was deferred — this node parks the decided direction and the open design questions"
+      - "DECIDED — rewrite plugin/bin/the-loop.js + plugin/src/*.js (~1.3KLOC ESM, one vendored dep `yaml`) in Rust as a self-contained compiled binary; distribute beads-style: fetched + checksummed at install, zero runtime dependency, no vendored node_modules, never a committed blob (supersedes ADR-0048's vendored-node-runtime packaging); migrate durable format YAML-in-markdown → tool-owned JSON via serde (tool-first but freely hand-editable, canonical emit on tool writes, `check` as the schema guardrail, milestone grouping demoted from YAML comments to a schema field); keep the Bash-invoked-CLI seam (clap + serde_json, JSON stdout, exit-code gates); clean break, no YAML back-compat"
+      - "DEFERRED to Design — distribution mechanics (cargo-dist, platform matrix, install/resolve/PATH mechanism); the JSON schema shape; and the self-modifying cutover shape (bias to atomic swap — build the Rust CLI to parity beside the JS one, verify via a language-independent black-box parity oracle run against BOTH binaries, then flip the seam once; the Bun-in-Rust post warns against interleaving old+new live)"
+      - "BLAST RADIUS is wider than feature-graph + plans — a mid-session survey (killed early) also implicates: calibration records (YAML payload the CLI writes), plan task-contract `## Tasks` blocks, and the-loop's OWN authoring surfaces that emit/assume YAML (the design skill's feature-graph output, the plan agent's task block) plus the validation/release runbooks and health-check one-liners that invoke `node`; enumerate all `node …the-loop.js` invocation sites and all YAML surfaces before slicing"
+    acceptance:
+      - the full command surface runs on a machine with no JS runtime present, installed via a fetched checksummed binary with no vendored node_modules, with every durable artifact in JSON and hand-edits validated by `check` — sketch only; real criteria are Design's output
 ```
