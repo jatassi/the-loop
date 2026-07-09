@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 21
+design_version: 22
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -206,14 +206,29 @@ features:
       - on a brownfield fixture repo (code + tests + CI, no loop artifacts), one onboard pass detects the infrastructure, interviews only the gaps, and leaves the settings-side hooks and the three recorded-binding sections populated or explicitly opted out with every write human-confirmed
       - Design's recorded-binding interviews confirm-or-fill instead of re-asking when onboard already recorded a section
 
+  - id: role-agent-binding
+    title: Phase-agent swap — an agent field on the role-binding table
+    status: designed
+    notes:
+      - designed 2026-07-08 (ADR-0050) — split from ports-adapters-full; independently shippable, no configure dependency
+    acceptance:
+      - a role binding carrying an agent name makes the pipeline spawn that agent type for the role; every unbound role spawns its bundled agent, byte-for-byte today's behavior
+      - a role binding carrying both agent and executor is rejected at resolution as a named configuration gap — the resolved view shows it and the pipeline treats the role as blocked, never silently picking one
+      - the resolved-bindings output shows the agent field with its layer and provenance like every other binding
+
   - id: ports-adapters-full
-    title: Full ports/adapters (swapping + capability-contract enforcement)
-    status: proposed
+    title: Adapters — documented external-surface bindings, consumed (features→Linear proof)
+    status: designed
     depends_on: [configure]
     notes:
-      - the v1 port inventory (docs/ports/ports.md) was retired by ADR-0037 — the abstraction waits for a second adopter; reconstruct the inventory from git history if this feature nears the eligible set
+      - rescoped 2026-07-08 from "swapping + capability-contract enforcement" (brief docs/briefs/ports-adapters-full.md, ADR-0050) — documentation-as-adapter; enforcement machinery stays dead
     acceptance:
-      - an adapter swap is one config line; the configure step validates the contract and surfaces guarantee trades
+      - capturing a nondefault artifact-store binding surfaces its trade-offs for explicit human acceptance and runs a reachability probe before any write; a failed probe offers fix-now or bind-anyway; nothing is written silently
+      - a swap that replaces an existing local artifact offers a backup (a pre-swap git tag by default) before the local file is retired
+      - every captured nondefault binding has docs/adapters/<surface>.md answering what lives there, how to access it, which operations exist tagged read or mutate, and its caveats
+      - on a sandbox project (scratch repo + scratch Linear team — never this repo's own graph) with features bound to Linear on a real account, a run derives its execution context from Linear truth (issues, blockedBy edges, acceptance prose) through an ephemeral materialized snapshot, and status transitions write back Linear-first; the snapshot is torn down, never committed
+      - removing the binding (after the documented export path restores docs/feature-graph.md) returns the project to in-repo behavior with a visible fallback line
+      - a bound-but-unreachable surface reports can't-run naming the surface — never a silent fallback to local state
 
   - id: research-tiers
     title: Research port (lightweight default + confidence-gate + deep-research escalation)
