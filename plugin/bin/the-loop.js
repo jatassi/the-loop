@@ -28,6 +28,11 @@
 //                                    name this run's scope and target
 //                                    (run-presentation); a shape-gate refusal exits 1
 //                                    with nothing written
+//   the-loop calibration-summarize    regenerate docs/calibration/index.md wholesale from
+//                                    docs/calibration/runs/*.md (this repo only): a bounded
+//                                    ## Digest section + ## Runs, one line per record.
+//                                    Deterministic; a malformed record exits 1 naming the
+//                                    file and writes no index
 //   the-loop worktree-create <branch> [--base-branch <ref>]  add .claude/worktrees/<branch>,
 //                                    creating the branch from <ref> (default main) when
 //                                    new; links node_modules for node projects; prints
@@ -51,9 +56,9 @@ import path from 'node:path';
 
 import { parse } from '../src/parse-feature-graph.js';
 import {
-  check, clean, fail, modelsListCommand, out, planCommand, PLUGIN_ROOT,
-  prepareExecutionContextCommand, read, readRegistry, setStatusCommand, statusCommand,
-  worktreeCreateCommand, worktreeRemoveCommand,
+  calibrationSummarizeCommand, check, clean, fail, modelsListCommand, out, planCommand,
+  PLUGIN_ROOT, prepareExecutionContextCommand, read, readRegistry, setStatusCommand,
+  statusCommand, worktreeCreateCommand, worktreeRemoveCommand,
 } from './cli-commands.js';
 import { hooksListCommand, hooksSetCommand } from './hooks-commands.js';
 
@@ -80,6 +85,10 @@ try {
     }
     case 'prepare-execution-context': {
       prepareExecutionContextCommand(rest);
+      break;
+    }
+    case 'calibration-summarize': {
+      calibrationSummarizeCommand();
       break;
     }
     case 'plan': {
@@ -111,7 +120,7 @@ try {
       break;
     }
     default: {
-      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]|hooks-list|hooks-set <family> <layer> <json-value>> [file…]\n');
+      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|calibration-summarize|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]|hooks-list|hooks-set <family> <layer> <json-value>> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }

@@ -7,7 +7,7 @@
 // features and tasks, so anything whose dependencies are satisfied runs concurrently
 // in its own worktree. The completion channel is a bare top-level `return` of the run
 // summary.
-export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a run summary', whenToUse: 'Launched by /begin with the `the-loop prepare-execution-context` execution context as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
+export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a run summary', whenToUse: 'Launched by /begin with the `the-loop prepare-execution-context` execution context as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }, { title: 'Record' }] };
 
 // Some callers deliver args as a JSON-encoded string rather than the parsed execution context.
 const executionContext = typeof args === 'string' ? JSON.parse(args) : args;
@@ -76,18 +76,57 @@ const blocked = [];   // needs a human decision at this boundary: {feature, reas
 const stalled = [];   // agent/infra error, nothing recorded — rerun next pass
 let halted;
 
+// ---- calibration observation collector (ADR-0046): the script observes, the record
+// agent transcribes. Every awaited spawn is sampled at the one choke point below —
+// per-feature per-role counts and a per-role spend delta read as `budget.spent` (a
+// property: the single form the live harness serves, used identically here and at the
+// run-summary read site) — and concurrency is watched so the payload can flag whether
+// the per-role split was measured serially or across overlapping spawns (approximate by
+// construction, and the record says so structurally).
+const ROLES = ['plan', 'build', 'drive', 'validate'];
+const zeroRoles = () => Object.fromEntries(ROLES.map((r) => [r, 0]));
+const featureObs = new Map();
+function obsFor(id) {
+  let o = featureObs.get(id);
+  if (o === undefined) {
+    o = { workflow_path: null, tasks: [], agents: zeroRoles(), reslice: null };
+    featureObs.set(id, o);
+  }
+  return o;
+}
+const taskContracts = (tasks) => (tasks || []).map((t) => ({
+  id: t.id, size: t.size ?? null, judgment_level: t.judgment_level ?? null, footprint: t.footprint || [],
+}));
+// YAML scalars for the record payload. `yamlUnknown` renders script-final unknowns as
+// `~` (and JSON-quotes present strings for validity); `yamlToken` passes a bare token
+// through, `~` when absent; `yamlInline`/`yamlRoleMap` render the two flow collections.
+const yamlUnknown = (v) => (v == null ? '~' : JSON.stringify(v));
+const yamlToken = (v) => v ?? '~';
+const yamlInline = (arr) => `[${arr.join(', ')}]`;
+const yamlRoleMap = (m) => `{ ${ROLES.map((r) => `${r}: ${m[r]}`).join(', ')} }`;
+const budgetByRole = zeroRoles();
+let spawnsInFlight = 0;
+let didSpawnsOverlap = false;
+
 // ---- the one spawn choke point: classifies thrown errors and environment blocks
 // into run-level halts / feature-level stalls that every stage reports identically.
 function isBudgetExhausted(error) {
   return /budget/i.test(`${error?.name ?? ''} ${error?.code ?? ''}`);
 }
-async function spawn(prompt, opts, featureId) {
+async function spawn(prompt, opts, { featureId, role }) {
+  const spentBefore = budget.spent;
+  spawnsInFlight += 1;
+  if (spawnsInFlight > 1) { didSpawnsOverlap = true; }
+  obsFor(featureId).agents[role] += 1;
   let r;
   try {
     r = await agent(prompt, opts);
   } catch (error) {
     if (isBudgetExhausted(error)) { return { halted: { reason: 'budget-exhausted', detail: error.message } }; }
     return { stalled: { feature: featureId, agent: opts.agentType, note: error.message } };
+  } finally {
+    spawnsInFlight -= 1;
+    budgetByRole[role] += Math.max(0, budget.spent - spentBefore);
   }
   if (r == null) { return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } }; }
   if (r.result === 'blocked' && r.kind === 'environment') {
@@ -133,6 +172,11 @@ function planPrompt(f) {
     '',
     '--- feature design doc ---',
     f.designDoc || '(none recorded — read docs/architecture.md for context)',
+    // Recall: the deterministic digest of this repository's own run history rides the
+    // plan prompt only when prepare-execution-context found docs/calibration/index.md.
+    // A repo with no calibration history leaves this off entirely — the prompt is then
+    // byte-identical to a pre-calibration run's.
+    ...(executionContext.calibration ? ['', "calibration digest (this repository's run history):", executionContext.calibration] : []),
   ].join('\n');
 }
 
@@ -237,21 +281,30 @@ async function withValidateLock(fn) {
 
 // ---- phases
 async function runPlan(f) {
-  if (f.plan) { return { workflow_path: 'standard', tasks: f.plan.tasks }; }
+  if (f.plan) {
+    const o = obsFor(f.id);
+    o.workflow_path = 'standard';
+    o.tasks = taskContracts(f.plan.tasks);
+    return { workflow_path: 'standard', tasks: f.plan.tasks };
+  }
   const binding = roleBinding('plan');
   // Configuration gap short-circuits as a blocked agent reply so the path below pushes blocked.
   const planned = binding.gap
     ? { result: 'blocked', detail: binding.gap }
     : await spawn(planPrompt(f), {
       agentType: agentTypeForRole('plan', binding), label: f.id, phase: 'Plan', schema: PLAN_SCHEMA, ...modelOpts(binding),
-    }, f.id);
+    }, { featureId: f.id, role: 'plan' });
   const flow = signalOf(planned);
   if (flow) { return { flow }; }
   if (planned.result === 'needs_refinement' || planned.result === 'blocked') {
+    if (planned.result === 'needs_refinement') { obsFor(f.id).reslice = planned.detail ?? null; }
     blocked.push({ feature: f.id, reason: planned.detail, options: planned.options });
     return { flow: 'fail' };
   }
-  if (planned.workflow_path === 'small') { return { workflow_path: 'small' }; }
+  if (planned.workflow_path === 'small') { obsFor(f.id).workflow_path = 'small'; return { workflow_path: 'small' }; }
+  const o = obsFor(f.id);
+  o.workflow_path = 'standard';
+  o.tasks = taskContracts(planned.tasks);
   return { workflow_path: 'standard', tasks: planned.tasks };
 }
 
@@ -272,7 +325,7 @@ function executorReroute({ binding, prompt, opts, label, featureId, role }) {
   log(`model-selection — ${role} routed via ${binding.executor}/${binding.model}, drive ${driveBinding.model}`);
   return spawn(`executor: ${binding.executor} · executor-model: ${binding.model}\n${prompt}`, {
     ...opts, agentType: agentTypeForRole('drive', driveBinding), label, ...modelOpts(driveBinding),
-  }, featureId);
+  }, { featureId, role: 'drive' });
 }
 
 async function runTask(f, task, { prompt, prefix = '' }) {
@@ -287,7 +340,7 @@ async function runTask(f, task, { prompt, prefix = '' }) {
       binding, prompt, opts, label: `${prefix}${f.id}/${task.id} via ${binding.executor}`, featureId: f.id, role: `task ${f.id}/${task.id}`,
     });
   }
-  return spawn(prompt, opts, f.id);
+  return spawn(prompt, opts, { featureId: f.id, role: 'build' });
 }
 
 // Map one task result onto the shared lists → the scheduler's tri-state.
@@ -371,7 +424,7 @@ async function runValidate(f, workflowPath, tasks) {
           binding, prompt: validatePrompt(f, branches), opts, label: `${f.id} via ${binding.executor}`, featureId: f.id, role: `validate ${f.id}`,
         });
       }
-      return spawn(validatePrompt(f, branches), opts, f.id);
+      return spawn(validatePrompt(f, branches), opts, { featureId: f.id, role: 'validate' });
     });
   const flow = signalOf(verdict);
   if (flow) { return flow === 'halt' ? 'halt' : false; }
@@ -405,6 +458,61 @@ async function runFeature(id) {
   return runValidate(f, 'standard', plan.tasks);
 }
 
+// ---- record-payload assembly (ADR-0046): a pure, deterministic function over what the
+// script observed → the byte-final YAML the record agent transcribes verbatim. Ordering
+// is fixed (scope order for features, plan order for tasks, the ROLES order for every
+// role map); `prepared_at` is the only timestamp; `features[].actual` is emitted as
+// explicit `null`s the record agent fills with git-derived enrichment. Same observations
+// in → byte-identical string out. Hand-rolled because this script imports nothing.
+function recordPayload(obs, result, run) {
+  const completedSet = new Set(result.completed);
+  const blockedBy = new Map(result.blocked.map((b) => [b.feature, b]));
+  const stalledBy = new Map(result.stalled.map((s) => [s.feature, s]));
+  const outcomeOf = (id) => {
+    if (completedSet.has(id)) { return 'validated'; }
+    if (blockedBy.has(id)) { return 'blocked'; }
+    if (stalledBy.has(id)) { return 'stalled'; }
+    return 'unreached';
+  };
+  const reasonOf = (id) => (blockedBy.get(id)?.reason ?? stalledBy.get(id)?.note ?? null);
+  const emptyObs = { workflow_path: null, tasks: [], agents: zeroRoles(), reslice: null };
+  const featureBlock = (id) => {
+    const f = obs.features.get(id) || emptyObs;
+    const taskLines = f.tasks.length === 0
+      ? ['    tasks: []']
+      : ['    tasks:', ...f.tasks.map((t) => `      - { id: ${t.id}, size: ${yamlToken(t.size)}, judgment_level: ${yamlToken(t.judgment_level)}, footprint: ${yamlInline(t.footprint)} }`)];
+    return [
+      `  - id: ${id}`,
+      `    workflow_path: ${yamlToken(f.workflow_path)}`,
+      `    outcome: ${outcomeOf(id)}`,
+      `    reason: ${yamlUnknown(reasonOf(id))}`,
+      `    reslice: ${yamlUnknown(f.reslice)}`,
+      `    agents: ${yamlRoleMap(f.agents)}`,
+      ...taskLines,
+      // features[].actual arrives as explicit nulls the record agent fills from git (ADR-0038).
+      '    actual:',
+      '      files_touched: null',
+      '      insertions: null',
+      '      deletions: null',
+      '      commits: null',
+      '      duration_minutes: null',
+    ];
+  };
+  return [
+    'run:',
+    `  prepared_at: ${run.preparedAt}`,
+    `  target: ${run.target}`,
+    `  scope: ${yamlInline(run.scope)}`,
+    '  tokens:',
+    `    spent: ${result.budget.spent}`,
+    `    by_role: ${yamlRoleMap(obs.byRole)}`,
+    `    attribution: ${obs.overlapped ? 'overlapped' : 'serial'}`,
+    `  halted: ${result.halted ? yamlUnknown(result.halted.reason) : '~'}`,
+    'features:',
+    ...run.scope.flatMap((id) => featureBlock(id)),
+  ].join('\n');
+}
+
 // ---- the run: concurrency policy over the scoped subgraph (ADR-0038). Deps outside
 // the scope were gated as already-landed by `the-loop prepare-execution-context`; deps
 // inside it unblock as they land.
@@ -419,5 +527,31 @@ await runConcurrencyPolicy({
 
 const result = { completed, blocked, stalled, budget: { spent: budget.spent, remaining: budget.remaining } };
 if (halted) { result.halted = halted; }
+
+// ---- calibration capture (ADR-0046): after the run summary is assembled — every path,
+// blocked and halt included — spawn the record agent to transcribe the byte-final
+// payload. This can never alter, delay-fail, or replace the completion channel:
+//   • no `executionContext.preparedAt` → no clock to stamp/seed the record, so capture is
+//     a silent no-op (a pre-calibration context, incl. every legacy fixture, is untouched);
+//   • a budget-exhausted halt → a further spawn would just throw, so skip with one log line;
+//   • otherwise spawn inside try/catch: any failure logs exactly one line and the run
+//     summary is returned byte-identical.
+if (executionContext.preparedAt) {
+  if (halted?.reason === 'budget-exhausted') {
+    log('calibration — record skipped: budget-exhausted halt would throw on a further spawn');
+  } else {
+    const observations = { features: featureObs, byRole: budgetByRole, overlapped: didSpawnsOverlap };
+    const payload = recordPayload(observations, result, { preparedAt: executionContext.preparedAt, scope: executionContext.scope, target: executionContext.target });
+    const recordBinding = roleBinding('record');
+    try {
+      await agent(payload, {
+        agentType: agentTypeForRole('record', recordBinding), label: 'record', phase: 'Record', ...modelOpts(recordBinding),
+      });
+    } catch (error) {
+      log(`calibration — record spawn failed, run summary unchanged: ${error.message}`);
+    }
+  }
+}
+
 log(JSON.stringify(result)); // belt-and-braces echo of the completion channel
 return result;

@@ -10,6 +10,12 @@ return value: machine-readable JSON only (shapes below).
 
 ## 1 · Choose the workflow path
 
+A calibration digest may ride the prompt (section titled `calibration digest
+(this repository's run history):`); when present, bias this sizing judgment and
+Step 2 decomposition granularity toward what it shows — lean smaller / more
+decomposition if past standard-path features re-sliced or ran bigger than planned;
+don't force decomposition if small-path features consistently land clean.
+
 Read the design doc and the code the feature touches, then judge:
 
 - **Small** — the whole feature fits one agent's context comfortably (typical for a

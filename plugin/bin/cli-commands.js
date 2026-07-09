@@ -2,11 +2,12 @@
 // and sole caller) to keep that file's job to argv dispatch alone; this module holds
 // the actual command bodies and the small I/O helpers (read/out/clean/fail) they share.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { renderIndex } from '../src/calibration-summarize.js';
 import { parseExecutors, validateBindings } from '../src/executor-registry.js';
 import { validate } from '../src/feature-schema.js';
 import { parse } from '../src/parse-feature-graph.js';
@@ -24,6 +25,7 @@ const GRAPH = 'docs/feature-graph.md';
 export const DESIGN = 'docs/architecture.md';
 const DESIGNS_DIR = 'docs/designs';
 const BUGS_DIR = 'docs/bugs';
+const CALIBRATION_INDEX = 'docs/calibration/index.md';
 const WORKTREES_DIR = '.claude/worktrees';
 // The plugin's own root: this file's parent directory's parent — never cwd.
 export const PLUGIN_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -32,6 +34,24 @@ export const out = (obj) => process.stdout.write(`${JSON.stringify(obj, null, 2)
 export const clean = ({ _blocks, ...rest }) => rest; // drop the yaml Documents from JSON output
 export const fail = (msg) => { process.stderr.write(`spine: ${msg}\n`); process.exit(1); };
 export const warn = (msg) => process.stderr.write(`spine: warn — ${msg}\n`);
+
+// the-loop calibration-summarize — regenerate docs/calibration/index.md wholesale from
+// the docs/calibration/runs/*.md record corpus (this repository only). Deterministic:
+// the renderer parses every record before emitting a byte, so one malformed record
+// throws — naming the file — before anything is written, and the shared top-level catch
+// turns that into exit 1 with no index touched.
+export function calibrationSummarizeCommand() {
+  const runsDir = 'docs/calibration/runs';
+  // Read order is irrelevant — renderIndex orders records deterministically itself.
+  const records = existsSync(runsDir)
+    ? readdirSync(runsDir).filter((f) => f.endsWith('.md'))
+      .map((f) => ({ file: path.join(runsDir, f), text: readFileSync(path.join(runsDir, f), 'utf8') }))
+    : [];
+  const index = renderIndex(records);
+  mkdirSync('docs/calibration', { recursive: true });
+  writeFileSync('docs/calibration/index.md', index);
+  out({ written: 'docs/calibration/index.md', runs: records.length });
+}
 
 // the-loop set-status <feature-id> <status> — flip one feature's status in feature-graph.md.
 export function setStatusCommand([featureId, status]) {
@@ -238,12 +258,19 @@ export function prepareExecutionContextCommand(argv) {
   const probe = existsSync(DESIGN) ? sectionAfter(readFileSync(DESIGN, 'utf8'), '## Validation runbook') : null;
   if (probe == null) { warn(`no "## Validation runbook" section in ${DESIGN} — validation runs without one`); }
 
+  // Wall-clock stamp once at the bin edge — the only legal clock read for this command.
+  const preparedAt = new Date().toISOString();
+  // No calibration history is the common case; missing file/section → null, no warn.
+  const calibration = existsSync(CALIBRATION_INDEX)
+    ? sectionAfter(readFileSync(CALIBRATION_INDEX, 'utf8'), '## Digest')
+    : null;
+
   const inputs = {};
   for (const id of scope) {
     inputs[id] = gatherFeatureInputs(id, model);
   }
   const cli = `node "${path.join(PLUGIN_ROOT, 'bin/the-loop.js')}"`;
-  const executionContext = assembleExecutionContext({ model, scope, target, probe, models, hooks, inputs, cli });
+  const executionContext = assembleExecutionContext({ model, scope, target, probe, models, hooks, inputs, preparedAt, calibration, cli });
   if (opts.scriptOut) { writeSplicedWorkflowScript(opts.scriptOut, scope, target); }
   out(executionContext);
 }

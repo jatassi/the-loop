@@ -100,15 +100,17 @@ const EXECUTION_CONTEXT_INPUT = {
     },
     // b has no gathered inputs at all — every per-feature field must default
   },
+  preparedAt: '2026-04-01T12:00:00.000Z',
   cli: 'node /plugin/bin/the-loop.js',
 };
 
 test('assembleExecutionContext shapes the workflow args: target, scope, probe, models, per-feature entries, cli', () => {
   const ctx = assembleExecutionContext(EXECUTION_CONTEXT_INPUT);
-  assert.deepEqual(Object.keys(ctx), ['target', 'scope', 'probe', 'models', 'hooks', 'features', 'cli']);
+  assert.deepEqual(Object.keys(ctx), ['target', 'scope', 'probe', 'models', 'hooks', 'features', 'preparedAt', 'cli']);
   assert.equal(ctx.target, 'main');
   assert.deepEqual(ctx.scope, ['a', 'b']);
   assert.equal(ctx.probe, 'run the probe');
+  assert.equal(ctx.preparedAt, '2026-04-01T12:00:00.000Z');
   assert.equal(ctx.cli, 'node /plugin/bin/the-loop.js'); // passthrough
 
   assert.deepEqual(ctx.features.a, {
@@ -174,4 +176,37 @@ test('fallback provenance and block-family gaps ride the context verbatim', () =
     family: 'exampleBlock',
     gap: 'exampleBlock is not configured',
   });
+});
+
+test('assembleExecutionContext includes calibration and preparedAt when calibration is a non-empty string', () => {
+  const calibration = 'digest body from the calibration index';
+  const preparedAt = '2026-05-15T09:30:00.000Z';
+  const ctx = assembleExecutionContext({
+    ...EXECUTION_CONTEXT_INPUT,
+    preparedAt,
+    calibration,
+  });
+  assert.equal(ctx.calibration, calibration);
+  assert.equal(ctx.preparedAt, preparedAt);
+});
+
+test('assembleExecutionContext omits the calibration key when calibration is null or omitted', () => {
+  const withNull = assembleExecutionContext({
+    ...EXECUTION_CONTEXT_INPUT,
+    calibration: null,
+  });
+  assert.equal('calibration' in withNull, false);
+  assert.equal(withNull.preparedAt, EXECUTION_CONTEXT_INPUT.preparedAt);
+  assert.equal(withNull.target, 'main');
+  assert.deepEqual(withNull.scope, ['a', 'b']);
+  assert.equal(withNull.probe, 'run the probe');
+  assert.deepEqual(withNull.models, EXECUTION_CONTEXT_INPUT.models);
+  assert.deepEqual(withNull.hooks, EXECUTION_CONTEXT_INPUT.hooks);
+  assert.ok(withNull.features);
+  assert.deepEqual(Object.keys(withNull), ['target', 'scope', 'probe', 'models', 'hooks', 'features', 'preparedAt', 'cli']);
+
+  const { calibration: _c, ...omitted } = { ...EXECUTION_CONTEXT_INPUT, calibration: undefined };
+  const without = assembleExecutionContext(omitted);
+  assert.equal('calibration' in without, false);
+  assert.equal(without.preparedAt, EXECUTION_CONTEXT_INPUT.preparedAt);
 });

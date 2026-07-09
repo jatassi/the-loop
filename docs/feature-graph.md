@@ -168,7 +168,7 @@ features:
 
   - id: calibration-capture
     title: Calibration Memory (per-project capture, recalled at Plan/Design)
-    status: designed
+    status: validated
     depends_on: [execution-pipeline, plan, design]
     notes:
       - designed 2026-07-08 from docs/briefs/calibration-capture.md; capture separates loop-overhead tokens from build tokens so "earns its context" is measured, not assumed (2026-07-01 review; seed methodology = the v2 benchmark forensics); ADR-0046 exempts the capture commit from ADR-0034's no-bookkeeping rule

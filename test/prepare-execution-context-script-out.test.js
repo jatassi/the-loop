@@ -88,7 +88,14 @@ test("spine prepare-execution-context --script-out writes a spliced copy of the 
     assert.ok(!existsSync(scriptOut)); // no flag → nothing written
 
     const withFlag = spine(['prepare-execution-context', '--features', 'widget', '--target-branch', 'main', '--script-out', scriptOut], { cwd: root });
-    assert.equal(withFlag, withoutFlag); // stdout is the unchanged execution context either way
+    // preparedAt is stamped per invocation (wall clock); compare everything else.
+    const stripClock = (stdout) => {
+      const ctx = JSON.parse(stdout);
+      assert.match(ctx.preparedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      const { preparedAt: _preparedAt, ...rest } = ctx;
+      return rest;
+    };
+    assert.deepEqual(stripClock(withFlag), stripClock(withoutFlag)); // stdout is the same shape either way
 
     const canonical = readFileSync('plugin/workflows/execution-pipeline.js', 'utf8');
     const spliced = readFileSync(scriptOut, 'utf8');

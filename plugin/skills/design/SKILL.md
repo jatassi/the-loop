@@ -56,7 +56,9 @@ downstream agent. Three artifacts come out (ADR-0037):
    available — a judgment call, not a mandate.
 3. **Slice features — the human owns the knife.** A feature is a vertical slice:
    independently validatable and shippable. Order for a walking skeleton — any prefix
-   of the build order is a viable system. Extra is a failure like missing.
+   of the build order is a viable system. Extra is a failure like missing. Consult
+   `docs/calibration/index.md` when present as an input to how features get sliced
+   (smaller/more numerous vs fewer/larger, based on what past runs showed).
 4. **Capture as you go**: a pinned term goes to `docs/glossary.md` —
    but first ask "does a standard industry term already name this?"; if yes, use it
    and record nothing (the ratchet). A hard-to-reverse, surprising, real-trade-off
