@@ -112,7 +112,7 @@ the audit trail (thirteen years of ChatOps precedent).
 observability product, or vendor toolchain — measurably (greps clean for product
 names).
 
-**Front door (deferred item, resolved):** no `/the-loop` change. The skill-side
+**Front door (deferred item, resolved):** no `/begin` change. The skill-side
 retrofit is the load-bearing path; `src/propose-next-action.js` is untouched.
 
 ## The rename

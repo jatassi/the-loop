@@ -100,7 +100,7 @@ The pure core stays file-substrate and unchanged. The interchange is a
   graph path (default `docs/feature-graph.md`); no parser changes.
 - `plugin/skills/configure/` (when built) — the capture gate above; this design
   amends the configure interview's artifact-store leg.
-- `plugin/skills/the-loop/` front door + `plugin/skills/execution-pipeline/`
+- `plugin/skills/begin/` front door + `plugin/skills/execution-pipeline/`
   launch leg — when the resolved `artifactStores.features` is nondefault: read
   `docs/adapters/features.md`, materialize the snapshot before any graph read, and
   route status writes through the documented mutate path.

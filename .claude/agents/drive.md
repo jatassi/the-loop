@@ -1,1 +1,1 @@
-../../agents/drive.md
+../../plugin/agents/drive.md

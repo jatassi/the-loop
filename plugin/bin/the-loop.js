@@ -32,7 +32,8 @@
 //                                    creating the branch from <ref> (default main) when
 //                                    new; links node_modules for node projects; prints
 //                                    {path, branch, created}
-//   the-loop worktree-remove <path> remove a worktree and prune
+//   the-loop worktree-remove <path-or-branch>  remove a worktree, by its path or its
+//                                    branch name, and prune
 //   the-loop executors-list [dir]   the parsed executor-playbook registry as JSON
 //   the-loop models-list [defaults.json] [executors-dir]  resolved role table: plugin
 //                                    defaults < project < local (.claude/settings*.json,
@@ -93,7 +94,7 @@ try {
       break;
     }
     default: {
-      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path>|executors-list [dir]|models-list [defaults.json] [executors-dir]> [file…]\n');
+      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status>|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>]|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }

@@ -19,7 +19,7 @@ features:
       - a feature record resolves by id; the feature graph round-trips through parse-feature-graph/write-feature-graph
 
   - id: the-loop-entry
-    title: /the-loop stateful command + unconfigured detection + minimal onboarding
+    title: /begin stateful command + unconfigured detection + minimal onboarding
     status: shipped
     depends_on: [document-foundation]
     acceptance:
@@ -148,7 +148,7 @@ features:
       - an environment-shaped obstacle to diagnosis (unavailable tooling, access, or logs) is surfaced to the human as a named blocker with its quality cost before proceeding — the inspection waiver is the human's grant, never a silent fallback
       - the-loop prepare-execution-context --features fix-<slug> assembles the execution context with the RCA doc as the fix's designDoc via the designs/-then-bugs/ lookup fallback, and the fix runs the unmodified execution pipeline to a validated merge
       - a shipped fix is pruned from the graph in the release commit while its RCA doc survives; the fix's regression check rides the affected feature's runbook, never an orphaned fix runbook
-      - /the-loop routes a bug-shaped intake to the diagnose skill, whose diagnosis loop is a port binding (/diagnosing-bugs unless the project binds another)
+      - /begin routes a bug-shaped intake to the diagnose skill, whose diagnosis loop is a port binding (/diagnosing-bugs unless the project binds another)
 
   - id: operate-tooling
     title: Operate (recorded per-project ops toolkit + thin operate skill + runbook-genre rename)
@@ -189,7 +189,7 @@ features:
       - designed 2026-07-08 (ADR-0049) — replaces the configure-step-full backlog node together with onboard; brief at docs/briefs/configure-step-full.md
       - persistence is the namespaced "the-loop" settings key; the sanctioned userConfig/pluginConfigs path was re-verified 2026-07-08 and re-rejected (scalar-only types, no programmatic write)
     acceptance:
-      - /the-loop configure (or the configure skill directly) prints every inventory hook with its resolved value, layer, and provenance (default|user|project|local|fallback), including the recorded bindings' present/absent/opted-out status
+      - /begin configure (or the configure skill directly) prints every inventory hook with its resolved value, layer, and provenance (default|user|project|local|fallback), including the recorded bindings' present/absent/opted-out status
       - an interview answer persists to its stated settings layer under the "the-loop" key with a per-answer destination override honored, and unrelated keys in the target file byte-survive the write
       - the resolver merges defaults < user (~/.claude/settings.json) < project < local for every hook family, and models-list output is unchanged apart from the new layer and provenance stamp
       - an unbound hook behaves as its declared fallback-or-block — fallback families resolve with a visible fallback line, block families report the named gap
@@ -292,7 +292,7 @@ features:
       - given a valid scope, prepare-execution-context with --script-out <path> writes a copy of the canonical workflow script differing only in its meta description — one line naming the target branch and every in-scope feature id (past 5 ids, the first 5 then +<k> more) — while stdout stays the unchanged execution context; without the flag nothing is written
       - the splice is quote-safe (the description value lands JSON-stringified, meta stays one physical line) and shape-gated — a canonical script whose meta line doesn't match the expected description shape makes the command exit 1 with nothing written
       - no spawn label in the workflow carries a phase or agentType prefix — plan and validate labels are the bare feature id, build labels are <feature>/<task>, drive labels are <feature>/<task> via <executor>
-      - the /the-loop launch leg passes --script-out and the Workflow call's scriptPath is the spliced per-run script, never the canonical workflows/ file
+      - the /begin launch leg passes --script-out and the Workflow call's scriptPath is the spliced per-run script, never the canonical workflows/ file
 
   - id: proposed-status
     title: "`proposed` backlog stage — feature status enum expansion"
@@ -305,11 +305,11 @@ features:
       - given a scope naming a proposed feature, prepare-execution-context exits 1 with a gate error naming the feature and stating it must be designed first, printing nothing to stdout
       - a designed feature depending on a proposed one is excluded from the eligible set, and the machine orientation proposes kind `design` naming the blocking proposed id
       - on a graph whose only unshipped features are proposed, the machine orientation proposes kind `design` naming them (never `new-intake`), and the human status summary counts the proposed stage
-      - the /the-loop route table maps a `design` proposal to the design skill, and every living surface stating the status enum lists the four values — the three-value statement greps to zero outside historical records
+      - the /begin route table maps a `design` proposal to the design skill, and every living surface stating the status enum lists the four values — the three-value statement greps to zero outside historical records
 
   - id: begin-front-door-rename
     title: Front door renamed /the-loop → /begin and converted to a skill (plugin/commands/ retires)
-    status: designed
+    status: shipped
     depends_on: [the-loop-entry]
     notes:
       - "designed 2026-07-08 from docs/briefs/begin-front-door-rename.md; kills the /the-loop:the-loop namespace stutter and lands the begin-a-session semantic; the upstream commands→skills merge (verified 2026-07-08: `!` dynamic-context injection works in SKILL.md) dissolved ADR-0002's reason to be a command — 0002 gets an appended amendment"

@@ -77,7 +77,7 @@ the-loop/                          # repo root — the human's dev tree, NOT the
   a git-subdir clone carries only `plugin/`'s tracked files. `eval/`, `docs/`, `test/`,
   and the repo-root dev `node_modules/` sit outside `plugin/` and never ship.
 - **Braced `${CLAUDE_PLUGIN_ROOT}` is late-bound.** The six references in
-  `commands/the-loop.md` and `skills/design/SKILL.md` re-resolve to the new installed
+  `plugin/skills/begin/SKILL.md` and `skills/design/SKILL.md` re-resolve to the new installed
   root with no edit — the sweep test already guards that they stay brace-wrapped.
 
 ## Load-bearing details a builder must not miss

@@ -1,6 +1,6 @@
 ---
 name: design
-description: Design a project from its brief — system narrative, feature graph, and per-feature design docs. Use when a brief is ready to become a design, the user wants to decide what to build and in what order, or /the-loop routes to Design.
+description: Design a project from its brief — system narrative, feature graph, and per-feature design docs. Use when a brief is ready to become a design, the user wants to decide what to build and in what order, or /begin routes to Design.
 ---
 
 # Design — brief → design artifacts
@@ -66,5 +66,5 @@ downstream agent. Three artifacts come out (ADR-0037):
    adjectives made measurable or cut.
 6. **Gate**: present the files you created/modified **FIRST**, then get explicit approval. 
    For a large or contested design, offering a fresh-context reader test first is a good 
-   judgment call. Commit the artifacts as one commit. `/the-loop` now sees a configured 
+   judgment call. Commit the artifacts as one commit. `/begin` now sees a configured 
    project.

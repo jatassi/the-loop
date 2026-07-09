@@ -4,7 +4,7 @@
 replaces the `configure-step-full` backlog node together with `onboard`).
 
 The settings-layer knob-turner: a `configure` skill (bare-verb family) plus the
-`/the-loop configure` front-door jump. It shows every hook in the inventory with its
+`/begin configure` front-door jump. It shows every hook in the inventory with its
 resolved value, layer, and provenance; interviews for anything the human wants to set
 or change, one recommended answer per question; and persists each answer to a settings
 layer under the namespaced `"the-loop"` key. Re-runnable at any time — a no-op pass
@@ -102,7 +102,7 @@ consult when relaying boundaries and gates.
 - `bin/cli-commands.js` — `readSettingsLayer` gains the user-scope path and a
   per-family accessor; new `hooks-list` subcommand; `buildModelsTable` reads the
   fourth layer.
-- `commands/the-loop.md` — `configure` joins the jump list.
+- `plugin/skills/begin/SKILL.md` — `configure` joins the jump list.
 - `skills/configure/SKILL.md` — new, bare-verb family.
 - `skills/define/SKILL.md` — its "unless this project's configuration binds another
   interview skill" clause becomes real: read the resolved `interview` hook.
@@ -124,7 +124,7 @@ consult when relaying boundaries and gates.
 
 ## Acceptance (mirrors the graph)
 
-- `/the-loop configure` (or the skill directly) prints every inventory hook with
+- `/begin configure` (or the skill directly) prints every inventory hook with
   resolved value, layer, and provenance, including recorded-binding status.
 - An interview answer persists to its stated layer; a re-run shows the new value
   with updated provenance; unrelated settings keys byte-survive the write.

@@ -83,7 +83,7 @@ lands; the old three-value statement greps to zero outside historical records:
 - `README.md` — the status-field line.
 - `skills/design/SKILL.md` — the feature-graph yaml sample's status comment;
   note that a proposed record needs no acceptance.
-- `commands/the-loop.md` — the Routes table gains: `design` proposal → the
+- `plugin/skills/begin/SKILL.md` — the Routes table gains: `design` proposal → the
   `design` skill, amending the design for the named ids; the `new-intake` route
   mentions that an idea worth keeping but not designing now is parked as a
   proposed record by amendment.

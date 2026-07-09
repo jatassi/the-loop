@@ -1,5 +1,5 @@
 // The fixture-repo probe's bringUp: the fixture must be a plausible v2 target repository —
-// spine parses and validates its seeded feature-graph.md, /the-loop's machineOrientation() reads
+// spine parses and validates its seeded feature-graph.md, /begin's machineOrientation() reads
 // it as a configured project, and the empty variant reads as unconfigured.
 import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';

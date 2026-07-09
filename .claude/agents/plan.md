@@ -1,1 +1,1 @@
-../../agents/plan.md
+../../plugin/agents/plan.md

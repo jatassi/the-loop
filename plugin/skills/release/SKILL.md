@@ -1,6 +1,6 @@
 ---
 name: release
-description: Run the project's own release recipe behind one human gate — verify ready, deploy, verify working. Use when /the-loop proposes a release or the human asks to release.
+description: Run the project's own release recipe behind one human gate — verify ready, deploy, verify working. Use when /begin proposes a release or the human asks to release.
 ---
 
 # Release — verify ready → human gate → deploy → verify working

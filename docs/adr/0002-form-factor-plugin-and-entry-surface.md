@@ -17,3 +17,11 @@ date: 2026-06-29
 **Considered and rejected.**
 - **Loose skills in `~/.claude/` or clone-and-symlink** instead of a plugin — personal-first but not cleanly shareable, and forfeits the bundled default/override model. Rejected against the adoptability constraint.
 - **A flat family of per-phase commands** with no smart entry — predictable and inference-free, but pushes all orientation onto the human and leaves the Ledger a passive document nothing forces you to consult. Rejected as wasting the best resumability asset.
+
+**Amended 2026-07-08 (begin-front-door-rename).** The entry verb is now
+`/begin`: the plugin name made the fully-qualified form `/the-loop:the-loop`,
+and "begin a working session" names the affordance. The command-vs-skill
+distinction this ADR assumed has dissolved upstream (custom commands merged
+into skills; `!` dynamic-context injection works in SKILL.md), so the front
+door now lives at `plugin/skills/begin/SKILL.md` and `plugin/commands/` is
+retired. Everything else here stands.

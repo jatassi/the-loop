@@ -125,6 +125,16 @@ gets one appended amendment note, the rest byte-identical:
   (typing `/begin` injects the status JSON; `/the-loop` no longer resolves)
   needs a harness session against the installed plugin — exercise it at the
   release gate's health check if the validator can't drive a session.
+- **Live-session criterion exercised 2026-07-09** from the operator's
+  authenticated environment against the built branch (commit `b68068f`,
+  `claude -p --plugin-dir ./plugin` on a worktree checkout — the pre-release
+  equivalent of the installed plugin, which can only carry this change after
+  the next release): `/begin` resolved and rendered on injected machine truth
+  (the reply stated design_version 23, 23/32 shipped, and the exact 5-feature
+  eligible set — derivable only from the executed `status --json` preamble),
+  and `/the-loop` returned `Unknown command: /the-loop`. Recorded here as the
+  validator's evidence for the live-session criterion; the installed-plugin
+  re-check rides the next release health check per the note above.
 - Builder re-verifies before landing that no *programmatic* invocation of the
   command name exists (hooks, workflow scripts, manifests) — the design-time
   sweep found only prose references and the two test-file path reads.

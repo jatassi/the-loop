@@ -1,4 +1,4 @@
-// The deterministic core of /the-loop (ADR-0002): where does this project stand, and
+// The deterministic core of /begin (ADR-0002): where does this project stand, and
 // what should happen next? Pure inspection — reads artifacts, never writes them.
 // Status truth is the feature graph (docs/feature-graph.md); in-flight detail (plans,
 // branches, task commits) is git's to answer, at execution-context time, not here
@@ -26,7 +26,7 @@ const DONE = new Set(['validated', 'shipped']);
 
 /**
  * Unconfigured detection (ADR-0017): a project with no graph and no system design has
- * nothing to resume, so /the-loop routes to onboarding. A brief never changes the mode
+ * nothing to resume, so /begin routes to onboarding. A brief never changes the mode
  * (Define's output, not Design's); it only moves onboarding's resume point past Define.
  * @param {string} [root]
  * @returns {{mode: 'unconfigured'|'configured'|'partial', hasDesign: boolean, hasGraph: boolean, hasBrief: boolean}}
@@ -94,7 +94,7 @@ function blockingProposedIds(model, stuckIds) {
 }
 
 /**
- * The next-action proposal /the-loop opens with. Precedence: the drainable eligible
+ * The next-action proposal /begin opens with. Precedence: the drainable eligible
  * set; then, if designed work is stuck, `design` naming the proposed dependencies
  * that explain the stall; then Release; then `design` again to drain a proposed-only
  * backlog; then a fresh intake. `blocked` is the true safety net: on a validate-clean

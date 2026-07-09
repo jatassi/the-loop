@@ -1,6 +1,6 @@
 ---
 name: define
-description: Define a raw idea into a brief sharp enough to design against. Use when the user brings a new project or feature idea (a brain-dump) to shape, or when /the-loop routes to Define.
+description: Define a raw idea into a brief sharp enough to design against. Use when the user brings a new project or feature idea (a brain-dump) to shape, or when /begin routes to Define.
 ---
 
 # Define — brain-dump → brief

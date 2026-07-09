@@ -1,6 +1,6 @@
 // rename-sweep/skills-and-command-sweep's acceptance, executable: the six skill
-// packs and commands/the-loop.md speak the approved vocabulary (docs/design/naming-map.md).
-// This task's footprint is prose only (plugin/skills/, plugin/commands/the-loop.md) — every
+// packs and plugin/skills/begin/SKILL.md speak the approved vocabulary (docs/design/naming-map.md).
+// This task's footprint is prose only (plugin/skills/, plugin/skills/begin/SKILL.md) — every
 // assertion here reads the shipped files' text directly, the same way a human or
 // a downstream agent would.
 import assert from 'node:assert/strict';
@@ -29,11 +29,11 @@ test('frame, ship, and craft skill directories are renamed with matching frontma
   }
 });
 
-// ── criterion 2: commands/the-loop.md routes on the new CLI subcommand, flags,
+// ── criterion 2: plugin/skills/begin/SKILL.md routes on the new CLI subcommand, flags,
 // project-state values, and eligible-set proposal kind, and names the renamed
 // workflow script path ──
-test('commands/the-loop.md routes on the collapsed status subcommand, prepare-execution-context flags, and the new project states', () => {
-  const cmd = read('plugin/commands/the-loop.md');
+test('plugin/skills/begin/SKILL.md routes on the collapsed status subcommand, prepare-execution-context flags, and the new project states', () => {
+  const cmd = read('plugin/skills/begin/SKILL.md');
 
   assert.match(cmd, /the-loop\.js"\s+status\s+--json/, 'the context call should read `status --json`');
   assert.match(cmd, /\bnode "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/the-loop\.js" status\b(?!\s*--json)/, 'the closing call should read bare `status`');
@@ -57,7 +57,7 @@ test('commands/the-loop.md routes on the collapsed status subcommand, prepare-ex
 // bare reference reaches the model as a literal, gets run in a shell where the env
 // var is unset, expands to empty, and the CLI call fails. Every reference in a
 // command or skill body must therefore be brace-wrapped. ──
-test('every CLAUDE_PLUGIN_ROOT reference in commands/ and skills/ is brace-wrapped', () => {
+test('every CLAUDE_PLUGIN_ROOT reference in skills/ is brace-wrapped', () => {
   const mdFiles = [];
   const walk = (dir) => {
     const entries = readdirSync(dir, { withFileTypes: true });
@@ -70,7 +70,6 @@ test('every CLAUDE_PLUGIN_ROOT reference in commands/ and skills/ is brace-wrapp
       }
     }
   };
-  walk('plugin/commands');
   walk('plugin/skills');
 
   for (const file of mdFiles) {
@@ -84,8 +83,8 @@ test('every CLAUDE_PLUGIN_ROOT reference in commands/ and skills/ is brace-wrapp
 // ── run-presentation criterion 4: the launch leg passes --script-out, and the
 // Workflow call's scriptPath is that spliced per-run script — never the canonical
 // workflows/ file launched directly ──
-test('commands/the-loop.md passes --script-out on the prepare-execution-context call, and scriptPath is bound to that path rather than the canonical workflow file', () => {
-  const cmd = read('plugin/commands/the-loop.md');
+test('plugin/skills/begin/SKILL.md passes --script-out on the prepare-execution-context call, and scriptPath is bound to that path rather than the canonical workflow file', () => {
+  const cmd = read('plugin/skills/begin/SKILL.md');
 
   assert.match(cmd, /prepare-execution-context --features <id,id,…> --target-branch <ref>.*--script-out/);
   assert.match(cmd, /scriptPath.*--script-out/);
@@ -98,7 +97,7 @@ test('commands/the-loop.md passes --script-out on the prepare-execution-context 
 // ── criterion 3: interview replaces grilling in prose; the literal /grilling
 // binding id survives wherever the port's default binding is named ──
 test('interview replaces grilling in prose, except the literal /grilling binding id', () => {
-  const files = ['plugin/skills/define/SKILL.md', 'plugin/skills/design/SKILL.md', 'plugin/commands/the-loop.md'];
+  const files = ['plugin/skills/define/SKILL.md', 'plugin/skills/design/SKILL.md', 'plugin/skills/begin/SKILL.md'];
   for (const f of files) {
     const text = read(f);
     assert.ok(!/\bgrilling\b/.test(text.replaceAll('/grilling', '')),
@@ -113,25 +112,23 @@ test('interview replaces grilling in prose, except the literal /grilling binding
 // ── criterion 4: the code-quality baseline carries the distilled naming-standard
 // line, and mapped terms (probe pack→runbook, dictionary→glossary, Brief→brief,
 // design amendment→amendment, and the paths they touch) are swept through the
-// skill and command prose actually reachable in this footprint ──
-test('the code-quality baseline carries the distilled naming rule, and mapped terms are swept through skill and command prose', () => {
+// skill prose actually reachable in this footprint ──
+test('the code-quality baseline carries the distilled naming rule, and mapped terms are swept through skill prose', () => {
   const codeQuality = read('plugin/skills/code-quality/SKILL.md');
   assert.match(codeQuality, /identifiers follow the naming standard's glossary rules/i);
   assert.match(codeQuality, /no coined\s+proper nouns/i);
 
-  const allText = [
-    ...readdirSync('plugin/skills', { recursive: true })
-      .filter((f) => f.endsWith('.md'))
-      .map((f) => read(`plugin/skills/${f}`)),
-    read('plugin/commands/the-loop.md'),
-  ].join('\n');
+  const allText = readdirSync('plugin/skills', { recursive: true })
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => read(`plugin/skills/${f}`))
+    .join('\n');
 
   // old terms gone (outside this footprint's reach)
   for (const stale of ['docs/design/design.md', 'docs/design/graph.md', 'docs/design/features/', 'docs/probes/', 'docs/rca/', 'docs/dictionary/DICTIONARY.md', 'design amendment']) {
-    assert.ok(!allText.includes(stale), `stale term "${stale}" should be swept from skills/ and commands/`);
+    assert.ok(!allText.includes(stale), `stale term "${stale}" should be swept from skills/`);
   }
   // new terms present
   for (const fresh of ['docs/architecture.md', 'docs/feature-graph.md', 'docs/designs/', 'docs/runbooks/', 'docs/bugs/', 'docs/glossary.md']) {
-    assert.ok(allText.includes(fresh), `renamed path "${fresh}" should appear in skills/ or commands/`);
+    assert.ok(allText.includes(fresh), `renamed path "${fresh}" should appear in skills/`);
   }
 });

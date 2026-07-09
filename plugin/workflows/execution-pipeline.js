@@ -7,7 +7,7 @@
 // features and tasks, so anything whose dependencies are satisfied runs concurrently
 // in its own worktree. The completion channel is a bare top-level `return` of the run
 // summary.
-export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a run summary', whenToUse: 'Launched by /the-loop with the `the-loop prepare-execution-context` execution context as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
+export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a run summary', whenToUse: 'Launched by /begin with the `the-loop prepare-execution-context` execution context as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }] };
 
 // Some callers deliver args as a JSON-encoded string rather than the parsed execution context.
 const executionContext = typeof args === 'string' ? JSON.parse(args) : args;

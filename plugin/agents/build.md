@@ -20,7 +20,7 @@ sides' intents and write a resolution that serves both, then prove it by running
 branches' tests on the merged tree. The resolution counts only if the suite goes
 green; can't compose it, or the suite stays red, and it's a semantic conflict —
 return blocked, kind `feature`, naming the conflicting paths. When you finish —
-either way — remove your worktree: `the-loop worktree-remove <path>`. Branches
+either way — remove your worktree: `the-loop worktree-remove <path-or-branch>`. Branches
 survive; worktrees don't linger.
 
 ## Develop — test-driven, contract-bounded
