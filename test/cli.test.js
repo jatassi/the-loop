@@ -329,6 +329,21 @@ test('spine worktree-create adds .claude/worktrees/<branch> and prints {path, br
   }
 });
 
+test('spine worktree-remove also accepts the branch name; an unknown target exits 1 naming it', () => {
+  const root = gitFixture({ 'README.md': '# fixture\n' });
+  try {
+    const created = JSON.parse(spine(['worktree-create', 'loop/widget', '--base-branch', 'main'], { cwd: root }));
+    const removed = JSON.parse(spine(['worktree-remove', 'loop/widget'], { cwd: root }));
+    assert.ok(removed.removed.endsWith(created.path), removed.removed); // branch resolves via porcelain list → absolute path
+    assert.ok(!existsSync(path.join(root, created.path)));
+
+    const error = spineFails(['worktree-remove', 'loop/nonexistent'], { cwd: root });
+    assert.match(error.stderr, /loop\/nonexistent/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("spine models-list resolves the shipped plugin defaults relative to bin/the-loop.js's own location, never cwd, and succeeds with no project or local settings present", () => {
   const root = fixture({}); // no .claude/, no config/ — an empty target repository
   try {
@@ -382,7 +397,7 @@ test('the spine usage string names the whole v2 command surface; an unknown comm
   const usage = spine([]);
   const surface = ['status [--json]', 'list', 'check', 'set-status <id> <status>',
     'prepare-execution-context --features', '--target-branch <ref>', 'plan <parse|check|task>',
-    'worktree-create <branch> [--base-branch <ref>]', 'worktree-remove <path>',
+    'worktree-create <branch> [--base-branch <ref>]', 'worktree-remove <path-or-branch>',
     'executors-list [dir]', 'models-list [defaults.json] [executors-dir]'];
   for (const cmd of surface) {
     assert.ok(usage.includes(cmd), cmd);

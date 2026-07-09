@@ -296,12 +296,23 @@ function linkNodeModules(dir) {
   } catch { /* best-effort */ }
 }
 
-// the-loop worktree-remove <path> — the one sanctioned worktree-teardown path.
-export function worktreeRemoveCommand([dir]) {
-  if (!dir) { fail('usage: spine worktree-remove <path>'); }
+// the-loop worktree-remove <path-or-branch> — the one sanctioned worktree-teardown
+// path. Agents hand back whatever they still hold — the printed path or the branch
+// worktree-create was called with — so both resolve.
+export function worktreeRemoveCommand([target]) {
+  if (!target) { fail('usage: spine worktree-remove <path-or-branch>'); }
+  const dir = worktreeDirFor(target);
   git(['worktree', 'remove', '--force', dir]);
   git(['worktree', 'prune']);
   out({ removed: dir });
+}
+
+function worktreeDirFor(target) {
+  if (existsSync(target)) { return target; }
+  const block = git(['worktree', 'list', '--porcelain']).split('\n\n')
+    .find((b) => b.split('\n').includes(`branch refs/heads/${target}`));
+  if (!block) { fail(`no worktree at path or for branch: ${target}`); }
+  return block.match(/^worktree (.+)$/m)[1];
 }
 
 // --flag value pairs → an options object; an unknown or valueless flag is exit-1.

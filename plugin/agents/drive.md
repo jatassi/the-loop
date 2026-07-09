@@ -15,7 +15,11 @@ the routed contract's exact JSON shapes.
 2. **Run the executor** — look up its registry entry
    (`the-loop executors-list`, keyed by the `executor:` id) for the run command and
    prompt format; assemble the prompt from your task brief (criteria, footprint,
-   wiring) and run it headless in the worktree.
+   wiring) and run it headless in the worktree. Write the prompt file under a name
+   unique to your task (embed the branch or task id) — the scratchpad is shared by
+   concurrent drives, and a generic `prompt.md` can be someone else's, or become
+   someone else's mid-run. Run the executor in the foreground with a generous
+   timeout; backgrounding it just trades one wait for a polling fight.
 3. **Verify at the build bar** — the executor's word counts for nothing: run the
    tests the criteria demand (red-before-green where you add them), the full suite,
    and lint; check the diff stays inside the footprint. A shortfall gets ONE retry

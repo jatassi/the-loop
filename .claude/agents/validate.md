@@ -1,1 +1,1 @@
-../../agents/validate.md
+../../plugin/agents/validate.md

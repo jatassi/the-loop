@@ -1,1 +1,1 @@
-../../agents/build.md
+../../plugin/agents/build.md
