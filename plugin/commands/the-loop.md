@@ -62,7 +62,7 @@ answer sets the scope; nothing outside it starts.
      relaunch — the loop re-derives state from git, so a re-run resumes where work
      stopped.
    - `stalled` — infrastructure hiccups; nothing recorded. A relaunch retries them.
-   - `halted` — the run stopped (budget or environment); report the detail.
+   - `halted` — the run stopped (budget only); report the detail.
 
 No status bookkeeping: the validators already updated the graph on the target branch,
 and `git log` is the run history. `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status`

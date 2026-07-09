@@ -77,3 +77,30 @@ export async function runWorkflowScript(scriptPath, options = {}) {
 export function byLabel(table) {
   return (_prompt, opts) => table[`${opts.agentType}:${opts.label}`];
 }
+
+/**
+ * Assert every id in `scope` appears in exactly one of result.completed (by value),
+ * result.blocked (by .feature), or result.stalled (by .feature). Budget-halt
+ * remainders are explained by `halted`, not by any bucket — do not call this on
+ * those summaries (or pass an explicit exception option if you extend the helper).
+ * @param {{completed: string[], blocked: {feature: string}[], stalled: {feature: string}[]}} result
+ * @param {string[]} scope
+ */
+export function assertEveryFeatureAccounted(result, scope) {
+  const completed = new Set(result.completed);
+  const blocked = new Set(result.blocked.map((b) => b.feature));
+  const stalled = new Set(result.stalled.map((s) => s.feature));
+  for (const id of scope) {
+    const hits = [];
+    if (completed.has(id)) { hits.push('completed'); }
+    if (blocked.has(id)) { hits.push('blocked'); }
+    if (stalled.has(id)) { hits.push('stalled'); }
+    if (hits.length !== 1) {
+      throw new Error(
+        `feature ${id} must appear in exactly one of completed/blocked/stalled; ` +
+        `found in ${hits.length}: ${hits.join(', ') || 'none'} ` +
+        `(${JSON.stringify({ completed: [...completed], blocked: [...blocked], stalled: [...stalled] })})`,
+      );
+    }
+  }
+}

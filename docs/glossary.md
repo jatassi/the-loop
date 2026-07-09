@@ -135,14 +135,15 @@ only at Release (its one replay point); the seed of Operate. *See:* ADR-0035/003
 The execution pipeline's return value: `{completed, blocked, stalled, halted?, budget}`.
 `blocked` entries are questions for the human at the boundary (reason + options);
 `stalled` entries are agent/infra errors with nothing recorded (re-run retries);
-`halted` means the run itself stopped (budget or environment). *See:* ADR-0034/0038.
+`halted` means the run itself stopped (budget only). *See:* ADR-0034/0038.
 
 ### blocker type
 **aliases:** feature-shaped / environment-shaped, block typing (historical) · **status:** active
 The one distinction every failure return carries: **feature-shaped** — the work
 itself needs a human decision (defective contract, failed criterion, semantic
 conflict) → a `blocked` entry; **environment-shaped** — something around the work is
-broken (tooling, auth) → the run halts. *See:* ADR-0029 lineage, ADR-0034.
+broken (tooling, auth) → a `stalled` entry, retried by the next pass. *See:* ADR-0029
+lineage, ADR-0034.
 
 ### target branch
 **aliases:** integration target (historical) · **status:** active

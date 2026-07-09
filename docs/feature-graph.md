@@ -322,7 +322,7 @@ features:
 
   - id: fix-environment-halt-accounting
     title: task-level environment block halts the run and silently erases its feature from the summary
-    status: designed
+    status: validated
     depends_on: []
     notes:
       - "diagnosed 2026-07-08 from run wf_a53a5f81-dbb; RCA and fix design in docs/bugs/fix-environment-halt-accounting.md — environment blocks demote to feature stalls, run halts remain budget-only"

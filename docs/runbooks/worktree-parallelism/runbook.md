@@ -98,3 +98,38 @@ prove via the merged suite, else blocked naming the paths) rather than a
 conflict-free promise. `test/merge-posture.test.js` pins the retired phrases are
 gone and the new phrases
 are present; ran as part of the suite and passed.
+
+## Environment-block accounting (fix-environment-halt-accounting regression)
+
+Documents the fix's two-feature environment-block regression — not a numbered
+acceptance criterion of worktree-parallelism itself. Confirms that an
+environment-shaped block stalls only its feature while a mid-flight sibling
+completes, and that every in-scope feature lands in a summary bucket.
+
+**Bring up**
+
+A checkout of the-loop with the fix on the branch (or merged tree). No fixture
+repo required — the harness repro runs against the shipped script.
+
+**Exercise**
+
+```
+node --test test/execution-pipeline-halt.test.js
+```
+
+In particular the case "an environment block on one feature stalls it while a
+mid-flight sibling still completes": scripts `pfeat` and `mfeat` (small-path);
+`build:pfeat/feature` returns `blocked/kind=environment` with a detail string;
+`build:mfeat/feature` returns `built` via a ~50 ms delayed Promise (mfeat mid-flight
+when the block lands); `validate:mfeat` returns `validated`.
+
+**Expected observation**
+
+Summary accounts for both features: `pfeat` in `stalled` carrying the block detail
+as `note`, `mfeat` in `completed` (spawn log includes `validate:mfeat`), `halted`
+absent. The single-feature inverse also holds: environment block → feature in
+`stalled`, run not halted.
+
+**Teardown**
+
+None — harness leaves no fixture or worktree.

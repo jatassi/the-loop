@@ -23,7 +23,12 @@ the routed contract's exact JSON shapes.
    `detail` naming what it couldn't do).
 4. **Commit** — one commit, the exact subject from your prompt with ` (via
    <executor>)` appended. An executor auth/availability failure is kind
-   `environment` — nothing you did.
+   `environment` — nothing you did. Any `blocked` return's `detail` must be
+   self-contained (no "see above"/"see summary" narrations — `detail` is the only
+   field the engine surfaces downstream). An executor merely cut off mid-work,
+   with no auth/availability failure of the environment itself, is a retryable
+   infrastructure failure: report it so the feature lands in the retry lane, not
+   as a hard claim that the environment is broken.
 
 Integrity lines are build's, unchanged: never weaken tests or suppress lint to get
 green — not yours, and not the executor's.

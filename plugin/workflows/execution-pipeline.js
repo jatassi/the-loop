@@ -86,7 +86,7 @@ async function spawn(prompt, opts, featureId) {
   }
   if (r == null) { return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } }; }
   if (r.result === 'blocked' && r.kind === 'environment') {
-    return { halted: { reason: 'environment-blocked', detail: r.detail } };
+    return { stalled: { feature: featureId, agent: opts.agentType, note: r.detail } };
   }
   return r;
 }
