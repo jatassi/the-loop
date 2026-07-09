@@ -233,7 +233,7 @@ features:
 
   - id: plugin-dir-restructure
     title: Plugin content into a source subdirectory (repo root stops being the plugin root)
-    status: designed
+    status: validated
     depends_on: [release]
     notes:
       - "blocks releasing: the installer copies the plugin root wholesale — no ignore mechanism exists (docs checked 2026-07-08), so eval/ and dev node_modules ship in the bundle; the sanctioned pattern is a marketplace source subdirectory (v0.4.6 release aborted at the gate on this)"
