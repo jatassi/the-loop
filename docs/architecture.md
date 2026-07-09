@@ -110,6 +110,25 @@ contract out of a plan). No agent contract says "read this whole file."
 | Calibration records + index | `docs/calibration/` | per-run estimated-vs-actual evidence (permanent, ADR-0046) + wholly derived digest/index, CLI-regenerated (calibration-capture, designed 2026-07-08) |
 | ADRs / Glossary / brief / research | `docs/adr/` etc. | decision + vocabulary spine; never auto-loaded |
 
+### Configuration — the hook inventory (ADR-0049)
+
+Everything the loop needs bound per phase is an explicit, phase-keyed hook
+inventory with two home channels: machine config in settings layers under the
+namespaced `"the-loop"` key — interview skill, model bindings, test harness, lint
+commands, pre-commit posture, notification, artifact stores — and project truth
+with narrative weight as this doc's recorded bindings (validation, release,
+operations). Settings resolve plugin defaults < user (`~/.claude/settings.json`)
+< project < local with per-key provenance; `hooks-list` prints the full resolved
+inventory. Every hook declares its unbound behavior — visible fallback where a
+sane default exists, blocked-with-named-gap where none does — and the consuming
+phase checks its hooks as a precondition. The `configure` skill (plus the
+`/the-loop configure` jump) is the re-runnable knob-turner; `onboard` is its
+superset for adoption — greenfield hands off to Define → Design, brownfield
+assesses existing infrastructure and fills the gaps, human-confirmed. The
+sanctioned `userConfig`/`pluginConfigs` path was re-verified and re-rejected
+2026-07-08 (scalar-only types, no programmatic write; ADR-0049) — the `/doctor`
+unrecognized-fields warning on the namespaced key is the accepted cost.
+
 ### Roles and models (ADR-0030/0040)
 
 `config/model-bindings.json` (< project < local settings overrides) binds spawn roles
