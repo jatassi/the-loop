@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 24
+design_version: 25
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -330,7 +330,7 @@ features:
       - given a two-feature run where P's build returns blocked/kind=environment while M's build is mid-flight, when the run summary returns, then P appears in stalled carrying the block detail, M completes (its validate still spawns), and halted is absent
       - given a single-feature run whose build returns blocked/kind=environment, when the run ends, then the feature is in stalled (the retry lane) and the run is not halted
       - given any engine test's summary, every in-scope feature id appears in exactly one of completed/blocked/stalled — budget-halt remainder excepted, explained by halted
-      - drive.md requires the blocked return's detail field to be self-contained (the engine surfaces only detail), and the-loop.md plus ADR-0029 carry the corrected halt taxonomy (environment blocks stall the feature; halts are budget-only)
+      - drive.md requires the blocked return's detail field to be self-contained (the engine surfaces only detail), and the corrected halt taxonomy (environment blocks stall the feature; halts are budget-only) lands on every surface that states the old one — the-loop.md's halted line, glossary.md's run-summary and blocker-type entries, and ADR-0029 via one appended amendment note (byte-identical otherwise)
 
   - id: build-agent-title-progress
     title: Task-position prefix on divided-feature build agent titles

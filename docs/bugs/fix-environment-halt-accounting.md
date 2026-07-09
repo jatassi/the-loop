@@ -102,26 +102,74 @@ so a blocked final task reads as "feature fully built, validate refusing to star
 Demote, don't halt. Run-level halts remain only for budget exhaustion (the one
 harness-verified signal); an agent-reported environment block becomes a feature-level
 **stall** — the retry lane, which is semantically exact for "executor cut off, no
-commit created, nothing booked, rerun next pass":
+commit created, nothing booked, rerun next pass".
 
-- `spawn()` (`execution-pipeline.js:79-92`): replace the `blocked/kind=environment →
-  halted` promotion with `{ stalled: { feature, agent, note: detail } }`. This fixes
-  A (blast radius), B (stalls carry the feature id — accounting restored), and moots
-  C for this class (no halt, so no post-halt incoherence; the budget halt that
-  remains is enforced by the harness itself, which refuses further `agent()` calls).
-- `test/execution-pipeline-halt.test.js`: rewrite the environment case to pin the
-  stall (single-feature), and add the two-feature regression (below).
-- `plugin/agents/drive.md`: require `detail` to be self-contained — it is the only
-  field the engine surfaces; "see above" narrations are useless downstream. Note that
-  an executor cut off mid-run is a retryable infrastructure failure.
-- Prose sweep: `plugin/commands/the-loop.md` ("halted — budget or environment") and
-  ADR-0029's halt taxonomy get a correcting amendment: environment blocks stall the
-  feature; the "fails every subsequent feature identically" premise was falsified in
-  the field (this run's post-halt validate succeeded).
+This doc is the fix's design doc: `gatherFeatureInputs` (`plugin/bin/cli-commands.js`)
+pushes `docs/bugs/<id>.md` as a fix feature's context slice when no
+`docs/designs/<id>/design.md` exists — do not create one.
 
-Constraint for the builder: the engine file has no imports and no filesystem — the
-fix stays inside the existing harness-global idiom, proven via
-`test/execution-pipeline-harness.js` against the shipped script itself.
+### Engine — `plugin/workflows/execution-pipeline.js`
+
+`spawn()` is the one spawn choke point; the environment branch today:
+
+```js
+if (r.result === 'blocked' && r.kind === 'environment') {
+  return { halted: { reason: 'environment-blocked', detail: r.detail } };
+}
+```
+
+becomes a stall shaped exactly like the existing ones (`{feature, agent, note}`,
+see the catch branch three lines up):
+
+```js
+if (r.result === 'blocked' && r.kind === 'environment') {
+  return { stalled: { feature: featureId, agent: opts.agentType, note: r.detail } };
+}
+```
+
+No other engine change: `signalOf` already routes `stalled` → `'fail'`, so the
+feature parks, its dependents drain to unreachable, and every other feature keeps
+running. This fixes A (blast radius), B (stalls carry the feature id — accounting
+restored), and moots C for this class: the only remaining halt is budget-exhausted,
+where the harness itself refuses further `agent()` calls, so post-halt spawns
+cannot occur.
+
+### Tests — `test/execution-pipeline-halt.test.js`, harness
+
+- Rewrite "an environment-shaped block halts the run" to pin the inverse: the
+  feature lands in `stalled` with the block detail, `halted` is absent.
+- Add the two-feature regression (Regression 1): P env-blocks while M's build is
+  mid-flight (a delayed-Promise `returns` in the reply table reproduces the overlap);
+  P stalls, M completes, and M's validate still spawns.
+- Add an `assertEveryFeatureAccounted(result, scope)` helper to
+  `test/execution-pipeline-harness.js` — every in-scope id appears in exactly one of
+  `completed` / `blocked` (by `.feature`) / `stalled` (by `.feature`) — and call it
+  from the halt tests (budget-halt case excepted: its remainder is explained by
+  `halted`). Engine constraint: the script has no imports and no filesystem; the fix
+  stays inside the harness-global idiom, proven against the shipped script itself.
+
+### Prose surfaces (the halt taxonomy correction)
+
+- `plugin/agents/drive.md` — require the blocked return's `detail` to be
+  self-contained (it is the only field the engine surfaces; "see above" narrations
+  are useless downstream), and note an executor cut off mid-run is a retryable
+  infrastructure failure, not a broken environment.
+- `plugin/commands/the-loop.md` — "`halted` — the run stopped (budget or
+  environment)" drops environment: budget only. (Soft coupling: the designed
+  `begin-front-door-rename` feature moves this file to `plugin/skills/begin/SKILL.md`;
+  no dependency edge — just never scope the two features into the same run.)
+- `docs/glossary.md` — two entries pin the old semantics and must be rewritten:
+  "run summary" ("`halted` means the run itself stopped (budget or environment)" →
+  budget only) and "blocker type" ("environment-shaped — something around the work
+  is broken (tooling, auth) → **the run halts**" → a `stalled` entry, retried by the
+  next pass).
+- `docs/adr/0029-inner-loop-run-mechanics.md` — byte-identical apart from one
+  appended amendment note: environment blocks demote to feature stalls; the "would
+  fail every subsequent feature identically" premise was falsified in the field
+  (run `wf_a53a5f81-dbb`'s post-halt validate succeeded in the same environment).
+- `plugin/agents/build.md` / `validate.md` / `plan.md` — untouched: they define
+  when to *report* kind `environment`, which stays correct; only the engine-side
+  consequence changes.
 
 ## Regression
 
