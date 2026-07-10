@@ -127,6 +127,20 @@ test('spine hooks-list: fresh install resolves shipped defaults and visible fall
   } finally { cleanup(root, home); }
 });
 
+test('spine hooks-list --compact prints one single-line JSON entry per family plus recordedBindings — a screenful, not a paged tree', () => {
+  const home = emptyHome();
+  const root = fixture({});
+  try {
+    const result = spawnSync('node', [BIN, 'hooks-list', '--compact'], withHome(home, { cwd: root, encoding: 'utf8' }));
+    assert.equal(result.status, 0, result.stderr);
+    const lines = result.stdout.trim().split('\n');
+    assert.equal(lines.length, 8); // 7 families + recordedBindings
+    assert.ok(lines.some((l) => l.startsWith('artifactStores: ')));
+    assert.ok(lines.at(-1).startsWith('recordedBindings: '));
+    for (const line of lines) { JSON.parse(line.slice(line.indexOf(': ') + 2)); } // each entry is one-line JSON
+  } finally { cleanup(root, home); }
+});
+
 test('spine hooks-list: artifactStores bound in project settings reads back with provenance project', () => {
   // Partial object: whole-entry replacement — unset keys must not leak from defaults.
   const home = emptyHome();

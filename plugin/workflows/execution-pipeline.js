@@ -60,7 +60,7 @@ const TASK_SHAPE = {
 };
 const PLAN_SCHEMA = {
   type: 'object',
-  properties: { result: { enum: ['planned', 'needs_refinement', 'blocked'] }, workflow_path: { enum: ['small', 'standard'] }, tasks: { type: 'array', items: TASK_SHAPE }, ...strings('kind', 'detail'), options: stringArray },
+  properties: { result: { enum: ['planned', 'needs_refinement', 'blocked'] }, workflow_path: { enum: ['small', 'standard'] }, tasks: { type: 'array', items: TASK_SHAPE }, ...strings('kind', 'detail', 'judgment_level'), options: stringArray },
   required: ['result'],
 };
 const BUILD_SCHEMA = {
@@ -307,7 +307,7 @@ async function runPlan(f) {
     blocked.push({ feature: f.id, reason: planned.detail, options: planned.options });
     return { flow: 'fail' };
   }
-  if (planned.workflow_path === 'small') { obsFor(f.id).workflow_path = 'small'; return { workflow_path: 'small' }; }
+  if (planned.workflow_path === 'small') { obsFor(f.id).workflow_path = 'small'; return { workflow_path: 'small', judgment_level: planned.judgment_level }; }
   const o = obsFor(f.id);
   o.workflow_path = 'standard';
   o.tasks = taskContracts(planned.tasks);
@@ -393,9 +393,9 @@ async function runBuild(f, tasks) {
   return didAllLand;
 }
 
-async function runSmallBuild(f) {
+async function runSmallBuild(f, judgmentLevel) {
   if ((f.branchHead || '').startsWith(`${f.id}/feature: `)) { return true; } // already landed
-  const task = { id: 'feature', title: f.title, acceptance: f.acceptance };
+  const task = { id: 'feature', title: f.title, acceptance: f.acceptance, ...(judgmentLevel != null && { judgment_level: judgmentLevel }) };
   return taskOutcome(f, await runTask(f, task, { prompt: smallBuildPrompt(f) })) === true;
 }
 
@@ -450,7 +450,7 @@ async function runFeature(id) {
   if (plan.flow) { return plan.flow === 'halt' ? 'halt' : false; }
 
   if (plan.workflow_path === 'small') {
-    const landed = await runSmallBuild(f);
+    const landed = await runSmallBuild(f, plan.judgment_level);
     if (landed !== true) { return halted ? 'halt' : false; }
     return runValidate(f, 'small', []);
   }

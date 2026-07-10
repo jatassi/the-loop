@@ -15,7 +15,7 @@ import { buildHooksTable, DESIGN, fail, out, warn } from './cli-commands.js';
 // project < local) plus the three recorded-binding statuses from architecture.md.
 // A missing architecture.md is a stderr warning and every binding is treated as
 // absent; resolver errors exit 1 with nothing printed to stdout.
-export function hooksListCommand() {
+export function hooksListCommand(argv = []) {
   const hooks = buildHooksTable();
   let architectureText = '';
   if (existsSync(DESIGN)) {
@@ -23,7 +23,17 @@ export function hooksListCommand() {
   } else {
     warn(`no ${DESIGN} — recorded bindings treated as absent`);
   }
-  out({ hooks, recordedBindings: recordedBindingsStatus(architectureText) });
+  const recordedBindings = recordedBindingsStatus(architectureText);
+  // --compact: one single-line JSON entry per family so the whole inventory fits one
+  // read — the pretty tree paged past agents' output windows (head + tail to see it).
+  if (argv.includes('--compact')) {
+    for (const [family, entry] of Object.entries(hooks)) {
+      process.stdout.write(`${family}: ${JSON.stringify(entry)}\n`);
+    }
+    process.stdout.write(`recordedBindings: ${JSON.stringify(recordedBindings)}\n`);
+    return;
+  }
+  out({ hooks, recordedBindings });
 }
 
 // Known settings-layer hook families (ADR-0049 inventory). Hardcoded here until a later

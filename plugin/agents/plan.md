@@ -20,8 +20,10 @@ Read the design doc and the code the feature touches, then judge:
 
 - **Small** — the whole feature fits one agent's context comfortably (typical for a
   feature touching a handful of files with few decisions). Return
-  `{ "result": "planned", "workflow_path": "small" }` and stop. Write nothing, create
-  nothing — one build agent will take the feature whole.
+  `{ "result": "planned", "workflow_path": "small", "judgment_level": "…" }` — the
+  level judged exactly as §2 defines it, so the whole-feature build routes
+  explicitly instead of falling back to `build.standard` — and stop. Write nothing,
+  create nothing — one build agent will take the feature whole.
 - **Standard** — real decomposition pays. Continue below.
 - **Needs refinement** — the feature is too large or too vague to decompose against
   its design doc. Return `needs_refinement` with 2–3 concrete re-slice options. Write
@@ -36,10 +38,20 @@ covered by some task), its own testable `acceptance`, `footprint` (expected file
 disjointness is a bias, not a rule: chain via `depends_on` only when two tasks'
 edits to a shared file genuinely interact; registration-shaped sharing — a line or
 two in a barrel export, a route table — is fine left unordered, since the merge
-point resolves it under the test-gated merge policy), `size`, `judgment_level`
-(`rote` = correctness fully captured by tests+lint, `complex` = judgment-heavy, else
-`standard`), and a one-sentence `wiring` note saying how it connects to the rest.
-Prefer wide, shallow dependency graphs — unordered tasks run concurrently.
+point resolves it under the test-gated merge policy; name the hub file in each
+toucher's `wiring` note so builders expect the textual conflict), `size`,
+`judgment_level` (`rote` = correctness fully captured by tests+lint, `complex` =
+judgment-heavy, else `standard`), and a one-sentence `wiring` note saying how it
+connects to the rest. Prefer wide, shallow dependency graphs — unordered tasks run
+concurrently.
+
+Contract completeness the merge point cannot rescue: sibling tasks meeting at an
+interface get the exact wire shape — envelope, field names, the full error union —
+pinned as shared facts in both contracts (two tasks that each guess and mock their
+own version stay green until integration); and when the feature supersedes an
+existing surface, one task's footprint must own reconciling every spec that change
+invalidates — a regression no task may touch rides to Validate and blocks the
+feature.
 
 ## 3 · Persist on the feature branch
 
@@ -53,7 +65,7 @@ is never merged to the target.
 
 ## Return
 
-    { "result": "planned", "workflow_path": "small" }
+    { "result": "planned", "workflow_path": "small", "judgment_level": "rote|standard|complex" }
     { "result": "planned", "workflow_path": "standard", "tasks": [<the task contracts, verbatim>] }
     { "result": "needs_refinement", "detail": "<why it can't decompose>", "options": ["<re-slice>", …] }
     { "result": "blocked", "kind": "environment", "detail": "<what's broken around you>" }
