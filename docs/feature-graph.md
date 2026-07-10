@@ -412,37 +412,9 @@ features:
       - bin/create-sample-repo.js seeds JSON-artifact fixture repos and the recorded validation procedure exercises bare the-loop against them
       - the loop runs end to end on the flipped tree — the-loop status --json proposes correctly on the migrated graph and prepare-execution-context assembles a valid execution context — with cargo test, npm test, and npm run check green
 
-  # ── friction sweep 2026-07-10 (docs/research/friction-mining-2026-07-10.md) ──
-  - id: fix-plan-commit-gate-blind-spot
-    title: Plan leaves a registration-hub edit unordered from its implementer, emitting a task whose single commit cannot pass a whole-project pre-commit gate
-    status: validated
-    depends_on: []
-    acceptance:
-      - Given a project with a whole-project pre-commit gate (a hook running a whole-project typecheck/test/lint on every commit) and a feature whose design merges a new registration-hub member whose implementation is a separate concern, When Plan decomposes it, Then the hub-merge edit lands in the same task/commit as its implementer (or is ordered after it via depends_on) and never in a standalone schema-only task ahead of the implementer, so every emitted task's single commit passes the gate standalone — reproduced from the j45 exercise-library shape (ExerciseRpcs / J45Rpcs / exercise-handlers)
-      - the plan prompt surfaces the resolved precommit posture so Plan can apply the landing-constraint invariant
-
-  - id: fix-drive-executor-lifecycle
-    title: drive.md executor-lifecycle guidance loses healthy executor runs to default timeouts, turn-end orphaning, and premature relaunches
-    status: validated
-    depends_on: []
-    acceptance:
-      - Given a drive routes a build task to a CLI executor on a task taking 120–160s of executor wall time, When the drive invokes the executor, Then the executor session runs to completion (no ~101–115s death to the Bash default timeout) because the drive's call carries an explicit ceiling timeout and/or backgrounds the run — reproducing the loop-parity-oracle--corpus-context kills (019f4985/4987/4989 died at 101–115s; only 019f498b survived at 140s)
-      - Given a backgrounded executor still running as the drive's turn/output budget nears exhaustion, When the drive must return, Then it proactively returns blocked kind environment in the retry lane with a self-contained worktree-adoption note (worktree, branch, footprint, executor pid, verification still owed) before structured-output enforcement forces an ad-hoc return with finished work uncommitted
-      - Given a prior executor attempt whose process is still alive or whose output is still growing, When the drive considers its one retry or a relaunch, Then it waits rather than relaunching a byte-identical brief, recording the liveness/output-growth check it made
-
-  - id: fix-null-return-stall-opaque
-    title: a transient executor API failure (agent() returns null) becomes a terminal stall with an opaque note and no retry
-    status: validated
-    depends_on: []
-    acceptance:
-      - Given a spawn whose agent() returns null, when the run summary returns, then the feature's stall note carries its opts.label (feature/task/executor identity) and names the user-skip vs terminal-API-failure ambiguity — never the bare literal "agent returned null" (rewrites the test at execution-pipeline-halt.test.js that currently pins the opaque note)
-      - Given a spawn that throws a classified-transient API error, when it is handled, then spawn() performs exactly one respawn of the same prompt/opts (logged as a retry) — a success on the retry lands the feature with no stall, a second failure stalls with a note carrying both the label and error.message
-      - Given a spawn whose agent() returns null, it likewise triggers exactly one bounded, log-announced respawn before the feature is booked stalled
-      - Given a budget-exhausted throw, the transient-retry gate does not retry it — the run still halts (reason budget-exhausted), preserving the halt taxonomy
-
   - id: worktree-setup
     title: Worktree-setup hook — per-project worktree provisioning command, replacing the node_modules symlink
-    status: validated
+    status: shipped
     depends_on: [configure, onboard]
     notes:
       - "designed 2026-07-10 from docs/briefs/worktree-setup.md (ADR-0052); family shape { command, timeout? }, fallback { provisioning: none }, teardown-on-failure keeps the created:false early return sound"
