@@ -423,7 +423,7 @@ features:
 
   - id: fix-drive-executor-lifecycle
     title: drive.md executor-lifecycle guidance loses healthy executor runs to default timeouts, turn-end orphaning, and premature relaunches
-    status: designed
+    status: validated
     depends_on: []
     acceptance:
       - Given a drive routes a build task to a CLI executor on a task taking 120–160s of executor wall time, When the drive invokes the executor, Then the executor session runs to completion (no ~101–115s death to the Bash default timeout) because the drive's call carries an explicit ceiling timeout and/or backgrounds the run — reproducing the loop-parity-oracle--corpus-context kills (019f4985/4987/4989 died at 101–115s; only 019f498b survived at 140s)
