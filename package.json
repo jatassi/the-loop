@@ -13,7 +13,8 @@
     ".": "./plugin/src/index.js"
   },
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "node --test test/*.test.js test/oracle/*.test.js",
+    "oracle:rust": "ORACLE_TARGET=rust node --test test/oracle/oracle.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check": "node plugin/bin/the-loop.js check && eslint ."

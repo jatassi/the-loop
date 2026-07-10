@@ -1,0 +1,17 @@
+[
+  "status",
+  "list",
+  "check",
+  "set-status",
+  "plan parse",
+  "plan check",
+  "plan task",
+  "prepare-execution-context",
+  "worktree-create",
+  "worktree-remove",
+  "executors-list",
+  "models-list",
+  "hooks-list",
+  "hooks-set",
+  "calibration-summarize"
+]

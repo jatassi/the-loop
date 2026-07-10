@@ -1,0 +1,354 @@
+// Parity-oracle corpus: read-only CLI commands plus --version.
+// Each dual-format case selects its fixture half by target — yamlRepo for the JS
+// CLI, jsonRepo for the Rust binary — so both binaries read their own format of
+// the same shared definition.
+
+import { execSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+import { buildFixturePair, EXAMPLE_DEFINITION } from '../fixtures.js';
+
+const REFUSE = { exitCode: 1, stderr: 'present', stdoutBytes: '' };
+const ALPHA = { branch: 'loop/alpha' };
+const HOME = { isolateHome: true };
+
+const WELL_FORMED = {
+  ...EXAMPLE_DEFINITION,
+  settings: {
+    'the-loop': {
+      modelBindings: { 'build.standard': { model: 'sonnet' } },
+      testHarness: { command: 'npm test' },
+    },
+  },
+};
+
+const DANGLING = {
+  ...EXAMPLE_DEFINITION,
+  features: EXAMPLE_DEFINITION.features.map((f) => (
+    f.id === 'beta' ? { ...f, depends_on: ['ghost'] } : f
+  )),
+};
+
+const ROLE_TABLE = {
+  plan: { model: 'session', provenance: 'default' },
+  'build.rote': { model: 'grok-4.5', executor: 'grok', provenance: 'default' },
+  'build.standard': { model: 'sonnet', provenance: 'project' },
+  'build.complex': { model: 'opus', provenance: 'default' },
+  drive: { model: 'sonnet', provenance: 'default' },
+  validate: { model: 'grok-4.5', executor: 'grok', provenance: 'default' },
+  record: { model: 'haiku', provenance: 'default' },
+};
+
+const ALPHA_TASK = {
+  id: 'alpha-core', title: 'Implement alpha core', covers: [1, 2],
+  acceptance: 'alpha core satisfies both feature criteria',
+  footprint: ['src/alpha.js', 'test/alpha.test.js'],
+  size: 's', depends_on: [], judgment_level: 'standard',
+  wiring: 'foundational module the rest of the feature hangs on',
+};
+
+/** @param {string} dir */
+const rm = (dir) => rmSync(dir, { recursive: true, force: true });
+
+/**
+ * @param {typeof EXAMPLE_DEFINITION} definition
+ * @param {{ branch?: string, isolateHome?: boolean }} [opts]
+ */
+function pairSetup(definition, { branch, isolateHome } = {}) {
+  return ({ target }) => {
+    const { yamlRepo, jsonRepo } = buildFixturePair(definition);
+    const cwd = target === 'rust' ? jsonRepo : yamlRepo;
+    if (branch) {
+      execSync(`git checkout -q ${branch}`, { cwd });
+    }
+    const emptyHome = isolateHome ? mkdtempSync(path.join(tmpdir(), 'oracle-home-')) : null;
+    return {
+      cwd,
+      env: emptyHome ? { HOME: emptyHome } : undefined,
+      cleanup: () => {
+        rm(yamlRepo);
+        rm(jsonRepo);
+        if (emptyHome) {
+          rm(emptyHome);
+        }
+      },
+    };
+  };
+}
+
+/** @param {string} prefix @param {(cwd: string) => void} [seed] */
+function tempSetup(prefix, seed) {
+  return () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), prefix));
+    seed?.(cwd);
+    return { cwd, cleanup: () => rm(cwd) };
+  };
+}
+
+const emptyDir = tempSetup('oracle-empty-');
+const unparseableGraph = tempSetup('oracle-bad-yaml-', (cwd) => {
+  mkdirSync(path.join(cwd, 'docs'), { recursive: true });
+  writeFileSync(path.join(cwd, 'docs/feature-graph.md'), `# Fixture
+
+## Feature graph
+
+\`\`\`yaml
+design_version: 1
+features: *undefinedAlias
+\`\`\`
+`);
+});
+
+const playbook = (id) => [
+  `# ${id}`, '', `Narrative lore about the ${id} executor.`, '',
+  '## Machine block', '', '```yaml',
+  `id: ${id}`, `command: ${id}`, `models: [model-a, model-b]`,
+  'worktree: driver-made',
+  'invocation: run -m {model} --prompt-file {prompt} --cwd {worktree}',
+  `availability: ${id} --version`,
+  'auth_smoke:', `  run: ${id} -p "ping"`, '  expect: pong',
+  'concurrency: 1', '```', '',
+].join('\n');
+
+const badPlaybook = tempSetup('oracle-playbook-', (cwd) => {
+  mkdirSync(path.join(cwd, 'playbooks'), { recursive: true });
+  writeFileSync(
+    path.join(cwd, 'playbooks/widget.md'),
+    playbook('widget').replace('command: widget\n', ''),
+  );
+});
+
+const example = pairSetup(EXAMPLE_DEFINITION);
+const onAlpha = pairSetup(EXAMPLE_DEFINITION, ALPHA);
+const wellFormedHome = pairSetup(WELL_FORMED, HOME);
+const bareStringHome = pairSetup(EXAMPLE_DEFINITION, HOME);
+
+export const cases = [
+  {
+    command: 'status',
+    scenario: 'happy path human-readable',
+    argv: ['status'],
+    setup: example,
+    expect: {
+      exitCode: 0,
+      stdoutMatch: /^# Status — projected from docs\/feature-graph\.md\n[\s\S]*Total: 2 feature\(s\) at design_version 1[\s\S]*\*\*Next:\*\* `alpha`/,
+    },
+  },
+  {
+    command: 'status',
+    scenario: 'refusal: missing feature graph',
+    argv: ['status'],
+    setup: emptyDir,
+    expect: REFUSE,
+  },
+  {
+    command: 'status',
+    scenario: 'happy path --json',
+    argv: ['status', '--json'],
+    setup: example,
+    expect: {
+      exitCode: 0,
+      stdout: {
+        mode: 'configured',
+        hasDesign: true,
+        hasGraph: true,
+        hasBrief: false,
+        position: {
+          designVersion: 1,
+          total: 2,
+          byStatus: { proposed: 1, designed: 1, validated: 0, shipped: 0 },
+        },
+        eligibleSet: ['alpha'],
+        proposal: {
+          kind: 'advance-eligible-set',
+          features: ['alpha'],
+          summary: '1 feature(s) are dependency-ready to advance',
+        },
+      },
+    },
+  },
+  {
+    command: 'status',
+    scenario: 'refusal: unparseable YAML unresolved alias',
+    argv: ['status', '--json'],
+    setup: unparseableGraph,
+    expect: REFUSE,
+  },
+  {
+    command: 'list',
+    scenario: 'happy path',
+    argv: ['list'],
+    setup: example,
+    expect: {
+      exitCode: 0,
+      stdout: {
+        designVersion: 1,
+        features: [
+          {
+            id: 'alpha', title: 'Alpha feature', status: 'designed', depends_on: [],
+            acceptance: ['alpha criterion one', 'alpha criterion two'],
+            notes: ['alpha design note'],
+          },
+          { id: 'beta', title: 'Beta feature', status: 'proposed', depends_on: ['alpha'] },
+        ],
+      },
+    },
+  },
+  {
+    command: 'list',
+    scenario: 'refusal: missing feature graph',
+    argv: ['list'],
+    setup: emptyDir,
+    expect: REFUSE,
+  },
+  {
+    command: 'check',
+    scenario: 'happy path OK',
+    argv: ['check'],
+    setup: example,
+    expect: { exitCode: 0, stdoutMatch: /^OK\s+2 features/ },
+  },
+  {
+    command: 'check',
+    scenario: 'refusal: dangling dependency FAIL',
+    argv: ['check'],
+    setup: pairSetup(DANGLING),
+    expect: { exitCode: 1, stdoutMatch: /FAIL 2 features/ },
+  },
+  {
+    command: 'plan parse',
+    scenario: 'happy path',
+    argv: ['plan', 'parse', 'alpha'],
+    setup: onAlpha,
+    expect: {
+      exitCode: 0,
+      stdout: { feature: 'alpha', designVersion: 1, tasks: [ALPHA_TASK] },
+    },
+  },
+  {
+    command: 'plan parse',
+    scenario: 'refusal: missing plan file',
+    argv: ['plan', 'parse', 'ghost'],
+    setup: onAlpha,
+    expect: REFUSE,
+  },
+  {
+    command: 'plan check',
+    scenario: 'happy path OK',
+    argv: ['plan', 'check', 'alpha'],
+    setup: onAlpha,
+    expect: { exitCode: 0, stdoutMatch: /^OK\s+plan alpha: 1 task\(s\)/ },
+  },
+  {
+    command: 'plan check',
+    scenario: 'refusal: feature-id mismatch FAIL',
+    argv: ['plan', 'check', 'beta', 'docs/plans/alpha/plan.md'],
+    setup: onAlpha,
+    expect: { exitCode: 1, stdoutMatch: /FAIL plan beta: 1 task\(s\)/ },
+  },
+  {
+    command: 'plan task',
+    scenario: 'happy path',
+    argv: ['plan', 'task', 'alpha', 'alpha-core'],
+    setup: onAlpha,
+    expect: {
+      exitCode: 0,
+      stdout: {
+        feature: 'alpha',
+        design_version: 1,
+        task: ALPHA_TASK,
+        covers_criteria: ['alpha criterion one', 'alpha criterion two'],
+      },
+    },
+  },
+  {
+    command: 'plan task',
+    scenario: 'refusal: unknown task id',
+    argv: ['plan', 'task', 'alpha', 'no-such-task'],
+    setup: onAlpha,
+    expect: REFUSE,
+  },
+  {
+    command: 'executors-list',
+    scenario: 'happy path',
+    argv: ['executors-list', 'config/executors'],
+    setup: example,
+    expect: {
+      exitCode: 0,
+      stdout: {
+        'fixture-exec': {
+          id: 'fixture-exec', command: 'fixture-exec', models: ['fixture-model'],
+          worktree: 'driver-made',
+          invocation: 'fixture-exec -m {model} --prompt-file {prompt} --cwd {worktree}',
+          availability: 'fixture-exec --version',
+          auth_smoke: { run: 'fixture-exec ping', expect: 'PONG' },
+          concurrency: 1,
+        },
+      },
+    },
+  },
+  {
+    command: 'executors-list',
+    scenario: 'refusal: malformed playbook missing command',
+    argv: ['executors-list', 'playbooks'],
+    setup: badPlaybook,
+    expect: REFUSE,
+  },
+  {
+    command: 'models-list',
+    scenario: 'happy path well-formed settings',
+    argv: ['models-list'],
+    setup: wellFormedHome,
+    expect: { exitCode: 0, stdout: ROLE_TABLE },
+  },
+  {
+    command: 'models-list',
+    scenario: 'refusal: malformed modelBindings bare string',
+    argv: ['models-list'],
+    setup: bareStringHome,
+    expect: REFUSE,
+  },
+  {
+    command: 'hooks-list',
+    scenario: 'happy path well-formed settings',
+    argv: ['hooks-list'],
+    setup: wellFormedHome,
+    expect: {
+      exitCode: 0,
+      stdout: {
+        hooks: {
+          interview: { skill: 'grilling', provenance: 'default' },
+          modelBindings: ROLE_TABLE,
+          testHarness: { command: 'npm test', provenance: 'project' },
+          lint: { value: 'detected-convention', provenance: 'fallback' },
+          precommit: { system: 'none', provenance: 'default' },
+          notification: { channel: 'chat', provenance: 'default' },
+          artifactStores: {
+            briefs: 'local', designs: 'local', features: 'local', runbooks: 'local',
+            rcas: 'local', calibration: 'local', provenance: 'default',
+          },
+        },
+        recordedBindings: {
+          validationProcedure: { status: 'present', gap: null },
+          releaseRunbook: { status: 'present', gap: null },
+          operationsToolkit: { status: 'absent', gap: 'lazy retrofit (operate-tooling)' },
+        },
+      },
+    },
+  },
+  {
+    command: 'hooks-list',
+    scenario: 'refusal: malformed modelBindings bare string',
+    argv: ['hooks-list'],
+    setup: bareStringHome,
+    expect: REFUSE,
+  },
+  {
+    command: '--version',
+    scenario: 'happy path version shape',
+    argv: ['--version'],
+    expect: { exitCode: 0, stdoutMatch: /^the-loop \d+\.\d+\.\d+\s*$/ },
+  },
+];

@@ -343,7 +343,7 @@ features:
 
   - id: parity-oracle
     title: Dual-driver black-box oracle over paired YAML/JSON fixtures
-    status: designed
+    status: validated
     depends_on: [rust-crate-scaffold]
     acceptance:
       - the oracle drives a CLI purely by subprocess — argv plus a fixture-repo cwd in, stdout JSON (key-order-insensitive), exit code, and refusal-path stderr presence asserted — with the binary under test selected by configuration, never imported in-process
