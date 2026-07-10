@@ -426,7 +426,7 @@ features:
       - the begin skill's launch leg passes scriptPath only (no args) and names why in one sentence
   - id: fix-record-prompt-cli
     title: Record spawn's prompt never names the CLI invocation — record agent blocks on bare `the-loop`, calibration capture silently lost
-    status: designed
+    status: validated
     depends_on: []
     acceptance:
       - given an execution context with cli bound to a non-PATH invocation, when a run reaches Record, the record spawn's prompt names that invocation via a deterministic trailer outside the transcribed payload, and the transcribed calibration payload stays byte-identical to the pre-fix pinned YAML for the same observations

@@ -545,8 +545,10 @@ if (executionContext.preparedAt) {
     const observations = { features: featureObs, byRole: budgetByRole, overlapped: didSpawnsOverlap };
     const payload = recordPayload(observations, result, { preparedAt: executionContext.preparedAt, scope: executionContext.scope, target: executionContext.target });
     const recordBinding = roleBinding('record');
+    // Trailer names the CLI invocation for the record agent; it is NOT part of the
+    // transcribed calibration artifact — `payload` stays byte-identical for capture.
     try {
-      await agent(payload, {
+      await agent(`${payload}\n\ncli: ${CLI}`, {
         agentType: agentTypeForRole('record', recordBinding), label: 'record', phase: 'Record', ...modelOpts(recordBinding),
       });
     } catch (error) {
