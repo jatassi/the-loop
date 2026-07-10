@@ -391,7 +391,7 @@ features:
 
   - id: binary-distribution
     title: cargo-dist release matrix — checksummed binaries and installers on GitHub Releases
-    status: designed
+    status: validated
     depends_on: [rust-crate-scaffold]
     acceptance:
       - a tagged release publishes archives and sha256 checksums for aarch64-apple-darwin, x86_64-apple-darwin, x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, and x86_64-pc-windows-msvc, plus generated shell and powershell installers, from cargo-dist configuration committed in the repo — and no compiled artifact is committed to the git tree
