@@ -29,6 +29,7 @@ pub const HOOK_FAMILY_ORDER: &[&str] = &[
     "precommit",
     "notification",
     "artifactStores",
+    "worktreeSetup",
     "exampleBlock",
 ];
 
@@ -80,6 +81,11 @@ pub static HOOK_INVENTORY: LazyLock<BTreeMap<&'static str, HookDeclaration>> =
                 "rcas": "local",
                 "calibration": "local",
             })),
+        );
+        // Unbound → no provisioning on worktree-create (symlink retired; see ADR-0052).
+        m.insert(
+            "worktreeSetup",
+            HookDeclaration::Fallback(json!({ "provisioning": "none" })),
         );
         m.insert("exampleBlock", HookDeclaration::Block);
         m
@@ -670,12 +676,35 @@ mod tests {
             json!({ "value": "detected-convention", "provenance": "fallback" })
         );
 
+        // worktreeSetup unbound → no-provisioning inventory fallback.
+        let worktree_setup = resolve_family("worktreeSetup", &LayerSources::default()).expect("ok");
+        assert_eq!(
+            worktree_setup,
+            json!({ "provisioning": "none", "provenance": "fallback" })
+        );
+
         // modelBindings unbound → empty table (role-level fallback is binding_for).
         let mb = resolve_family("modelBindings", &LayerSources::default()).expect("ok");
         assert_eq!(mb, empty_object());
         assert_eq!(
             binding_for(&mb, "ghost"),
             json!({ "model": "session", "provenance": "fallback" })
+        );
+    }
+
+    #[test]
+    fn resolve_family_worktree_setup_project_layer_whole_entry() {
+        let resolved = resolve_family(
+            "worktreeSetup",
+            &LayerSources {
+                project: Some(json!({ "command": "npm ci" })),
+                ..LayerSources::default()
+            },
+        )
+        .expect("ok");
+        assert_eq!(
+            resolved,
+            json!({ "command": "npm ci", "provenance": "project" })
         );
     }
 

@@ -268,6 +268,28 @@ export const cases = [
     expect: REFUSE,
   },
   {
+    command: 'hooks-list',
+    scenario: 'happy path --compact line-per-family inventory order',
+    argv: ['hooks-list', '--compact'],
+    setup: wellFormedHome,
+    // Byte-identical to the JS CLI: inventory order, insertion-order keys, trailing NL.
+    expect: {
+      exitCode: 0,
+      stdoutBytes: [
+        'interview: {"skill":"grilling","provenance":"default"}',
+        'modelBindings: {"plan":{"model":"session","provenance":"default"},"build.rote":{"model":"grok-4.5","executor":"grok","provenance":"default"},"build.standard":{"model":"sonnet","provenance":"project"},"build.complex":{"model":"opus","provenance":"default"},"drive":{"model":"sonnet","provenance":"default"},"validate":{"model":"grok-4.5","executor":"grok","provenance":"default"},"record":{"model":"haiku","provenance":"default"}}',
+        'testHarness: {"command":"npm test","provenance":"project"}',
+        'lint: {"value":"detected-convention","provenance":"fallback"}',
+        'precommit: {"system":"none","provenance":"default"}',
+        'notification: {"channel":"chat","provenance":"default"}',
+        'artifactStores: {"briefs":"local","designs":"local","features":"local","runbooks":"local","rcas":"local","calibration":"local","provenance":"default"}',
+        'worktreeSetup: {"provisioning":"none","provenance":"fallback"}',
+        'recordedBindings: {"validationProcedure":{"status":"present","gap":null},"releaseRunbook":{"status":"present","gap":null},"operationsToolkit":{"status":"absent","gap":"lazy retrofit (operate-tooling)"}}',
+        '',
+      ].join('\n'),
+    },
+  },
+  {
     command: '--version',
     scenario: 'happy path version shape',
     argv: ['--version'],

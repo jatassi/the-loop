@@ -108,7 +108,14 @@ test('loadPending lists remaining allowlisted commands and excludes live graph/p
   assert.ok(!pending.includes('check'));
   assert.ok(!pending.includes('set-status'));
   assert.ok(!pending.includes('--version'));
-  assert.ok(pending.includes('prepare-execution-context'));
+  // prepare-execution-context is now ported to Rust — it left the allowlist.
+  assert.ok(!pending.includes('prepare-execution-context'));
+  // worktree-create/worktree-remove and calibration-summarize are also ported —
+  // the full run-commands-rust slice landed together, so the allowlist is empty.
+  assert.ok(!pending.includes('worktree-create'));
+  assert.ok(!pending.includes('worktree-remove'));
+  assert.ok(!pending.includes('calibration-summarize'));
+  assert.deepEqual(pending, []);
 });
 
 test('loadCases discovers case modules from a directory and returns [] when absent', async () => {

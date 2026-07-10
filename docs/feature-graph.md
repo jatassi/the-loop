@@ -381,7 +381,7 @@ features:
 
   - id: run-commands-rust
     title: prepare-execution-context, worktree verbs, calibration-summarize in Rust
-    status: designed
+    status: validated
     depends_on: [graph-commands-rust, plan-commands-rust, config-commands-rust]
     notes:
       - "amended 2026-07-10 after main's worktree-setup (ADR-0052) merge: the worktree verbs' JS reference changed under this design — create provisions via the worktreeSetup binding (symlink retired) with teardown-on-failure, remove refuses from inside the target — and the config surfaces config-commands-rust ported drifted (worktreeSetup inventory family, hooks-list --compact); the drift catch-up rides here"

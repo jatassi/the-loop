@@ -107,13 +107,26 @@ function expectedSplicedScript(scope, targetBranch) {
 /** Refusal gate: empty stdout, present stderr, exit 1. */
 const GATE_REFUSAL = { exitCode: 1, stdoutBytes: '', stderr: 'present' };
 
-// preparedAt is stamped per invocation (wall clock) and rides the spliced script's
-// EMBEDDED_CONTEXT literal, so two invocations can never be byte-identical; mask it
-// before comparing and assert its shape separately.
+// The spliced script's EMBEDDED_CONTEXT literal carries three sanctioned
+// cross-implementation differences that no byte comparison can (or should) pin:
+//   • preparedAt — the one legal wall-clock read, stamped per invocation, so two
+//     runs can never match; its shape is asserted separately.
+//   • cli — names the per-binary invocation (`node "<plugin>/bin/the-loop.js"` for
+//     the JS CLI, `the-loop` for the Rust binary).
+//   • covers — 1-based in the legacy YAML plan the JS CLI reads, 0-based in the
+//     ADR-0051 JSON plan the Rust binary reads; the same acceptance indices in two
+//     era-specific representations, not payload drift. Dies at json-cutover with
+//     the JS driver.
+// cli and covers are the design's two sanctioned content differences — the mask
+// set here must stay exactly the set the acceptance criteria name.
+// Mask all three on both sides, then the remaining bytes must be identical.
 const PREPARED_AT_VALUE = /"preparedAt":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z"/;
 
-function maskPreparedAt(scriptText) {
-  return scriptText.replace(PREPARED_AT_VALUE, '"preparedAt":"<masked>"');
+function maskSanctionedDifferences(scriptText) {
+  return scriptText
+    .replace(PREPARED_AT_VALUE, '"preparedAt":"<preparedAt>"')
+    .replace(/"cli":"(?:[^"\\]|\\.)*"/, '"cli":"<cli>"')
+    .replaceAll(/"covers":\[[0-9,\s]*\]/g, '"covers":"<covers>"');
 }
 
 /** @param {(cwd: string) => string | void} check */
@@ -206,7 +219,7 @@ const prepareCases = [
   },
   {
     command: 'prepare-execution-context',
-    scenario: '--script-out writes spliced workflow script byte-identical to expectation modulo the stamped preparedAt',
+    scenario: '--script-out writes spliced workflow script byte-identical to the JS reference modulo the sanctioned set (preparedAt, cli, covers)',
     argv: [
       'prepare-execution-context',
       '--features', 'alpha',
@@ -226,8 +239,8 @@ const prepareCases = [
           if (!PREPARED_AT_VALUE.test(actual)) {
             return 'spliced script lacks an ISO-8601 preparedAt in its EMBEDDED_CONTEXT literal';
           }
-          if (maskPreparedAt(actual) !== maskPreparedAt(expected)) {
-            return 'spliced script bytes !== expectation (after masking preparedAt)';
+          if (maskSanctionedDifferences(actual) !== maskSanctionedDifferences(expected)) {
+            return 'spliced script bytes !== expectation (after masking preparedAt, cli, covers)';
           }
         }),
       };

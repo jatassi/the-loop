@@ -10,11 +10,16 @@
 //! (`settings`), the recorded-bindings section scan (`recorded_bindings`), and
 //! the pure byte-surgical settings writer (`settings_write`) back the
 //! config-surface command bodies under [`commands`] (`executors-list`,
-//! `models-list`, `hooks-list`, `hooks-set`).
+//! `models-list`, `hooks-list`, `hooks-set`), and the calibration index
+//! renderer (`calibration`) behind `calibration-summarize`.
 
+mod calibration;
 mod commands;
+mod context;
+mod git;
 mod graph;
 mod plan;
+mod splice;
 mod status;
 mod validate;
 
@@ -28,12 +33,20 @@ pub use commands::graph::{
     CommandResult, DEFAULT_GRAPH, check, list, resolve_graph_path, set_status,
 };
 pub use commands::plan::{plan_check, plan_parse, plan_task};
+pub use context::{
+    AssembleInput, ExecutionContext, FeatureEntry, FeatureInputs, FeatureMap, PlanFragment,
+    ScopeCheck, assemble_execution_context, built_task_ids, check_scope, feature_branch,
+    section_after, task_branch, task_commit_prefix,
+};
 pub use graph::{Acceptance, Feature, FeatureGraph, ParseError, emit, parse};
 pub use plan::{
     JUDGMENT_LEVELS, Plan, ResolvedTask, TASK_SIZES, Task, TaskAcceptance, emit as emit_plan,
     parse as parse_plan, plan_path, resolve_task, validate as validate_plan,
 };
 pub use settings_write::{SettingsWriteError, write_settings_entry};
+pub use splice::{
+    describe_run, splice_embedded_context, splice_run_description, splice_workflow_script,
+};
 pub use status::{
     ByStatus, IssueOut, Orientation, Position, Proposal, Refusal, State, blocking_proposed_ids,
     detect_state, eligible_set_ids, machine_orientation, propose, render_status_summary,
@@ -57,6 +70,10 @@ pub const DEFAULT_HOOK_DEFAULTS_JSON: &str = include_str!("../../plugin/config/h
 
 /// Default grok executor playbook (json-fenced), compiled in as the default registry.
 pub const DEFAULT_GROK_PLAYBOOK: &str = include_str!("../config/executors/grok.md");
+
+/// Canonical execution-pipeline workflow script, compiled in for `--script-out` splicing.
+pub const DEFAULT_WORKFLOW_SCRIPT: &str =
+    include_str!("../../plugin/workflows/execution-pipeline.js");
 
 /// Path stamp used when parsing the compiled-in default playbook (stem = `grok`).
 const DEFAULT_GROK_PLAYBOOK_FILE: &str = "config/executors/grok.md";
@@ -124,12 +141,17 @@ pub enum Command {
     },
     /// Print every real hook-family resolution plus recorded-binding status.
     #[command(name = "hooks-list")]
-    HooksList,
+    HooksList {
+        /// One single-line JSON entry per family (inventory order) plus
+        /// `recordedBindings`, instead of the pretty `{hooks, recordedBindings}` tree.
+        #[arg(long)]
+        compact: bool,
+    },
     /// Persist one `"the-loop".<family>` entry into a settings layer.
     #[command(name = "hooks-set")]
     HooksSet {
         /// Hook family (interview, modelBindings, testHarness, lint, precommit,
-        /// notification, artifactStores).
+        /// notification, artifactStores, worktreeSetup).
         family: String,
         /// Settings layer: user | project | local.
         layer: String,
@@ -137,10 +159,44 @@ pub enum Command {
         #[arg(value_name = "json-value")]
         json_value: String,
     },
+    /// Regenerate `docs/calibration/index.md` from `docs/calibration/runs/*.json`.
+    #[command(name = "calibration-summarize")]
+    CalibrationSummarize,
     /// Plan artifact commands (`parse` | `check` | `task`).
     Plan {
         #[command(subcommand)]
         sub: PlanSub,
+    },
+    /// Create a git worktree under `.claude/worktrees/` and run worktreeSetup.
+    #[command(name = "worktree-create")]
+    WorktreeCreate {
+        /// Branch name (existing branch is attached; otherwise created off base).
+        branch: String,
+        /// Base ref when creating a new branch (default: `main`).
+        #[arg(long = "base-branch")]
+        base_branch: Option<String>,
+    },
+    /// Remove a worktree by path or by branch name.
+    #[command(name = "worktree-remove")]
+    WorktreeRemove {
+        /// Worktree directory path or branch name.
+        path_or_branch: String,
+    },
+    /// Assemble the one execution context the workflow consumes (ADR-0036/0038).
+    #[command(name = "prepare-execution-context")]
+    PrepareExecutionContext {
+        /// Comma-separated scope of feature ids to prepare.
+        #[arg(long)]
+        features: Option<String>,
+        /// The ref the run integrates into (no default — must be named).
+        #[arg(long = "target-branch")]
+        target_branch: Option<String>,
+        /// Also write a launch-ready copy of the canonical workflow script here.
+        #[arg(long = "script-out")]
+        script_out: Option<String>,
+        /// Path to `feature-graph.json` (default: `docs/feature-graph.json`).
+        #[arg(long = "graph-path")]
+        graph_path: Option<String>,
     },
 }
 
@@ -201,8 +257,8 @@ impl Cli {
                 commands::models_list::run(defaults_json.as_deref(), executors_dir.as_deref());
                 ExitCode::SUCCESS
             }
-            Some(Command::HooksList) => {
-                commands::hooks_list::run();
+            Some(Command::HooksList { compact }) => {
+                commands::hooks_list::run(compact);
                 ExitCode::SUCCESS
             }
             Some(Command::HooksSet {
@@ -211,6 +267,10 @@ impl Cli {
                 json_value,
             }) => {
                 commands::hooks_set::run(&family, &layer, &json_value);
+                ExitCode::SUCCESS
+            }
+            Some(Command::CalibrationSummarize) => {
+                commands::calibration_summarize::run();
                 ExitCode::SUCCESS
             }
             Some(Command::Plan { sub }) => match sub {
@@ -229,6 +289,31 @@ impl Cli {
                     graph,
                 } => plan_task(&feature_id, &task_id, plan, graph).into_exit_code(),
             },
+            Some(Command::WorktreeCreate {
+                branch,
+                base_branch,
+            }) => {
+                commands::worktree::create(&branch, base_branch.as_deref());
+                ExitCode::SUCCESS
+            }
+            Some(Command::WorktreeRemove { path_or_branch }) => {
+                commands::worktree::remove(&path_or_branch);
+                ExitCode::SUCCESS
+            }
+            Some(Command::PrepareExecutionContext {
+                features,
+                target_branch,
+                script_out,
+                graph_path,
+            }) => {
+                commands::prepare_execution_context::run(
+                    features.as_deref(),
+                    target_branch.as_deref(),
+                    script_out.as_deref(),
+                    graph_path.as_deref(),
+                );
+                ExitCode::SUCCESS
+            }
             None => ExitCode::SUCCESS,
         }
     }
@@ -454,9 +539,77 @@ mod tests {
     fn hooks_list_subcommand_parses() {
         let cli = Cli::try_parse_from(["the-loop", "hooks-list"]).expect("hooks-list must parse");
         match cli.command {
-            Some(Command::HooksList) => {}
+            Some(Command::HooksList { compact: false }) => {}
             other => panic!("expected HooksList, got {other:?}"),
         }
+
+        let compact = Cli::try_parse_from(["the-loop", "hooks-list", "--compact"])
+            .expect("hooks-list --compact must parse");
+        match compact.command {
+            Some(Command::HooksList { compact: true }) => {}
+            other => panic!("expected HooksList compact, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn calibration_summarize_subcommand_parses() {
+        let cli = Cli::try_parse_from(["the-loop", "calibration-summarize"])
+            .expect("calibration-summarize must parse");
+        match cli.command {
+            Some(Command::CalibrationSummarize) => {}
+            other => panic!("expected CalibrationSummarize, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn worktree_create_remove_subcommands_parse() {
+        let create = Cli::try_parse_from([
+            "the-loop",
+            "worktree-create",
+            "loop/widget",
+            "--base-branch",
+            "main",
+        ])
+        .expect("worktree-create must parse");
+        match create.command {
+            Some(Command::WorktreeCreate {
+                branch,
+                base_branch: Some(base),
+            }) => {
+                assert_eq!(branch, "loop/widget");
+                assert_eq!(base, "main");
+            }
+            other => panic!("expected WorktreeCreate, got {other:?}"),
+        }
+
+        let create_default =
+            Cli::try_parse_from(["the-loop", "worktree-create", "loop/widget"]).expect("create");
+        match create_default.command {
+            Some(Command::WorktreeCreate {
+                branch,
+                base_branch: None,
+            }) => assert_eq!(branch, "loop/widget"),
+            other => panic!("expected WorktreeCreate without base, got {other:?}"),
+        }
+
+        let remove = Cli::try_parse_from(["the-loop", "worktree-remove", "loop/widget"])
+            .expect("worktree-remove must parse");
+        match remove.command {
+            Some(Command::WorktreeRemove { path_or_branch }) => {
+                assert_eq!(path_or_branch, "loop/widget");
+            }
+            other => panic!("expected WorktreeRemove, got {other:?}"),
+        }
+
+        let err = Cli::try_parse_from(["the-loop", "worktree-create"])
+            .expect_err("missing branch must fail parse");
+        let rendered = err.to_string();
+        assert!(
+            rendered.to_ascii_lowercase().contains("usage")
+                || rendered.contains("required")
+                || rendered.contains("branch"),
+            "missing-arg error should mention usage or branch; got {rendered:?}"
+        );
     }
 
     #[test]

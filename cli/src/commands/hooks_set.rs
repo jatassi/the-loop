@@ -15,7 +15,7 @@ use serde_json::Value;
 use crate::io::{fail, out};
 use crate::write_settings_entry;
 
-/// Known settings-layer hook families (ADR-0049 inventory).
+/// Known settings-layer hook families (ADR-0049 inventory + worktreeSetup).
 const HOOK_FAMILIES: &[&str] = &[
     "interview",
     "modelBindings",
@@ -24,6 +24,7 @@ const HOOK_FAMILIES: &[&str] = &[
     "precommit",
     "notification",
     "artifactStores",
+    "worktreeSetup",
 ];
 
 /// Writable settings layers.
@@ -188,8 +189,8 @@ mod tests {
     }
 
     #[test]
-    fn known_families_and_layers_cover_the_seven_and_three() {
-        assert_eq!(HOOK_FAMILIES.len(), 7);
+    fn known_families_and_layers_cover_the_eight_and_three() {
+        assert_eq!(HOOK_FAMILIES.len(), 8);
         for f in [
             "interview",
             "modelBindings",
@@ -198,10 +199,42 @@ mod tests {
             "precommit",
             "notification",
             "artifactStores",
+            "worktreeSetup",
         ] {
             assert!(HOOK_FAMILIES.contains(&f), "missing family {f}");
         }
         assert_eq!(HOOK_LAYERS, &["user", "project", "local"]);
+    }
+
+    #[test]
+    fn process_accepts_worktree_setup_family() {
+        ensure_bin();
+        let root = tempfile_dir("hooks-set-worktree");
+        let output = spawn_in(
+            &root,
+            &[
+                "hooks-set",
+                "worktreeSetup",
+                "project",
+                r#"{"command":"npm ci"}"#,
+            ],
+        );
+        assert!(
+            output.status.success(),
+            "stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let body: Value = serde_json::from_slice(&output.stdout).expect("JSON stdout");
+        assert_eq!(body["family"], "worktreeSetup");
+        assert_eq!(body["value"], serde_json::json!({"command": "npm ci"}));
+        let written = fs::read_to_string(root.join(".claude").join("settings.json"))
+            .expect("settings written");
+        let parsed: Value = serde_json::from_str(&written).expect("parse written");
+        assert_eq!(
+            parsed["the-loop"]["worktreeSetup"],
+            serde_json::json!({"command": "npm ci"})
+        );
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

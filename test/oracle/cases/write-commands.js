@@ -11,6 +11,7 @@ import path from 'node:path';
 
 import YAML from 'yaml';
 
+import { renderIndex } from '../../../plugin/src/calibration-summarize.js';
 import { bytesEqual } from '../compare.js';
 import { renderCalibrationRecord, renderFeatureGraph } from '../fixtures.js';
 
@@ -222,6 +223,18 @@ function assertGraphUnwritten(cwd) {
   return assertUnchanged(cwd, rel, text);
 }
 
+/**
+ * Expected index.md bytes from the JS renderer over RECORD_A/B in yaml form —
+ * what the JS CLI itself would emit for this corpus, used as a cross-target oracle.
+ */
+function expectedCalibrationIndex() {
+  const records = [RECORD_A, RECORD_B].map((rec) => {
+    const { rel, text } = renderCalibrationRecord(rec, 'yaml');
+    return { file: rel, text };
+  });
+  return renderIndex(records);
+}
+
 /** @returns {string|void} */
 function assertCalibrationIndex(cwd) {
   const indexPath = path.join(cwd, 'docs/calibration/index.md');
@@ -229,11 +242,8 @@ function assertCalibrationIndex(cwd) {
     return 'docs/calibration/index.md was not written';
   }
   const text = readFileSync(indexPath, 'utf8');
-  if (!text.includes('## Digest')) {
-    return 'index.md missing ## Digest heading';
-  }
-  if (!text.includes('## Runs')) {
-    return 'index.md missing ## Runs heading';
+  if (!bytesEqual(text, expectedCalibrationIndex())) {
+    return 'docs/calibration/index.md is not byte-identical to JS renderIndex output';
   }
 }
 
