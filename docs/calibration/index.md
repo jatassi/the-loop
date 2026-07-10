@@ -2,16 +2,16 @@
 
 ## Digest
 
-_7 run(s), 11 feature(s) recorded._
+_8 run(s), 13 feature(s) recorded._
 
 ### Workflow paths
 | path | runs | median agents | median duration |
 | --- | --- | --- | --- |
 | small | 6 | 3 | 131.5 |
-| standard | 5 | 6 | 494 |
+| standard | 7 | 6 | 494 |
 
 ### Re-slices
-0 of 11 feature(s) re-sliced (0%).
+0 of 13 feature(s) re-sliced (0%).
 
 ### Footprint accuracy by size class
 | size | features | median planned files | median actual files |
@@ -22,12 +22,14 @@ _7 run(s), 11 feature(s) recorded._
 ### Top block reasons
 - 1× AC2 unmet (format-sensitive fixtures not dual-variant): test/oracle/fixtures.js does build YAML+JSON pairs from one shared definition, but most cases do not feed the correct half to each target. test/oracle/cases/read-commands.js builds a pair via buildFixturePair yet always sets cwd to yamlRepo — jsonRepo is only ever cleaned up, never selected by ORACLE_TARGET (confirmed: file's own header comment reads 'Cases target the JS yamlRepo fixture half; Rust pending allowlist handles the rest', and pairSetup() unconditionally returns cwd: yamlRepo). test/oracle/cases/write-commands.js never calls buildFixturePair at all — set-status seeds only docs/feature-graph.md (verified via grep: 8 .md references, 0 .json) and calibration-summarize only docs/calibration/runs/*.md (verified: 4 .md references, 0 .json). Only prepare-execution-context in context-commands.js actually selects yamlRepo vs jsonRepo by target. hooks-set/worktree fixtures are format-neutral (already JSON) so those are fine.; AC3 unmet (missing refusal case for worktree-create): of 45 total corpus cases, every named command has at least one happy-path and one refusal case except worktree-create, which has only two cases ('create-new' and 'idempotent re-create'), both happy-path, zero refusal (confirmed via grep against test/oracle/cases/context-commands.js). The JS target is otherwise fully green: npm test prints 'oracle [js]: 45 pass, 0 fail, 0 pending' with the full 340-test suite passing and lint clean.; AC4 unmet (default Rust binary path is wrong, producing a misleading parity number): the cargo workspace (root Cargo.toml, cli/ as member) places the compiled binary at <repo-root>/target/release/the-loop, but test/oracle/driver.js's defaultBin('rust') resolves to cli/target/release/the-loop, which never exists under that workspace layout. Verified directly: `cargo build --release` from repo root produces target/release/the-loop (the-loop 0.1.0 via --version, exit 0); `npm run oracle:rust` (default path) reports 'oracle [rust]: 0 pass, 1 fail, 44 pending' with a hard failure on --version (spawnSync ENOENT on the wrong path) even though --version is not on the pending allowlist and the Rust binary genuinely implements it; with ORACLE_BIN=target/release/the-loop it correctly reports 'oracle [rust]: 1 pass, 0 fail, 44 pending'. The canonical npm script therefore misreports an already-correct ported command as a plumbing failure, undermining criterion 4's promise that parity progress is one trustworthy number.; AC1 largely met with a minor hygiene note: driver.js always invokes the CLI under test via spawnSync(bin.command, [...prefixArgs, ...argv]) keyed off ORACLE_BIN/ORACLE_TARGET, with no in-process import of either CLI implementation used to drive it. However test/oracle/cases/context-commands.js imports plugin/src/splice-workflow-description.js and test/oracle/fixtures.test.js imports plugin/src/parse-feature-graph.js and plugin/src/plan.js — used only to compute expected assertion values / verify fixture semantic equivalence, not to drive the subprocess under test, so this does not violate criterion 1's letter but is worth tightening.; Integrity gates: clean. No eslint-disable (or equivalent) added anywhere under test/oracle/, no lint-config edits, npm test (340/340) and npm run lint both green before and after the executor's judging pass, and no deleted or weakened tests observed — the oracle test surface is purely additive.
 - 1× See detail field above.
+- 1× The prompt's worktree-create command (`node plugin/bin/the-loop.js worktree-create loop/graph-commands-rust--graph-validator --base-branch loop/graph-commands-rust--graph-model-emit`) fails with `fatal: invalid reference: loop/graph-commands-rust--graph-model-emit` — that base branch does not exist in this repo (checked `git branch -a` and `git for-each-ref`). Investigation via `git reflog` shows the entire graph-commands-rust feature was already squash-landed onto the current branch (rust-replatform) at commit 22b038e via "merge integrate--graph-commands-rust: Fast-forward", which is ahead of this task dispatch. That commit already contains cli/src/validate.rs implementing the exact validator this task's acceptance criteria describe (all listed codes: bad-doc-design-version, missing-id, duplicate-id, malformed-id, missing-title, bad-status, missing-acceptance with proposed exempt, self-dependency, dangling-dependency, dependency-cycle with DFS path joined by " → ", unknown-key per offending key, ok-with-zero-errors on a valid graph, and model-only/never-text validation), and `cargo test --manifest-path cli/Cargo.toml validate::` passes all 13 tests green on the current tree. No worktree or file changes were made by this run (worktree-create failed before creating anything; `git worktree list` confirms no stray directory). This is a stale/duplicate task dispatch racing a parallel validate-and-land pipeline that already finished this exact scope under a different task's commit and cleaned up the intermediate branch — nothing for this drive to build, and no base branch to build it on even if there were.
+- 1× cargo test --release is not reliably green: models_list unit tests mutate process-global HOME and cwd (a HomeGuard plus std::env::set_current_dir) without serialization across threads. Under default/parallel cargo test execution, real failures occur: build_models_table_validate_errors_and_warnings panics restoring cwd with NotFound (Os { code: 2 }), and build_models_table_merges_layers_with_provenance has been observed asserting the wrong-layer model value (project-layer bleed) under the same race. I independently reproduced this: 8 repeated `cargo test --release commands::models_list -- --test-threads=8` runs failed on run 8/8 with the identical panic at cli/src/commands/models_list.rs:336 (cwd restore NotFound). Serial execution (--test-threads=1) is green, confirming the defect is test-isolation, not the command logic itself.; All four acceptance criteria (models-list layered merge + provenance + registry-gate exit-1, hooks-list full inventory + recorded-bindings status, hooks-set byte-surgical write, executors-list fenced-json machine-block parsing with malformed/duplicate refusal) otherwise look solidly implemented: cargo build --release and cargo clippy --release are clean (one #[allow(...)] is tightly scoped to a numeric cast with a stated reason, not a suppression concern), npm test (JS-target oracle, 355 tests) is fully green, and npm run oracle:rust shows 37 pass / 0 fail / 11 pending with all executors-list/models-list/hooks-list/hooks-set cases (happy-path and refusal) passing. The blocker is specifically the test-suite reliability gate, not the acceptance behavior.
 - 1× placeholder — waiting for background executor; this call is a no-op, see follow-up
 
 ### Token split (overhead vs build)
-Lifetime: 68% overhead / 32% build.
-Last-10 median: 91% overhead / 9% build.
-Attribution: 6 of 7 run(s) overlapped — the overhead/build split is approximate.
+Lifetime: 70% overhead / 30% build.
+Last-10 median: 96% overhead / 4% build.
+Attribution: 7 of 8 run(s) overlapped — the overhead/build split is approximate.
 
 ## Runs
 
@@ -38,3 +40,4 @@ Attribution: 6 of 7 run(s) overlapped — the overhead/build split is approximat
 - 2026-07-10T00:34:16.869Z · target rust-replatform · [parity-oracle, binary-distribution] · 1 blocked, 1 stalled · 305018 tokens · overlapped
 - 2026-07-10T01:26:11.203Z · target main · [fix-execution-context-args-transport, fix-record-prompt-cli] · 2 validated · 116674 tokens · overlapped
 - 2026-07-10T01:32:27.501Z · target rust-replatform · [parity-oracle, binary-distribution] · 2 validated · 437861 tokens · overlapped
+- 2026-07-10T02:33:10.248Z · target rust-replatform · [graph-commands-rust, config-commands-rust] · 1 blocked, 1 stalled · 82763 tokens · overlapped
