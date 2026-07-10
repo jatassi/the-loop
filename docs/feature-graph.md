@@ -383,11 +383,14 @@ features:
     title: prepare-execution-context, worktree verbs, calibration-summarize in Rust
     status: designed
     depends_on: [graph-commands-rust, plan-commands-rust, config-commands-rust]
+    notes:
+      - "amended 2026-07-10 after main's worktree-setup (ADR-0052) merge: the worktree verbs' JS reference changed under this design — create provisions via the worktreeSetup binding (symlink retired) with teardown-on-failure, remove refuses from inside the target — and the config surfaces config-commands-rust ported drifted (worktreeSetup inventory family, hooks-list --compact); the drift catch-up rides here"
     acceptance:
       - prepare-execution-context refuses (exit 1, nothing on stdout) on graph, scope, plan, or binding gate failures, and on success prints the execution context JSON-equal to the JS CLI on paired fixtures — design docs, plans read from feature branches, git-derived built tasks, models, hooks, probe, calibration digest — with preparedAt normalized and the cli field naming the Rust invocation as the one sanctioned difference
       - with --script-out the command writes the per-run workflow script with both splices — meta description and embedded execution context — byte-identical to the JS CLI's on the same canonical script and fixture modulo the stamped preparedAt, quote-safe, and shape-gated to exit 1 with nothing written when the meta line or the EMBEDDED_CONTEXT line does not match
-      - the oracle's worktree-create and worktree-remove cases pass — create prints path/branch/created and is idempotent, remove resolves a path or a branch and prunes
+      - the oracle's worktree-create and worktree-remove cases pass — create prints path/branch/created, is idempotent, runs a bound worktreeSetup command in the new worktree via the system shell (default 600000 ms timeout, per-binding override) and on failure or timeout tears the worktree down and exits 1 with the environment-provisioning message ("worktree provisioning failed", command, path, layer, reason, stderr tail; timeouts worded as timeouts, never exit codes); remove resolves a path or a branch and prunes, refusing when cwd is inside the target
       - calibration-summarize reads docs/calibration/runs/*.json and regenerates docs/calibration/index.md byte-identical to the JS CLI's index on a paired corpus, exiting 1 naming the file on a malformed record
+      - the config surfaces that drifted at the worktree-setup merge are back at parity — worktreeSetup resolves in the Rust hooks-list and hooks-set (fallback provisioning none), hooks-list --compact matches the JS CLI line-for-line — and the full oracle corpus is green on the Rust target with only genuinely-unported commands pending
 
   - id: binary-distribution
     title: cargo-dist release matrix — checksummed binaries and installers on GitHub Releases
