@@ -34,9 +34,27 @@ the pure core in `plugin/src/prepare-execution-context.js`. Frozen semantics:
   of `docs/architecture.md`; `calibration` the verbatim `## Digest` section of
   `docs/calibration/index.md` when present, field omitted otherwise; `preparedAt` the
   one legal wall-clock read; **`cli` names the Rust invocation: the string
-  `the-loop`** — this field is how every downstream worker knows what to shell to,
-  and it is the one sanctioned content difference from the JS CLI (which emits
-  `node "<plugin>/bin/the-loop.js"`). The oracle special-cases exactly this field.
+  `the-loop`** — this field is how every downstream worker knows what to shell to
+  (the JS CLI emits `node "<plugin>/bin/the-loop.js"`).
+
+  **Sanctioned cross-era differences (amended 2026-07-10).** Two content fields —
+  exactly two — legitimately differ between the CLIs on paired fixtures, and the
+  oracle masks exactly these plus the `preparedAt` stamp:
+  - `cli` (above) — per-binary by design.
+  - `covers` inside each embedded plan task: each binary embeds its own era's plan
+    faithfully — the JS CLI reads `plan.md` (1-based covers), the Rust binary reads
+    `plan.json` (0-based covers). Normalizing is off the table both ways: rewriting
+    the JS emit breaks the frozen-spec rule (whatever `plan.js` does *is* the spec),
+    and re-basing in the Rust assembly would make the embedded plan disagree with the
+    `plan.json` it was read from. Within either era the context is self-consistent;
+    the difference exists only across the parity window and evaporates at
+    json-cutover, when the JS driver retires and the covers mask retires with it.
+
+  Anything else differing is a parity bug, and the oracle must catch it: the
+  `--script-out` case compares the full spliced script byte-for-byte against the
+  reference JS CLI's output after masking only `preparedAt`, `cli`, and `covers` —
+  the embedded context is the whole assembled context, so this is the assertion
+  that bites for both criterion 1 and criterion 2.
 - **`--script-out <path>`**: write a copy of the canonical workflow script
   (`plugin/workflows/execution-pipeline.js` — the binary needs its location: passed
   or resolved via the same compiled-in-defaults posture as config-commands-rust,
@@ -51,7 +69,9 @@ the pure core in `plugin/src/prepare-execution-context.js`. Frozen semantics:
   EMBEDDED_CONTEXT line — is a refusal: exit 1 **nothing written, stdout included**.
   Output byte-identical to the JS CLI's on the same input script and fixture, modulo
   the `preparedAt` stamped inside the embedded context (the one legal wall-clock
-  read, so it can never match across invocations — the oracle masks it).
+  read, so it can never match across invocations) and the two sanctioned cross-era
+  differences above (`cli`, `covers`) — the oracle masks exactly that set and
+  nothing more.
 
 ## worktree-create / worktree-remove
 
