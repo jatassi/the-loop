@@ -233,3 +233,30 @@ Counts: 9 miners · ~12 Claude sessions, ~45 loop subagent/workflow transcripts,
 6 not-our-fault, 11 fix candidates (4 major clusters, 3 medium, 3 minor,
 1 papercut bundle) · excluded as previously addressed: all 7 baseline items,
 none recurring post-fix.
+
+---
+
+## Resolution log (2026-07-10 walkthrough)
+
+- **F1** → feature door: brief at `docs/briefs/worktree-setup.md` (worktreeSetup
+  hook family; symlink retired; graph node pending the human gate).
+- **F2** → RCA at `docs/bugs/fix-plan-commit-gate-blind-spot.md` (fix pending gate).
+- **F3** → two RCAs: `docs/bugs/fix-drive-executor-lifecycle.md` (a/b/d) and
+  `docs/bugs/fix-null-return-stall-opaque.md` (c, reproduced red) — fixes pending gate.
+- **F4** → applied: drive.md brief verification block = the full bar, plus
+  footprint-scoped format and backgrounded-suite notes.
+- **F5** → ignored: the fresh-context reader pass stays a human judgment call.
+- **F6** → applied: plan.md contract-completeness paragraph (wire shapes pinned,
+  superseded-surface spec ownership, hub files named in wiring notes); build.md
+  criterion-as-stated test clause.
+- **F7** → applied: design skill — every criterion exercisable by its validator or
+  explicitly deferred to the release gate.
+- **F8** → fixed: `worktree-remove` refuses when cwd is inside the target
+  (cli-commands.js + regression test).
+- **F9/F10** → applied: validate.md — pre-existing `integrate--*` reset to target
+  tip; fix nothing on a fail, repairs become findings.
+- **F11** → applied: begin skill "orientation JSON IS the status output";
+  `hooks-list --compact`; small-path `judgment_level` plumbed end to end (plan.md
+  return shape, PLAN_SCHEMA, runSmallBuild). Validation-procedure scaffold found
+  already covered (onboard §3.3). Ignored: design-jump routing, lint-suppression
+  escape hatch, portable-timeout note.
