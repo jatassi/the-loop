@@ -52,7 +52,10 @@ of the gate, not advisory. The full local gate is one command:
 At landing — not before, or every current build agent fails on a missing `Cargo.toml` —
 the repo's project-layer hooks widen to cover both toolchains via `hooks-set`
 (`testHarness` family: `npm test && cargo test`; `lint` family:
-`npm run check && cargo fmt --check && cargo clippy --all-targets`; exact family value
+`npm run check && cargo fmt --check && cargo clippy --all-targets`; `worktreeSetup`
+family: `npm ci && cargo fetch`, widening the `npm ci` binding worktree-setup landed —
+its `cargo fetch` half was deferred here for the same missing-`Cargo.toml` reason,
+amended 2026-07-10; exact family value
 shapes per `HOOK_INVENTORY` in `plugin/src/resolve-model-bindings.js`). The design
 skill's stack-time capture was deliberately deferred to this feature's landing for that
 reason. `precommit` posture is unchanged.
@@ -63,7 +66,7 @@ reason. `precommit` posture is unchanged.
 |---|---|
 | `Cargo.toml` (new, repo root) | workspace + lints table above |
 | `cli/` (new) | `Cargo.toml`, `src/main.rs` clap skeleton, first unit test |
-| `.claude/settings.json` | testHarness + lint hooks widened (via `hooks-set`) |
+| `.claude/settings.json` | testHarness + lint + worktreeSetup hooks widened (via `hooks-set`) |
 | `.gitignore` | `target/` |
 
 ## What a builder would otherwise guess

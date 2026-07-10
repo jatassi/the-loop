@@ -122,12 +122,20 @@ Bind this repo's own `worktreeSetup` at the `project` layer
 (`.claude/settings.json` is tracked, so the binding travels into every worktree):
 
 ```sh
-the-loop hooks-set worktreeSetup project '{"command":"npm ci && cargo fetch"}'
+the-loop hooks-set worktreeSetup project '{"command":"npm ci"}'
 ```
 
 This must land **after** the family exists (`hooks-set` validates against
 `HOOK_FAMILIES`) and in the same feature as the symlink deletion, so this repo's
 concurrent-worktree runs never pass through an unprovisioned window.
+
+The binding stays `npm ci` until the Rust workspace exists on main: a command
+containing `cargo fetch` exits non-zero in a repo with no `Cargo.toml`, and a failing
+setup command makes every `worktree-create` refuse — the same "at landing — not
+before" sequencing rust-crate-scaffold applies to its testHarness/lint widening.
+rust-crate-scaffold's landing widens this binding to `npm ci && cargo fetch` alongside
+those hooks (amended 2026-07-10; the original text bound the polyglot join
+immediately, which would have deadlocked worktree provisioning on main).
 
 ## Build surfaces
 
