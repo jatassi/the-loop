@@ -17,7 +17,7 @@ import { machineOrientation } from '../src/propose-next-action.js';
 import { sectionAfter } from '../src/replace-fenced-block.js';
 import { HOOK_INVENTORY, resolveFamily, resolveModels } from '../src/resolve-model-bindings.js';
 import { setStatus } from '../src/set-feature-status.js';
-import { describeRun, spliceRunDescription } from '../src/splice-workflow-description.js';
+import { describeRun, spliceEmbeddedContext, spliceRunDescription } from '../src/splice-workflow-description.js';
 import { renderStatusSummary } from '../src/status-summary.js';
 import { render } from '../src/write-feature-graph.js';
 
@@ -237,10 +237,13 @@ function taskCommand(featureId, [taskId, planFile, graphFile]) {
 // mismatch — the caller must name the ref the run integrates into.
 // `--script-out` additionally writes a launch-ready copy of the canonical workflow
 // script (run-presentation), its meta description spliced to name this run's scope
-// and target — the harness reads a workflow's description only from that literal, so
-// a per-run description needs a per-run script copy. A shape-gate refusal (the
-// canonical script's meta doesn't carry the expected `description: '…'` shape) throws,
-// bubbling to the shared top-level catch: exit 1, nothing written — stdout included.
+// and target and its EMBEDDED_CONTEXT spliced to the assembled execution context —
+// the harness reads a workflow's description only from the meta literal, and the
+// context rides the filesystem rather than the lossy Workflow `args` channel, so a
+// per-run script copy is required. A shape-gate refusal (the canonical script's meta
+// doesn't carry the expected `description: '…'` shape, or it lacks the
+// `EMBEDDED_CONTEXT = null` target) throws, bubbling to the shared top-level catch:
+// exit 1, nothing written — stdout included.
 export function prepareExecutionContextCommand(argv) {
   const opts = parseFlags(argv, {
     '--features': 'scope', '--target-branch': 'target', '--script-out': 'scriptOut', '--graph-path': 'graphPath',
@@ -279,15 +282,18 @@ export function prepareExecutionContextCommand(argv) {
   }
   const cli = `node "${path.join(PLUGIN_ROOT, 'bin/the-loop.js')}"`;
   const executionContext = assembleExecutionContext({ model, scope, target, probe, models, hooks, inputs, preparedAt, calibration, cli });
-  if (opts.scriptOut) { writeSplicedWorkflowScript(opts.scriptOut, scope, target); }
+  if (opts.scriptOut) { writeSplicedWorkflowScript(opts.scriptOut, executionContext); }
   out(executionContext);
 }
 
-// The canonical workflow script's own copy, meta description spliced to this run's
-// scope and target — see the command comment above for why a per-run copy is required.
-function writeSplicedWorkflowScript(scriptOut, scope, target) {
+// The canonical workflow script's own copy, meta description and EMBEDDED_CONTEXT
+// spliced for this run — see the command comment above for why a per-run copy is
+// required. Both splices must succeed or the write is refused (throws; nothing written).
+// Scope and target ride the assembled context (describeRun reads them from it).
+function writeSplicedWorkflowScript(scriptOut, executionContext) {
   const canonicalText = readFileSync(path.join(PLUGIN_ROOT, 'workflows/execution-pipeline.js'), 'utf8');
-  const spliced = spliceRunDescription(canonicalText, describeRun(scope, target));
+  const withDescription = spliceRunDescription(canonicalText, describeRun(executionContext.scope, executionContext.target));
+  const spliced = spliceEmbeddedContext(withDescription, executionContext);
   writeFileSync(scriptOut, spliced);
 }
 

@@ -415,7 +415,7 @@ features:
   # ── fixes (transient; RCA docs in bugs/ are the durable artifact) ────────
   - id: fix-execution-context-args-transport
     title: Workflow args channel corrupts the execution context — embed it in the spliced script, launch with no args
-    status: designed
+    status: validated
     depends_on: []
     notes:
       - land before run-commands-rust measures --script-out byte-parity — this fix moves that target

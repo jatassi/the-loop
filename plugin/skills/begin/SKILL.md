@@ -104,7 +104,10 @@ graph and print a visible fallback line noting the feature graph is served from 
    refusal; fix what it names or tell the human.
 3. Call the Workflow: `scriptPath` = the `--script-out` path from step 2 — never
    the canonical `workflows/execution-pipeline.js` directly, since its description
-   is spliced fresh per run — `args` = the execution context JSON, verbatim.
+   is spliced fresh per run. Pass **no `args`**: the spliced script embeds the
+   execution context as a JS literal, and the Workflow `args` channel is lossy for
+   large escaped JSON (it round-trips through the model's token stream and can
+   silently corrupt nested escaped quotes).
 4. Relay the run summary in plain prose, plus any `model-selection —` lines from
    the run log:
    - `completed` — merged and validated; nothing more to do.

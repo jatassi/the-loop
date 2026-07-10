@@ -14,8 +14,9 @@ export { findBlocks, replaceBlock, sectionAfter, yamlBlockAfter } from './replac
 // The model-binding resolver — role → model/effort/executor/agent merge across defaults <
 // project < local layers, with provenance.
 export { bindingFor, EFFORTS, resolveModels } from './resolve-model-bindings.js';
-// The run-presentation splice — scope-derived description shaping + the meta-line splice.
-export { describeRun, spliceRunDescription } from './splice-workflow-description.js';
+// The run-presentation splice — scope-derived description shaping, the meta-line splice,
+// and the embedded-context splice (lossless execution-context transport).
+export { describeRun, spliceEmbeddedContext, spliceRunDescription } from './splice-workflow-description.js';
 // The status story, rendered on demand — never written to disk.
 export { renderStatusSummary } from './status-summary.js';
 export { render } from './write-feature-graph.js';

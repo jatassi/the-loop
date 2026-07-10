@@ -98,6 +98,28 @@ integration worktree.
 - The recorded live-session evidence names specifics that match this tree's own
   `status --json` output.
 
+6. **fix-execution-context-args-transport — argless-launch exercise.** Per that
+   fix's design doc, this exercise rides the front-door procedure rather than a
+   standalone one. Ran `node bin/create-sample-repo.js`, appended a nested-quote
+   line to the fixture's `docs/designs/greet-cli/design.md`
+   (`data-audio=\"on\"`) and committed it, then from the fixture ran
+   ```
+   node <plugin-root>/bin/the-loop.js prepare-execution-context --features greet-cli \
+     --target-branch main --script-out <scratch>/spliced-workflow.js
+   ```
+   Loaded the spliced script under an `AsyncFunction` harness identical to
+   `test/prepare-execution-context-script-out.test.js`'s helper, called with **no
+   `args`** — the resulting `executionContext` was `JSON.stringify`-identical to
+   the command's stdout, including the nested `\"` inside `designDoc`. Separately
+   ran `node --test test/prepare-execution-context-script-out.test.js` (4/4 pass,
+   including the exit-1/nothing-written case when the canonical script lacks the
+   `EMBEDDED_CONTEXT = null` target) and `node --test
+   test/execution-pipeline-harness.test.js` (5/5 pass, including
+   `EMBEDDED_CONTEXT is preferred over args; object and JSON-string args still
+   work`). Confirmed `plugin/skills/begin/SKILL.md` step 3 reads `Pass **no
+   `args`**: … the Workflow `args` channel is lossy for large escaped JSON (…)` —
+   one sentence naming why.
+
 ## Teardown
 
 ```

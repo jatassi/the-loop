@@ -1,16 +1,20 @@
 // The execution-pipeline engine (ADR-0036/0038): script = brain, agents = hands. This
-// file has no filesystem — it consumes the `the-loop prepare-execution-context`
-// execution context via `args` and never imports anything: `agent`, `log`, `args`,
-// `budget` arrive as harness globals (declared for eslint in the workflows/ block of
-// eslint.config.js). It pushes each worker's task brief (contract + refs) into the
-// prompt — workers fetch nothing to start — and schedules a concurrency policy over
-// features and tasks, so anything whose dependencies are satisfied runs concurrently
-// in its own worktree. The completion channel is a bare top-level `return` of the run
-// summary.
+// file has no filesystem — the primary path embeds the `the-loop prepare-execution-
+// context` execution context as a JS literal (`EMBEDDED_CONTEXT`, spliced by
+// `--script-out`); `args` is the dev/test fallback (object or JSON-encoded string).
+// It never imports anything: `agent`, `log`, `args`, `budget` arrive as harness
+// globals (declared for eslint in the workflows/ block of eslint.config.js). It
+// pushes each worker's task brief (contract + refs) into the prompt — workers fetch
+// nothing to start — and schedules a concurrency policy over features and tasks, so
+// anything whose dependencies are satisfied runs concurrently in its own worktree.
+// The completion channel is a bare top-level `return` of the run summary.
 export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a run summary', whenToUse: 'Launched by /begin with the `the-loop prepare-execution-context` execution context as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }, { title: 'Record' }] };
 
-// Some callers deliver args as a JSON-encoded string rather than the parsed execution context.
-const executionContext = typeof args === 'string' ? JSON.parse(args) : args;
+const EMBEDDED_CONTEXT = null; // spliced to a literal by prepare-execution-context --script-out
+// Prefer the embedded literal (lossless --script-out splice). args is the dev/test
+// fallback — some callers deliver a JSON-encoded string rather than a parsed object.
+const parseHarnessArgs = (a) => (typeof a === 'string' ? JSON.parse(a) : a);
+const executionContext = EMBEDDED_CONTEXT ?? parseHarnessArgs(args);
 const CLI = executionContext.cli || 'node plugin/bin/the-loop.js';
 
 // ---- agent-type resolution. Installed-plugin sessions register the plugin's agents
