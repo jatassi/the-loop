@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 28
+design_version: 29
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -442,12 +442,17 @@ features:
 
   - id: worktree-setup
     title: Worktree-setup hook — per-project worktree provisioning command, replacing the node_modules symlink
-    status: proposed
+    status: designed
     depends_on: [configure, onboard]
+    notes:
+      - "designed 2026-07-10 from docs/briefs/worktree-setup.md (ADR-0052); family shape { command, timeout? }, fallback { provisioning: none }, teardown-on-failure keeps the created:false early return sound"
     acceptance:
-      - worktreeSetup appears in hooks-list with resolved value/layer/provenance and is settable via hooks-set, unrelated settings keys byte-surviving the write
-      - with worktreeSetup bound, worktree-create runs the command in the new worktree root after checkout and an immediate project check (test/lint) runs without the agent installing anything first; when the command exits non-zero, worktree-create exits non-zero with a self-contained environment-provisioning message (command, exit code, stderr tail)
-      - with worktreeSetup unbound, worktree-create provisions nothing and creates no node_modules symlink anywhere — linkNodeModules is deleted, removing the shared-store hazard and the dir-only .gitignore mismatch
-      - configure/onboard detect the stack from manifest+lockfile and recommend a default setup command (JS install for bun/npm/pnpm/yarn, cargo fetch / uv sync / go mod download per stack, unbound when unclassifiable) as a confirm-or-adjust answer inferring the project layer
-      - this repo binds its own worktreeSetup so its concurrent-worktree runs stay provisioned without sharing one physical dependency store
+      - worktreeSetup appears in hooks-list with resolved value/layer/provenance and is settable via hooks-set, unrelated settings keys byte-surviving the write; unbound in every layer it resolves to its no-provisioning fallback with provenance fallback
+      - with worktreeSetup bound, worktree-create runs the command via the system shell in the new worktree root after checkout and an immediate project check (test/lint) runs without the agent installing anything first; the JSON output shape ({ path, branch, created }) is unchanged
+      - when the bound command exits non-zero (or the binding is malformed), worktree-create removes the just-created worktree, exits non-zero with a self-contained environment-provisioning message (the phrase "worktree provisioning failed", command, worktree path, binding layer, exit code, stderr tail), and a re-run retries provisioning fresh
+      - a bound command exceeding its timeout (default 600000 ms, per-binding timeout override in ms) is killed and reported as timed out naming the budget — worded as a timeout, never as an exit code — with the same teardown
+      - with worktreeSetup unbound, worktree-create provisions nothing and creates no node_modules symlink anywhere — linkNodeModules is deleted, removing the shared-store hazard and the dir-only .gitignore mismatch; a worktree that already exists (created false) never re-runs setup
+      - configure/onboard detect the stack from manifest+lockfile per the design doc's table and recommend a default setup command (bun/pnpm/yarn/npm install variants, npm install on a lockfile-less package.json, cargo fetch / uv sync / poetry install / go mod download per stack, ' && '-joined for polyglot repos, unbound when unclassifiable) as a confirm-or-adjust answer inferring the project layer
+      - every agent surface instructing a worktree-create call carries the generous-Bash-timeout budget line, and the oracle corpus gains a worktree-create refusal case (bound failing command) plus a bound-success case
+      - this repo binds its own worktreeSetup (project layer, npm ci && cargo fetch) in the same landing as the symlink deletion, so its concurrent-worktree runs stay provisioned without sharing one physical dependency store
 ```

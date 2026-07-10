@@ -84,7 +84,11 @@ feature branch `loop/<id>`; each task gets branch `loop/<id>--<task>` cut from i
 dependency's tip (worktrees branch off each other); the validator merges everything
 in a dedicated integration worktree and publishes to the target branch by
 fast-forward — a natural mutex, serialized across features. Branches carry the
-state; worktrees are disposable.
+state; worktrees are disposable. A fresh worktree is provisioned by the project's
+bound `worktreeSetup` command (a hook family; unbound means no provisioning), run
+after checkout with failure a loud environment-shaped exit that tears the worktree
+back down — the old best-effort `node_modules` symlink is retired (worktree-setup,
+designed 2026-07-10, ADR-0052).
 
 ### Context architecture (ADR-0036)
 
@@ -115,7 +119,7 @@ contract out of a plan). No agent contract says "read this whole file."
 Everything the loop needs bound per phase is an explicit, phase-keyed hook
 inventory with two home channels: machine config in settings layers under the
 namespaced `"the-loop"` key — interview skill, model bindings, test harness, lint
-commands, pre-commit posture, notification, artifact stores — and project truth
+commands, pre-commit posture, notification, artifact stores, worktree setup — and project truth
 with narrative weight as this doc's recorded bindings (validation, release,
 operations). Settings resolve plugin defaults < user (`~/.claude/settings.json`)
 < project < local with per-key provenance; `hooks-list` prints the full resolved
