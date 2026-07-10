@@ -71,6 +71,24 @@ Observed from tests + reading `plugin/workflows/execution-pipeline.js`:
 
 Integrity: full `git diff main...HEAD` has no `eslint-disable` additions and no lint-config edits; meta/phases and preparedAt test updates strengthen contracts rather than weaken them.
 
+### 4. fix-record-prompt-cli — record spawn under a non-PATH CLI (added at v0.4.10 release)
+
+Per that fix's design doc this exercise rides the calibration-capture procedure
+rather than a standalone one. Drove the real `plugin/workflows/execution-pipeline.js`
+through `test/execution-pipeline-harness.js` (`runWorkflowScript` + `byLabel`) with a
+context whose `cli` was `node "/nowhere/on/path/the-loop.js"` — a deliberately
+non-PATH invocation — replying plan→built→validated for one small-path feature:
+
+- The Record spawn's prompt **ends** with `cli: node "/nowhere/on/path/the-loop.js"`
+  — the deterministic trailer, sitting after the payload, so the transcribed
+  calibration YAML above it is unchanged.
+- `node --test test/execution-pipeline-record.test.js` — 8/8 pass, covering both
+  `cli`-present (trailer appended) and `cli`-absent (no trailer; `record.md`'s bare
+  `the-loop` fallback) contexts, with the payload pinned byte-identical in both.
+
+Live corroboration: run `wf_52877d81-b9c` (2026-07-10, this repo, `cli` bound to a
+non-PATH `node "…/the-loop.js"`) landed its calibration record on `main`.
+
 ## Expected observations (summary)
 
 | Surface | Expect |
