@@ -131,7 +131,7 @@ try {
       break;
     }
     default: {
-      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status> [graph-path]|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>] [--graph-path <path>]|calibration-summarize|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]|hooks-list|hooks-set <family> <layer> <json-value>> [file…]\n');
+      process.stdout.write('usage: the-loop <status [--json]|list|check|set-status <id> <status> [graph-path]|prepare-execution-context --features <id,…> --target-branch <ref> [--script-out <path>] [--graph-path <path>]|calibration-summarize|plan <parse|check|task>|worktree-create <branch> [--base-branch <ref>]|worktree-remove <path-or-branch>|executors-list [dir]|models-list [defaults.json] [executors-dir]|hooks-list [--compact]|hooks-set <family> <layer> <json-value>> [file…]\n');
       process.exit(cmd ? 1 : 0);
     }
   }

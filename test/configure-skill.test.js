@@ -146,3 +146,47 @@ test('the three touched skill files carry proper frontmatter and cite no interna
       `${f} must brace every CLAUDE_PLUGIN_ROOT reference`);
   }
 });
+
+// ── worktreeSetup family: §2 lists the family with project-layer inference and the
+// stack-detection table (evidence → recommended command; first match wins within JS) ──
+test('configure §2 lists worktreeSetup with project-layer inference and the stack-detection table', () => {
+  const text = read(CONFIGURE);
+
+  // family present in the interview list with the bound value shape
+  assert.match(text, /\bworktreeSetup\b/);
+  assert.match(text, /"command"\s*:\s*"npm ci"/);
+  assert.match(text, /"timeout"\s*:\s*600000/);
+
+  // inferred destination layer is project (install commands are project truth)
+  assert.match(text, /worktreeSetup[\s\S]{0,800}?\bproject\b/i);
+  assert.match(text, /project truth/i);
+
+  // confirm-or-adjust / per-answer override like every other family
+  assert.match(text, /confirm-or-adjust|confirm/i);
+  assert.match(text, /per-answer override|override/i);
+
+  // detection table: lockfile-precedence rows (evidence + recommended command)
+  const detectionRows = [
+    ['bun.lockb', 'bun install'],
+    ['bun.lock', 'bun install'],
+    ['pnpm-lock.yaml', 'pnpm install --frozen-lockfile'],
+    ['yarn.lock', 'yarn install --frozen-lockfile'],
+    ['package-lock.json', 'npm ci'],
+    ['package.json', 'npm install'],
+    ['Cargo.toml', 'cargo fetch'],
+    ['uv.lock', 'uv sync'],
+    ['poetry.lock', 'poetry install'],
+    ['go.mod', 'go mod download'],
+    ['requirements.txt', 'leave unbound'],
+  ];
+  for (const [evidence, command] of detectionRows) {
+    assert.ok(text.includes(evidence),
+      `detection table should include evidence ${evidence}`);
+    assert.ok(text.includes(command),
+      `detection table should include recommended command ${command}`);
+  }
+
+  // polyglot: one command per stack, joined with && in table order
+  assert.match(text, /&&/);
+  assert.match(text, /npm ci && cargo fetch|one command per detected stack/i);
+});

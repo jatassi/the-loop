@@ -97,9 +97,22 @@ const SINGLE_ENTRY_FAMILIES = [
   'precommit',
   'notification',
   'artifactStores',
+  'worktreeSetup',
 ];
 
-test('resolveFamily covers all seven inventory families with whole-entry replacement per key', () => {
+// worktreeSetup: no-provisioning fallback when unbound; project-layer command binds whole-entry.
+test('resolveFamily worktreeSetup: unbound fallback and project-layer whole-entry', () => {
+  assert.deepEqual(resolveFamily('worktreeSetup', {}), {
+    provisioning: 'none',
+    provenance: 'fallback',
+  });
+  assert.deepEqual(
+    resolveFamily('worktreeSetup', { project: { command: 'npm ci' } }),
+    { command: 'npm ci', provenance: 'project' },
+  );
+});
+
+test('resolveFamily covers all inventory families with whole-entry replacement per key', () => {
   // modelBindings: role-merge identical to resolveModels
   const modelLayers = {
     defaults: { build: { model: 'opus', effort: 'low' }, drive: { model: 'sonnet' } },

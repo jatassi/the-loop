@@ -61,6 +61,8 @@ export const HOOK_INVENTORY = {
       calibration: 'local',
     },
   },
+  // Unbound → no provisioning on worktree-create (symlink retired; see ADR-0052).
+  worktreeSetup: { fallback: { provisioning: 'none' } },
   // Synthetic: proves block handling; not a settings key consumers configure today.
   exampleBlock: { block: true },
 };

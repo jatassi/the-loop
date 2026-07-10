@@ -25,7 +25,9 @@ curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop
 
 State where the project stands (from the orientation JSON), propose the next action
 as the recommended default, and wait for the human's confirm-or-override. Their
-answer sets the scope; nothing outside it starts.
+answer sets the scope; nothing outside it starts. The orientation JSON above IS
+`the-loop status --json` — never re-run `status` (or re-read the graph) to restate
+it; fetch feature bodies only once the chosen route needs them.
 
 **Routes** — by proposal kind (fed by the status's `unconfigured` / `partial` /
 `configured` project state), or by explicit jump (`/begin onboard|define|design|build|release|diagnose|configure`):

@@ -49,7 +49,7 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
     'build:(2/2) alpha/t1': built('alpha/t1'),
     'build:(1/2) alpha/t2': built('alpha/t2'),
     'validate:alpha': validated('alpha'),
-    'plan:beta': { returns: { result: 'planned', workflow_path: 'small' } },
+    'plan:beta': { returns: { result: 'planned', workflow_path: 'small', judgment_level: 'rote' } },
     'build:beta/feature': built('beta/feature'), // small workflow path: never a divided build, no prefix
     'validate:beta': validated('beta'),
   });
@@ -70,6 +70,9 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
     'alpha', '(2/2) alpha/t1', '(1/2) alpha/t2', 'alpha', 'beta', 'beta/feature', 'beta',
   ]);
   assert.deepEqual(spawns.map((s) => s.opts.phase), ['Plan', 'Build', 'Build', 'Validate', 'Plan', 'Build', 'Validate']);
+  // small workflow path routes by the plan's judgment_level — never a silent build.standard fallback
+  assert.ok(logs.some((l) => l.includes('role build.rote unbound')), logs.join('\n'));
+  assert.ok(logs.every((l) => !l.includes('beta/feature has no judgment_level')), logs.join('\n'));
 
   const prompt = (label) => spawns[labels.indexOf(label)].prompt;
   // plan task brief: criteria numbered, design doc pushed, CLI path carried

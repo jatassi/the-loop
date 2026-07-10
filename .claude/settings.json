@@ -5,6 +5,9 @@
     },
     "lint": {
       "value": "npm run check && cargo fmt --check && cargo clippy --all-targets"
+    },
+    "worktreeSetup": {
+      "command": "npm ci && cargo fetch"
     }
   }
 }

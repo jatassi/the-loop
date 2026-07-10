@@ -250,6 +250,7 @@ export const cases = [
             briefs: 'local', designs: 'local', features: 'local', runbooks: 'local',
             rcas: 'local', calibration: 'local', provenance: 'default',
           },
+          worktreeSetup: { provisioning: 'none', provenance: 'fallback' },
         },
         recordedBindings: {
           validationProcedure: { status: 'present', gap: null },

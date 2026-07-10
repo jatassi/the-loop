@@ -9,7 +9,7 @@ and [designs/](designs/) (per feature).
 ## Feature graph
 
 ```yaml
-design_version: 27
+design_version: 29
 features:
   # ── walking skeleton (v1.0): the minimal self-hosting core ──────────────
   - id: document-foundation
@@ -339,7 +339,7 @@ features:
     acceptance:
       - cargo build --release at the repo root produces a the-loop binary from the cli/ crate, and running it with --version prints the crate version and exits 0
       - the workspace lint profile denies warnings with the clippy all, pedantic, nursery, and cargo groups enabled and forbids reason-less allow attributes, and cargo fmt --check plus cargo clippy --all-targets plus cargo test all pass on the landed tree
-      - the repo's testHarness and lint hooks resolve to commands that run both toolchains (node and cargo) and both pass on the landed tree, with npm test staying green
+      - the repo's testHarness and lint hooks resolve to commands that run both toolchains (node and cargo) and both pass on the landed tree, with npm test staying green; the worktreeSetup hook widens to npm ci && cargo fetch in the same landing and that command exits 0 at the landed tree's root
 
   - id: parity-oracle
     title: Dual-driver black-box oracle over paired YAML/JSON fixtures
@@ -411,4 +411,21 @@ features:
       - before the flip lands the full oracle corpus passes against the Rust binary with zero pending cases — the explicit regression pass — and the JS-side driver retires with the JS CLI
       - bin/create-sample-repo.js seeds JSON-artifact fixture repos and the recorded validation procedure exercises bare the-loop against them
       - the loop runs end to end on the flipped tree — the-loop status --json proposes correctly on the migrated graph and prepare-execution-context assembles a valid execution context — with cargo test, npm test, and npm run check green
+
+  - id: worktree-setup
+    title: Worktree-setup hook — per-project worktree provisioning command, replacing the node_modules symlink
+    status: shipped
+    depends_on: [configure, onboard]
+    notes:
+      - "designed 2026-07-10 from docs/briefs/worktree-setup.md (ADR-0052); family shape { command, timeout? }, fallback { provisioning: none }, teardown-on-failure keeps the created:false early return sound"
+      - "amended 2026-07-10: self-binding is npm ci, not the npm ci && cargo fetch polyglot join — cargo fetch exits 101 with no root Cargo.toml, so the original criterion would have made every worktree-create refuse and deadlocked the pipeline before rust-crate-scaffold (which lands the workspace and widens the binding) could ever build"
+    acceptance:
+      - worktreeSetup appears in hooks-list with resolved value/layer/provenance and is settable via hooks-set, unrelated settings keys byte-surviving the write; unbound in every layer it resolves to its no-provisioning fallback with provenance fallback
+      - with worktreeSetup bound, worktree-create runs the command via the system shell in the new worktree root after checkout and an immediate project check (test/lint) runs without the agent installing anything first; the JSON output shape ({ path, branch, created }) is unchanged
+      - when the bound command exits non-zero (or the binding is malformed), worktree-create removes the just-created worktree, exits non-zero with a self-contained environment-provisioning message (the phrase "worktree provisioning failed", command, worktree path, binding layer, exit code, stderr tail), and a re-run retries provisioning fresh
+      - a bound command exceeding its timeout (default 600000 ms, per-binding timeout override in ms) is killed and reported as timed out naming the budget — worded as a timeout, never as an exit code — with the same teardown
+      - with worktreeSetup unbound, worktree-create provisions nothing and creates no node_modules symlink anywhere — linkNodeModules is deleted, removing the shared-store hazard and the dir-only .gitignore mismatch; a worktree that already exists (created false) never re-runs setup
+      - configure/onboard detect the stack from manifest+lockfile per the design doc's table and recommend a default setup command (bun/pnpm/yarn/npm install variants, npm install on a lockfile-less package.json, cargo fetch / uv sync / poetry install / go mod download per stack, ' && '-joined for polyglot repos, unbound when unclassifiable) as a confirm-or-adjust answer inferring the project layer
+      - every agent surface instructing a worktree-create call carries the generous-Bash-timeout budget line, and the oracle corpus gains a worktree-create refusal case (bound failing command) plus a bound-success case
+      - this repo binds its own worktreeSetup (project layer, npm ci — widened to npm ci && cargo fetch at rust-crate-scaffold's landing, when a root Cargo.toml first exists for cargo fetch to succeed against) in the same landing as the symlink deletion, so its concurrent-worktree runs stay provisioned without sharing one physical dependency store
 ```

@@ -13,7 +13,8 @@ only (shapes below).
 ## Worktree
 
 Run the `the-loop worktree-create` command your prompt names and do ALL work inside the
-printed path. The main checkout is the human's — never touch it. If the prompt lists
+printed path. Give that call a generous Bash-tool timeout (600000 ms) because it may run
+the project's provisioning command. The main checkout is the human's — never touch it. If the prompt lists
 sibling branches to merge, merge them first. A textual conflict is not automatically
 the plan being wrong: apply the test-gated merge policy — resolve only when you can state both
 sides' intents and write a resolution that serves both, then prove it by running both
@@ -26,8 +27,10 @@ survive; worktrees don't linger.
 ## Develop — test-driven, contract-bounded
 
 The contract is your spec and your test budget: build exactly what its criteria say,
-proven by roughly one test each — through the public interface, asserting observable
-behavior, red before green.
+proven by roughly one test each — through the public interface, asserting the
+criterion's observable behavior as stated (a test that goes green against a proxy
+for it — a neighboring surface, your own mock of the other side — is not the
+criterion's test), red before green.
 
 The lines that never move:
 

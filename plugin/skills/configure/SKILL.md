@@ -67,6 +67,38 @@ The settings families and the shape each takes:
 - **artifactStores** — one value per docs grouping (`briefs`, `designs`, `features`,
   `runbooks`, `rcas`, `calibration`), each `local` by default (see the note below).
 - **modelBindings** — the per-role model table (unchanged; roles are its entries).
+- **worktreeSetup** — `{ "command": "npm ci", "timeout": 600000 }`. The project-supplied
+  shell command that `the-loop worktree-create` runs in a freshly checked-out worktree
+  to provision it. Detect from the repo (lockfiles and package manifests below), recommend
+  a command, and confirm-or-adjust like every other family. The inferred destination
+  layer is **project** (install commands are project truth); the standard per-answer
+  override applies.
+
+### worktreeSetup detection
+
+Scan the repo root for stack evidence and recommend a command. **First match wins
+within JS** (ni-style lockfile precedence). Leave the family unbound when nothing is
+classifiable or the only match is venv-ambiguous.
+
+| evidence | recommended command |
+|---|---|
+| `bun.lockb` or `bun.lock` | `bun install` |
+| `pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
+| `yarn.lock` | `yarn install --frozen-lockfile` |
+| `package-lock.json` | `npm ci` |
+| `package.json`, no lockfile | `npm install` |
+| `Cargo.toml` | `cargo fetch` |
+| `uv.lock` | `uv sync` |
+| `poetry.lock` | `poetry install` |
+| `go.mod` | `go mod download` |
+| bare `requirements.txt` | leave unbound (venv-ambiguous — no safe recommendation) |
+| nothing classifiable | leave unbound |
+
+**Polyglot rule.** When more than one non-JS stack (or a JS stack plus another) is
+detected, recommend **one command per detected stack**, joined with ` && ` in the table
+order above. Example: a repo with both `package-lock.json` and `Cargo.toml` recommends
+`npm ci && cargo fetch`. Rows that leave the family unbound never contribute a command
+to the join.
 
 ## 3 · Notification — the loop's binding versus the harness-native knobs
 
