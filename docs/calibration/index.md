@@ -2,16 +2,16 @@
 
 ## Digest
 
-_11 run(s), 16 feature(s) recorded._
+_12 run(s), 17 feature(s) recorded._
 
 ### Workflow paths
 | path | runs | median agents | median duration |
 | --- | --- | --- | --- |
-| small | 7 | 3 | 131.5 |
+| small | 8 | 3 | 34 |
 | standard | 9 | 6 | 312 |
 
 ### Re-slices
-0 of 16 feature(s) re-sliced (0%).
+0 of 17 feature(s) re-sliced (0%).
 
 ### Footprint accuracy by size class
 | size | features | median planned files | median actual files |
@@ -27,9 +27,9 @@ _11 run(s), 16 feature(s) recorded._
 - 1× cargo test --release is not reliably green: models_list unit tests mutate process-global HOME and cwd (a HomeGuard plus std::env::set_current_dir) without serialization across threads. Under default/parallel cargo test execution, real failures occur: build_models_table_validate_errors_and_warnings panics restoring cwd with NotFound (Os { code: 2 }), and build_models_table_merges_layers_with_provenance has been observed asserting the wrong-layer model value (project-layer bleed) under the same race. I independently reproduced this: 8 repeated `cargo test --release commands::models_list -- --test-threads=8` runs failed on run 8/8 with the identical panic at cli/src/commands/models_list.rs:336 (cwd restore NotFound). Serial execution (--test-threads=1) is green, confirming the defect is test-isolation, not the command logic itself.; All four acceptance criteria (models-list layered merge + provenance + registry-gate exit-1, hooks-list full inventory + recorded-bindings status, hooks-set byte-surgical write, executors-list fenced-json machine-block parsing with malformed/duplicate refusal) otherwise look solidly implemented: cargo build --release and cargo clippy --release are clean (one #[allow(...)] is tightly scoped to a numeric cast with a stated reason, not a suppression concern), npm test (JS-target oracle, 355 tests) is fully green, and npm run oracle:rust shows 37 pass / 0 fail / 11 pending with all executors-list/models-list/hooks-list/hooks-set cases (happy-path and refusal) passing. The blocker is specifically the test-suite reliability gate, not the acceptance behavior.
 
 ### Token split (overhead vs build)
-Lifetime: 73% overhead / 27% build.
+Lifetime: 74% overhead / 26% build.
 Last-10 median: 100% overhead / 0% build.
-Attribution: 7 of 11 run(s) overlapped — the overhead/build split is approximate.
+Attribution: 7 of 12 run(s) overlapped — the overhead/build split is approximate.
 
 ## Runs
 
@@ -44,3 +44,4 @@ Attribution: 7 of 11 run(s) overlapped — the overhead/build split is approxima
 - 2026-07-10T04:03:12.257Z · target rust-replatform · [config-commands-rust] · 1 blocked · 123735 tokens · serial
 - 2026-07-10T04:14:00.598Z · target rust-replatform · [config-commands-rust] · 1 validated · 212988 tokens · serial
 - 2026-07-10T05:46:42.750Z · target rust-replatform · [plan-commands-rust] · 1 blocked · 102990 tokens · serial
+- 2026-07-10T06:25:24.013Z · target rust-replatform · [plan-commands-rust] · 1 validated · 172983 tokens · serial
