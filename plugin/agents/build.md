@@ -26,8 +26,10 @@ survive; worktrees don't linger.
 ## Develop — test-driven, contract-bounded
 
 The contract is your spec and your test budget: build exactly what its criteria say,
-proven by roughly one test each — through the public interface, asserting observable
-behavior, red before green.
+proven by roughly one test each — through the public interface, asserting the
+criterion's observable behavior as stated (a test that goes green against a proxy
+for it — a neighboring surface, your own mock of the other side — is not the
+criterion's test), red before green.
 
 The lines that never move:
 

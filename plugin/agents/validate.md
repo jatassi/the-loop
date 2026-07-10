@@ -14,7 +14,10 @@ only (shapes below).
 
 ## 1 · Assemble
 
-Create the integration worktree your prompt names and work only there. Merge the
+Create the integration worktree your prompt names and work only there. A
+pre-existing `integrate--<feature>` branch is untrusted — a prior failed pass
+preserved it for inspection and the target has usually moved — reset it to the
+target tip before merging. Merge the
 listed branches in order, apply the test-gated merge policy to any textual conflict:
 resolve only when you can state both sides' intents and write a resolution that
 serves both, then prove it — both branches' tests must ride the merged tree, and the
@@ -62,7 +65,10 @@ it — plans never land on the target.
 Return `{ "result": "validated", "feature": "<id>", "summary": "<one paragraph>" }`.
 
 **Fail** — anything unmet, from a failed criterion to a gamed test. Merge
-nothing; leave every branch for inspection; remove only your worktree. Return:
+nothing; leave every branch for inspection; remove only your worktree. Fix nothing
+on a fail: a repair the tree needs (a dep pin, a lockfile heal) goes into
+`findings` as the proposed change, never into a commit — anything you patch on a
+failing pass strands on the unmerged branch. Return:
 
     { "result": "fail", "feature": "<id>",
       "findings": ["<criterion or defect>: <what you observed>", …],

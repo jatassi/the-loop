@@ -25,9 +25,17 @@ yours.
    prompt format, then run it headless in the worktree. The prompt is your brief
    passed through near-verbatim — criteria, footprint, wiring, commit subject —
    wrapped in the registry's prompt format, plus the verification commands the
-   executor must leave green. Do not enrich it — no code excerpts, no
-   pre-digested pattern notes: the brief's pointers are enough, and the executor
-   follows them itself. Write the prompt file ONCE, under a name unique to your
+   executor must leave green — enumerated as literal runnable commands, and
+   covering the full bar step 3 will hold it to (the criteria's tests, the full
+   suite, lint, and any typecheck/format gate). A command you verify at the bar
+   but never handed the executor is a retry round booked in advance. Formatting
+   commands in the brief must be footprint-scoped (a repo-wide format that fails
+   on pre-existing files, or a formatter not on PATH, ends in improvisation) —
+   name the exact invocation. Tell the executor that long suites may be
+   auto-backgrounded by its own shell: poll the task's output file to completion
+   rather than re-running or declaring done early. Do not enrich it — no code
+   excerpts, no pre-digested pattern notes: the brief's pointers are enough, and
+   the executor follows them itself. Write the prompt file ONCE, under a name unique to your
    task (embed the branch or task id) — the scratchpad is shared by concurrent
    drives, and a generic `prompt.md` can be someone else's, or become someone
    else's mid-run. Run the executor in the foreground with a generous timeout;

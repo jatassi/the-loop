@@ -87,7 +87,11 @@ downstream agent. Three artifacts come out (ADR-0037):
    decision gets offered as an ADR in `docs/adr/`. All three criteria or no record.
 5. **Lint**: `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" check` until it prints OK.
    Acceptance criteria are the validator's only brief — observable, binary, vague
-   adjectives made measurable or cut.
+   adjectives made measurable or cut, and each exercisable by the validator that
+   will judge it: a criterion needing an environment the validator won't have (a
+   live authenticated session, an installed plugin, a cross-compile toolchain) is
+   rephrased against what it can drive, or explicitly deferred to the release
+   gate's health check.
 6. **Gate**: present the files you created/modified **FIRST**, then get explicit approval. 
    For a large or contested design, offering a fresh-context reader test first is a good 
    judgment call. Commit the artifacts as one commit. `/begin` now sees a configured 
