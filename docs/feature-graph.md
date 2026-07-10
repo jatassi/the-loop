@@ -353,7 +353,7 @@ features:
 
   - id: graph-commands-rust
     title: feature-graph.json schema + status/list/check/set-status in Rust
-    status: designed
+    status: validated
     depends_on: [parity-oracle]
     acceptance:
       - the Rust binary reads docs/feature-graph.json and re-emits it canonically — schema key order, 2-space indent, trailing newline — so a hand-edit with shuffled keys and odd whitespace re-emits with content JSON-equal and bytes canonical

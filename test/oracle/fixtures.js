@@ -4,7 +4,7 @@
 // seeding idiom (mkdtemp + git init + throwaway user + committed seed).
 
 import { execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -134,6 +134,86 @@ export function renderFeatureGraph(def, format) {
   return format === 'yaml'
     ? { rel: 'docs/feature-graph.md', text: renderGraphMd(def) }
     : { rel: 'docs/feature-graph.json', text: renderGraphJson(def) };
+}
+
+/**
+ * Malformed graph bytes in the target's own format — broken YAML fence (unresolved
+ * alias) for the JS CLI, broken JSON for the Rust binary. Used by paired check /
+ * status --json refusal cases.
+ * @param {FixtureFormat} format
+ * @returns {{ rel: string, text: string }}
+ */
+export function renderMalformedGraph(format) {
+  if (format === 'yaml') {
+    return {
+      rel: 'docs/feature-graph.md',
+      text: '# Fixture\n\n## Feature graph\n\n```yaml\ndesign_version: 1\nfeatures: *undefinedAlias\n```\n',
+    };
+  }
+  return {
+    rel: 'docs/feature-graph.json',
+    text: '{ "design_version": 1, features: [\n',
+  };
+}
+
+/**
+ * Shared refusal-catalog graph: bad status, missing acceptance on a non-proposed
+ * feature, self-edge, and a two-node cycle. The JSON half also carries an unknown
+ * key so Rust's unknown-key refusal is exercised; YAML omits it (JS schema ignores
+ * unknown feature keys).
+ * @param {FixtureFormat} format
+ * @returns {{ design_version: number, features: object[] }}
+ */
+export function refusalCatalogDefinition(format) {
+  return {
+    design_version: 1,
+    features: [
+      {
+        id: 'bad-status',
+        title: 'Bad status',
+        status: 'building',
+        depends_on: [],
+        acceptance: ['has acceptance so only status fails'],
+        ...(format === 'json' && { extra_unknown: true }),
+      },
+      { id: 'no-acc', title: 'Missing acceptance', status: 'designed', depends_on: [] },
+      { id: 'self', title: 'Self edge', status: 'proposed', depends_on: ['self'] },
+      { id: 'cyc-a', title: 'Cycle A', status: 'proposed', depends_on: ['cyc-b'] },
+      { id: 'cyc-b', title: 'Cycle B', status: 'proposed', depends_on: ['cyc-a'] },
+    ],
+  };
+}
+
+/** @param {'js' | 'rust'} target @returns {FixtureFormat} */
+const formatForTarget = (target) => (target === 'rust' ? 'json' : 'yaml');
+
+/** Disposable cwd with one relative file; cleaned up by the oracle driver. */
+function seedFile(rel, text) {
+  const cwd = mkdtempSync(path.join(tmpdir(), 'oracle-graph-'));
+  const full = path.join(cwd, rel);
+  mkdirSync(path.dirname(full), { recursive: true });
+  writeFileSync(full, text);
+  return { cwd, cleanup: () => rmSync(cwd, { recursive: true, force: true }) };
+}
+
+/** Seed a malformed graph in the target's own format (broken YAML vs broken JSON). */
+export function malformedGraphSetup({ target }) {
+  const { rel, text } = renderMalformedGraph(formatForTarget(target));
+  return seedFile(rel, text);
+}
+
+/**
+ * Refusal-catalog graph per target: shared offenses on both halves; unknown key
+ * only on the JSON half (raw JSON keeps the key renderFeatureGraph would strip).
+ */
+export function refusalCatalogSetup({ target }) {
+  const format = formatForTarget(target);
+  const def = refusalCatalogDefinition(format);
+  if (format === 'json') {
+    return seedFile('docs/feature-graph.json', `${JSON.stringify(def, null, 2)}\n`);
+  }
+  const { rel, text } = renderFeatureGraph(def, 'yaml');
+  return seedFile(rel, text);
 }
 
 /**

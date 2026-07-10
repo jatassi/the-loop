@@ -1,8 +1,4 @@
 [
-  "status",
-  "list",
-  "check",
-  "set-status",
   "plan parse",
   "plan check",
   "plan task",

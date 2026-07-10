@@ -8,7 +8,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { buildFixturePair, EXAMPLE_DEFINITION } from '../fixtures.js';
+import {
+  buildFixturePair,
+  EXAMPLE_DEFINITION,
+  malformedGraphSetup,
+  refusalCatalogSetup,
+} from '../fixtures.js';
 
 const REFUSE = { exitCode: 1, stderr: 'present', stdoutBytes: '' };
 const ALPHA = { branch: 'loop/alpha' };
@@ -29,6 +34,30 @@ const DANGLING = {
   features: EXAMPLE_DEFINITION.features.map((f) => (
     f.id === 'beta' ? { ...f, depends_on: ['ghost'] } : f
   )),
+};
+
+/** Alpha list node — Rust JSON fixtures carry optional `section`; YAML does not. */
+const alphaListFeature = (target) => ({
+  id: 'alpha',
+  ...(target === 'rust' && { section: 'fixture skeleton' }),
+  title: 'Alpha feature',
+  status: 'designed',
+  depends_on: [],
+  acceptance: ['alpha criterion one', 'alpha criterion two'],
+  notes: ['alpha design note'],
+});
+
+const betaListFeature = {
+  id: 'beta', title: 'Beta feature', status: 'proposed', depends_on: ['alpha'],
+};
+
+/** Human status header names the graph file each binary actually reads. */
+const statusHumanMatch = (target) => {
+  const ext = target === 'rust' ? 'json' : 'md';
+  return new RegExp(
+    String.raw`^# Status — projected from docs/feature-graph\.` + ext
+      + String.raw`\n[\s\S]*Total: 2 feature\(s\) at design_version 1[\s\S]*\*\*Next:\*\* \`alpha\``,
+  );
 };
 
 const ROLE_TABLE = {
@@ -88,18 +117,6 @@ function tempSetup(prefix, seed) {
 }
 
 const emptyDir = tempSetup('oracle-empty-');
-const unparseableGraph = tempSetup('oracle-bad-yaml-', (cwd) => {
-  mkdirSync(path.join(cwd, 'docs'), { recursive: true });
-  writeFileSync(path.join(cwd, 'docs/feature-graph.md'), `# Fixture
-
-## Feature graph
-
-\`\`\`yaml
-design_version: 1
-features: *undefinedAlias
-\`\`\`
-`);
-});
 
 const playbook = (id) => [
   `# ${id}`, '', `Narrative lore about the ${id} executor.`, '',
@@ -131,10 +148,10 @@ export const cases = [
     scenario: 'happy path human-readable',
     argv: ['status'],
     setup: example,
-    expect: {
+    expect: ({ target }) => ({
       exitCode: 0,
-      stdoutMatch: /^# Status — projected from docs\/feature-graph\.md\n[\s\S]*Total: 2 feature\(s\) at design_version 1[\s\S]*\*\*Next:\*\* `alpha`/,
-    },
+      stdoutMatch: statusHumanMatch(target),
+    }),
   },
   {
     command: 'status',
@@ -171,9 +188,9 @@ export const cases = [
   },
   {
     command: 'status',
-    scenario: 'refusal: unparseable YAML unresolved alias',
+    scenario: 'refusal: unparseable graph (broken YAML fence vs broken JSON)',
     argv: ['status', '--json'],
-    setup: unparseableGraph,
+    setup: malformedGraphSetup,
     expect: REFUSE,
   },
   {
@@ -181,20 +198,13 @@ export const cases = [
     scenario: 'happy path',
     argv: ['list'],
     setup: example,
-    expect: {
+    expect: ({ target }) => ({
       exitCode: 0,
       stdout: {
         designVersion: 1,
-        features: [
-          {
-            id: 'alpha', title: 'Alpha feature', status: 'designed', depends_on: [],
-            acceptance: ['alpha criterion one', 'alpha criterion two'],
-            notes: ['alpha design note'],
-          },
-          { id: 'beta', title: 'Beta feature', status: 'proposed', depends_on: ['alpha'] },
-        ],
+        features: [alphaListFeature(target), betaListFeature],
       },
-    },
+    }),
   },
   {
     command: 'list',
@@ -216,6 +226,23 @@ export const cases = [
     argv: ['check'],
     setup: pairSetup(DANGLING),
     expect: { exitCode: 1, stdoutMatch: /FAIL 2 features/ },
+  },
+  {
+    command: 'check',
+    scenario: 'refusal: malformed graph (broken YAML fence vs broken JSON)',
+    argv: ['check'],
+    setup: malformedGraphSetup,
+    // JS puts parse errors on stderr with empty stdout; Rust prints FAIL on stdout.
+    expect: ({ target }) => (target === 'rust'
+      ? { exitCode: 1, stdoutMatch: /FAIL|malformed/i }
+      : { exitCode: 1, stderr: 'present', stdoutBytes: '' }),
+  },
+  {
+    command: 'check',
+    scenario: 'refusal: catalog (bad status, missing acceptance, self/cycle, unknown key on JSON)',
+    argv: ['check'],
+    setup: refusalCatalogSetup,
+    expect: { exitCode: 1, stdoutMatch: /FAIL/ },
   },
   {
     command: 'plan parse',

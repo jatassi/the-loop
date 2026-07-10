@@ -1,10 +1,12 @@
-//! `the-loop` binary entrypoint — clap argv dispatch only in this scaffold slice.
+//! `the-loop` binary entrypoint — clap argv dispatch to the command surface.
+
+use std::process::ExitCode;
 
 use clap::Parser;
 use the_loop::Cli;
 
-fn main() {
-    // Clap prints --version / usage errors to stderr and exits; success path is
-    // a no-op until real subcommands land.
-    let _cli = Cli::parse();
+fn main() -> ExitCode {
+    // Clap prints --version / usage errors to stderr and exits; a parsed CLI is
+    // dispatched to its command, whose exit code becomes the process exit code.
+    Cli::parse().run()
 }
