@@ -2,22 +2,22 @@
 
 ## Digest
 
-_14 run(s), 19 feature(s) recorded._
+_15 run(s), 20 feature(s) recorded._
 
 ### Workflow paths
 | path | runs | median agents | median duration |
 | --- | --- | --- | --- |
 | small | 8 | 3 | 34 |
-| standard | 11 | 6 | 312 |
+| standard | 12 | 4.5 | 205.5 |
 
 ### Re-slices
-0 of 19 feature(s) re-sliced (0%).
+0 of 20 feature(s) re-sliced (0%).
 
 ### Footprint accuracy by size class
 | size | features | median planned files | median actual files |
 | --- | --- | --- | --- |
 | s | 3 | 13 | 15 |
-| m | 2 | 19.5 | 31 |
+| m | 3 | 19 | 19 |
 
 ### Top block reasons
 - 1× AC1 (prepare-execution-context JSON-equal): On paired EXAMPLE fixtures, after stripping only preparedAt and cli, JS vs Rust success payloads still differ at features.alpha.plan.tasks[0].covers — JS emits [1,2] (YAML 1-based era), Rust emits [0,1] (JSON 0-based era). Deep-diff of all other fields (design docs, builtTasks, models, hooks, probe, calibration) matches. Feature-graph AC names only preparedAt normalization and cli as sanctioned differences; oracle happy-path never asserts full JSON equality (only preparedAt shape + per-binary cli).; AC2 (--script-out byte-identity): Same fixture pair — spliced scripts are not equal after masking only preparedAt+cli (covers literals "covers":[1,2] vs "covers":[0,1]); they become equal only after also masking covers. Feature-graph AC and the design doc both allow only preparedAt (and cli), not covers, as sanctioned differences. Shape-gate refusals are covered by cli unit tests (splice_*), not the oracle.; Integrity — weakened oracle assertion: test/oracle/cases/context-commands.js replaced maskPreparedAt with maskSanctionedDifferences that also blanks covers (and cli), while the scenario string still claims identity "modulo the stamped preparedAt". The design doc explicitly names cli as "the one sanctioned content difference" from the JS CLI; covers is not documented anywhere in docs/designs/run-commands-rust/design.md as a sanctioned difference. This lets ORACLE_TARGET=rust report 54 pass / 0 fail / 0 pending without enforcing AC1/AC2 plan-payload parity.; Otherwise green substrate (not sufficient alone): npm test 383/383 (confirmed independently); eslint clean (confirmed independently); cargo build --release ok; ORACLE_TARGET=rust 54 pass / 0 fail / 0 pending (confirmed independently); cargo test 232+3 ok (confirmed independently); clippy -D warnings clean (confirmed independently); cargo fmt --check clean (confirmed independently); pending.json empty. AC3 worktree create/remove/provision/teardown/timeout wording/cwd-inside refusal verified by oracle + manual release-binary exercise (recorded in docs/validation/run-commands-rust/procedure.md). AC4 calibration-summarize byte-identical index + malformed-record naming verified by oracle and manually exercised. AC5 worktreeSetup in hooks-list/--compact and hooks-set allowlist verified by oracle + release binary.
@@ -29,7 +29,7 @@ _14 run(s), 19 feature(s) recorded._
 ### Token split (overhead vs build)
 Lifetime: 77% overhead / 23% build.
 Last-10 median: 100% overhead / 0% build.
-Attribution: 8 of 14 run(s) overlapped — the overhead/build split is approximate.
+Attribution: 8 of 15 run(s) overlapped — the overhead/build split is approximate.
 
 ## Runs
 
@@ -47,3 +47,4 @@ Attribution: 8 of 14 run(s) overlapped — the overhead/build split is approxima
 - 2026-07-10T06:25:24.013Z · target rust-replatform · [plan-commands-rust] · 1 validated · 172983 tokens · serial
 - 2026-07-10T06:50:44.512Z · target rust-replatform · [run-commands-rust] · 1 blocked · 535188 tokens · overlapped
 - 2026-07-10T07:51:26.271Z · target rust-replatform · [run-commands-rust] · 1 blocked · 599450 tokens · serial
+- 2026-07-10T08:15:50.879Z · target rust-replatform · [run-commands-rust] · 1 validated · 679277 tokens · serial
