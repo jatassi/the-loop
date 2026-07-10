@@ -371,7 +371,7 @@ features:
 
   - id: config-commands-rust
     title: models-list, executors-list, hooks-list, hooks-set in Rust
-    status: designed
+    status: validated
     depends_on: [parity-oracle]
     acceptance:
       - models-list resolves plugin defaults < user < project < local under the namespaced the-loop settings key with per-role provenance, JSON-equal to the JS CLI on paired fixtures, and exits 1 with no table on a binding naming an unregistered executor or a model outside its playbook
