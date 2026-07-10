@@ -106,7 +106,7 @@ test('spine hooks-list: fresh install resolves shipped defaults and visible fall
     const result = spawnSync('node', [BIN, 'hooks-list'], withHome(home, { cwd: root, encoding: 'utf8' }));
     assert.equal(result.status, 0, result.stderr);
     const body = JSON.parse(result.stdout);
-    const families = ['artifactStores', 'interview', 'lint', 'modelBindings', 'notification', 'precommit', 'testHarness'];
+    const families = ['artifactStores', 'interview', 'lint', 'modelBindings', 'notification', 'precommit', 'testHarness', 'worktreeSetup'];
     assert.deepEqual(Object.keys(body.hooks).toSorted((a, b) => a.localeCompare(b)), families);
     assert.equal(body.hooks.exampleBlock, undefined);
     assert.deepEqual(body.hooks.interview, { skill: 'grilling', provenance: 'default' });
@@ -118,6 +118,7 @@ test('spine hooks-list: fresh install resolves shipped defaults and visible fall
     }
     assert.deepEqual(body.hooks.testHarness, { value: 'detected-convention', provenance: 'fallback' });
     assert.deepEqual(body.hooks.lint, { value: 'detected-convention', provenance: 'fallback' });
+    assert.deepEqual(body.hooks.worktreeSetup, { provisioning: 'none', provenance: 'fallback' });
     assert.equal(body.hooks.modelBindings.plan.provenance, 'default');
     assert.equal(body.hooks.modelBindings.plan.model, 'session');
     assert.match(result.stderr, /architecture\.md/);
@@ -134,11 +135,53 @@ test('spine hooks-list --compact prints one single-line JSON entry per family pl
     const result = spawnSync('node', [BIN, 'hooks-list', '--compact'], withHome(home, { cwd: root, encoding: 'utf8' }));
     assert.equal(result.status, 0, result.stderr);
     const lines = result.stdout.trim().split('\n');
-    assert.equal(lines.length, 8); // 7 families + recordedBindings
+    assert.equal(lines.length, 9); // 8 families + recordedBindings
     assert.ok(lines.some((l) => l.startsWith('artifactStores: ')));
     assert.ok(lines.at(-1).startsWith('recordedBindings: '));
     for (const line of lines) { JSON.parse(line.slice(line.indexOf(': ') + 2)); } // each entry is one-line JSON
   } finally { cleanup(root, home); }
+});
+
+// worktreeSetup: list fallback → set project → list bound; write is surgical (unrelated keys survive).
+test('spine hooks-set worktreeSetup: list fallback, set project, re-list bound; unrelated keys byte-survive', () => {
+  const permissions = `"permissions": {\n    "allow": ["Bash"]\n  }`;
+  const env = `"env": {\n    "FOO": "bar"\n  }`;
+  const sibling = `"modelBindings": {\n      "build": {\n        "model": "opus"\n      }\n    }`;
+  const siblingLint = `"lint": {\n      "command": "old-lint"\n    }`;
+  const existing = `{\n  ${permissions},\n  ${env},\n  "the-loop": {\n    ${sibling},\n    ${siblingLint}\n  }\n}\n`;
+  const home = emptyHome();
+  const root = fixture({ '.claude/settings.json': existing });
+  try {
+    const beforeList = JSON.parse(spine(['hooks-list'], withHome(home, { cwd: root })));
+    assert.deepEqual(beforeList.hooks.worktreeSetup, { provisioning: 'none', provenance: 'fallback' });
+
+    const setOut = JSON.parse(spine(
+      ['hooks-set', 'worktreeSetup', 'project', JSON.stringify({ command: 'npm ci' })],
+      withHome(home, { cwd: root }),
+    ));
+    assert.deepEqual(setOut, {
+      family: 'worktreeSetup',
+      layer: 'project',
+      file: path.join('.claude', 'settings.json'),
+      value: { command: 'npm ci' },
+    });
+
+    const after = readFileSync(path.join(root, '.claude', 'settings.json'), 'utf8');
+    for (const s of [permissions, env, sibling, siblingLint]) {
+      assert.ok(after.includes(s), `unrelated key must byte-survive: ${s}`);
+    }
+    const parsed = JSON.parse(after);
+    assert.deepEqual(parsed['the-loop'].worktreeSetup, { command: 'npm ci' });
+    assert.deepEqual(parsed['the-loop'].modelBindings, { build: { model: 'opus' } });
+    assert.deepEqual(parsed['the-loop'].lint, { command: 'old-lint' });
+    assert.deepEqual(parsed.permissions, { allow: ['Bash'] });
+    assert.deepEqual(parsed.env, { FOO: 'bar' });
+
+    const afterList = JSON.parse(spine(['hooks-list'], withHome(home, { cwd: root })));
+    assert.deepEqual(afterList.hooks.worktreeSetup, { command: 'npm ci', provenance: 'project' });
+  } finally {
+    cleanup(root, home);
+  }
 });
 
 test('spine hooks-list: artifactStores bound in project settings reads back with provenance project', () => {

@@ -40,6 +40,7 @@ export function hooksListCommand(argv = []) {
 // task unifies the list with other consumers.
 const HOOK_FAMILIES = new Set([
   'interview', 'modelBindings', 'testHarness', 'lint', 'precommit', 'notification', 'artifactStores',
+  'worktreeSetup',
 ]);
 const HOOK_LAYERS = new Set(['user', 'project', 'local']);
 

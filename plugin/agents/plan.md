@@ -66,7 +66,8 @@ feature.
 ## 3 · Persist on the feature branch
 
 Create the feature worktree (`the-loop worktree-create loop/<feature> --base-branch
-<target>`), write `docs/plans/<feature>/plan.md` inside it — a short narrative
+<target>`). Give that call a generous Bash-tool timeout (600000 ms) because it may run
+the project's provisioning command. Write `docs/plans/<feature>/plan.md` inside it — a short narrative
 paragraph, then the task contracts as a ```yaml block under `## Tasks` with
 `feature:` and `design_version:` at its top — and lint until clean:
 `the-loop plan check <feature> docs/plans/<feature>/plan.md`. Commit it alone

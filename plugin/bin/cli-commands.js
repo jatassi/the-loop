@@ -1,8 +1,8 @@
 // Command implementations for the the-loop CLI. Split out of bin/the-loop.js (its sibling
 // and sole caller) to keep that file's job to argv dispatch alone; this module holds
 // the actual command bodies and the small I/O helpers (read/out/clean/fail) they share.
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -95,104 +95,75 @@ export function modelsListCommand([defaultsFile, executorsDir]) {
   out(table);
 }
 
-// The resolved role table + registry validation, shared by `models-list` and
-// `prepare-execution-context`: plugin defaults < user (~/.claude/settings.json) <
-// project (.claude/settings.json) < local (.claude/settings.local.json), all under
-// "the-loop".modelBindings. An empty/missing user layer is byte-identical to the
-// historical three-layer merge.
+// Resolved role table + registry validation for models-list and prepare-execution-context:
+// defaults < user < project < local under "the-loop".modelBindings.
 function buildModelsTable(defaultsFile, executorsDir) {
-  const defaultsPath = defaultsFile || path.join(PLUGIN_ROOT, 'config/model-bindings.json');
-  const defaults = readDefaults(defaultsPath);
-  const user = readSettingsLayer(userSettingsPath(), 'modelBindings');
-  const project = readSettingsLayer('.claude/settings.json', 'modelBindings');
-  const local = readSettingsLayer('.claude/settings.local.json', 'modelBindings');
-  const table = resolveModels({ defaults, user, project, local });
+  const defaults = readDefaults(defaultsFile || path.join(PLUGIN_ROOT, 'config/model-bindings.json'));
+  const layers = settingsLayers('modelBindings', defaults);
+  const table = resolveModels(layers);
   const registry = readRegistry(executorsDir || path.join(PLUGIN_ROOT, 'config/executors'));
   const { errors, warnings } = validateBindings(table, registry);
   return { table, errors, warnings };
 }
 
-// ~/.claude/settings.json — the user-scope layer. Same path construction every call
-// site uses so HOME overrides in tests reach readSettingsLayer uniformly.
-export function userSettingsPath() {
-  return path.join(homedir(), '.claude', 'settings.json');
+// ~/.claude/settings.json — user layer; HOME overrides in tests reach this path.
+export const userSettingsPath = () => path.join(homedir(), '.claude', 'settings.json');
+
+// Four-layer sources for one family. Single-entry families omit empty objects so
+// mergeSingleEntry does not treat {} as a wholesale win. Shared by buildHooksTable
+// and worktree-create's worktreeSetup-only resolve (never buildHooksTable there).
+function settingsLayers(family, defaults) {
+  const userFile = userSettingsPath();
+  return {
+    defaults,
+    user: familyLayer(family, readSettingsLayer(userFile, family)),
+    project: familyLayer(family, readSettingsLayer('.claude/settings.json', family)),
+    local: familyLayer(family, readSettingsLayer('.claude/settings.local.json', family)),
+  };
 }
 
 // Resolve every real (non-synthetic) HOOK_INVENTORY family across the four layers.
-// modelBindings defaults come from plugin/config/model-bindings.json; every other
-// family's defaults come from plugin/config/hook-defaults.json (absent key →
-// undefined → resolveFamily's inventory fallback when nothing else binds it). Shared
-// by hooksListCommand (bin/hooks-commands.js) and prepareExecutionContextCommand.
+// modelBindings defaults: model-bindings.json; others: hook-defaults.json (absent key
+// → undefined → inventory fallback). Used by hooks-list and prepare-execution-context.
 export function buildHooksTable() {
   const modelDefaults = readDefaults(path.join(PLUGIN_ROOT, 'config/model-bindings.json'));
   const hookDefaults = readDefaults(path.join(PLUGIN_ROOT, 'config/hook-defaults.json'));
-  const userFile = userSettingsPath();
-  const projectFile = '.claude/settings.json';
-  const localFile = '.claude/settings.local.json';
-
   const hooks = {};
   for (const family of Object.keys(HOOK_INVENTORY)) {
     if (family === 'exampleBlock') { continue; } // synthetic — not a settings key
     const defaults = family === 'modelBindings' ? modelDefaults : hookDefaults[family];
-    const layers = {
-      defaults,
-      user: familyLayer(family, readSettingsLayer(userFile, family)),
-      project: familyLayer(family, readSettingsLayer(projectFile, family)),
-      local: familyLayer(family, readSettingsLayer(localFile, family)),
-    };
-    hooks[family] = resolveFamily(family, layers);
+    hooks[family] = resolveFamily(family, settingsLayers(family, defaults));
   }
   return hooks;
 }
 
-// readSettingsLayer returns {} for a missing key (right for modelBindings role maps).
-// Single-entry families must leave the layer unset when unbound so mergeSingleEntry
-// does not treat an empty object as a wholesale win over lower layers / fallbacks.
 function familyLayer(family, value) {
   if (family === 'modelBindings') { return value; }
-  if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
-    return; // unbound — omit the layer
-  }
+  if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) { return; }
   return value;
 }
 
-// Every *.md file in dir, parsed into the registry keyed by id; an absent dir is an
-// empty registry, never an error (a delegation-off repo need not ship config/executors/).
 export function readRegistry(dir) {
   if (!existsSync(dir)) { return {}; }
-  const entries = readdirSync(dir)
-    .filter((f) => f.endsWith('.md'))
+  const entries = readdirSync(dir).filter((f) => f.endsWith('.md'))
     .map((f) => ({ file: path.join(dir, f), text: readFileSync(path.join(dir, f), 'utf8') }));
   return parseExecutors(entries);
 }
 
-// The plugin-defaults file: expected to exist and parse — a read or parse failure
-// names the file.
 export function readDefaults(file) {
   let text;
-  try {
-    text = readFileSync(file, 'utf8');
-  } catch (error) {
-    throw new Error(`could not read defaults file ${file}: ${error.message}`, { cause: error });
-  }
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error });
-  }
+  try { text = readFileSync(file, 'utf8'); }
+  catch (error) { throw new Error(`could not read defaults file ${file}: ${error.message}`, { cause: error }); }
+  try { return JSON.parse(text); }
+  catch (error) { throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error }); }
 }
 
-// A settings layer (user, project, or local): a missing file, or a present file
-// missing the "the-loop".[family] key, is an empty layer — never an error.
-// Unparseable JSON in a present file is an error naming the file.
+// Missing file or missing "the-loop".[family] → {}; unparseable present file → error.
 export function readSettingsLayer(file, family) {
   if (!existsSync(file)) { return {}; }
   let settings;
-  try {
-    settings = JSON.parse(readFileSync(file, 'utf8'));
-  } catch (error) {
-    throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error });
-  }
+  try { settings = JSON.parse(readFileSync(file, 'utf8')); }
+  catch (error) { throw new Error(`unparseable JSON in ${file}: ${error.message}`, { cause: error }); }
   return settings?.['the-loop']?.[family] ?? {};
 }
 
@@ -359,32 +330,56 @@ function readBranchHeads(id) {
   return heads;
 }
 
-// the-loop worktree-create <branch> [--base-branch <ref>] — the one sanctioned
-// worktree-creation path (ADR-0038): agents call this as their first act and do all
-// work inside the printed path; the main checkout is the human's and is never touched.
+// worktreeSetup-only resolve — never buildHooksTable() (a malformed unrelated family
+// must not break create). hook-defaults.json deliberately omits the key → fallback.
+function resolveWorktreeSetup() {
+  const defaults = readDefaults(path.join(PLUGIN_ROOT, 'config/hook-defaults.json')).worktreeSetup;
+  return resolveFamily('worktreeSetup', settingsLayers('worktreeSetup', defaults));
+}
+
+// Spawn the bound command in dir; on any failure tear the worktree down (branch lives)
+// and exit 1 with the environment-provisioning message (ADR-0052).
+function provisionWorktree(dir, command, setup) {
+  const budget = setup.timeout ?? 600_000;
+  const result = spawnSync(command, {
+    shell: true, cwd: dir, env: process.env, encoding: 'utf8', timeout: budget, maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.status === 0 && !result.error) { return; }
+  git(['worktree', 'remove', '--force', dir]);
+  git(['worktree', 'prune']);
+  const isTimedOut = result.error?.code === 'ETIMEDOUT';
+  let reason = `spawn error: ${result.error?.message ?? 'unknown'}`;
+  if (isTimedOut) { reason = `timed out after ${budget}ms`; }
+  else if (result.status != null) { reason = `exit code ${result.status}`; }
+  fail(`worktree provisioning failed: command ${JSON.stringify(command)} in ${dir} (layer ${setup.provenance}) ${reason}\n${String(result.stderr || '').slice(-2000)}`);
+}
+
+// String command to run, or null for the no-provisioning fallback. Anything else is a
+// configuration gap (fail closed — never guess a command).
+function worktreeSetupCommand(setup) {
+  if (typeof setup.command === 'string') { return setup.command; }
+  if (setup.provisioning === 'none' && setup.provenance === 'fallback') { return null; }
+  fail(`worktreeSetup binding is malformed (layer ${setup.provenance}): command must be a string (got ${JSON.stringify(setup.command)})`);
+}
+
+// the-loop worktree-create <branch> [--base-branch <ref>] — ADR-0038 create path;
+// after add, runs worktreeSetup (if bound). Failure tears down so created:false always
+// means already fully provisioned (ADR-0052). Sequence stays in this function.
 export function worktreeCreateCommand([branch, ...flagArgs]) {
   if (!branch) { fail('usage: spine worktree-create <branch> [--base-branch <ref>]'); }
   const { baseBranch } = parseFlags(flagArgs, { '--base-branch': 'baseBranch' });
   const dir = path.join(WORKTREES_DIR, branch.replaceAll('/', '-'));
-  if (existsSync(dir)) {
-    out({ path: dir, branch, created: false });
-    return;
-  }
-  const branchExists = gitOk(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`]);
-  if (branchExists) { git(['worktree', 'add', dir, branch]); }
-  else { git(['worktree', 'add', '-b', branch, dir, baseBranch || 'main']); }
-  linkNodeModules(dir);
-  out({ path: dir, branch, created: true });
-}
+  if (existsSync(dir)) { out({ path: dir, branch, created: false }); return; }
 
-// Worktrees don't share node_modules; for node projects, link the root install in so
-// tests run without a per-worktree install. Best-effort: any failure just skips it.
-function linkNodeModules(dir) {
-  try {
-    if (existsSync(path.join(dir, 'package.json')) && existsSync('node_modules') && !existsSync(path.join(dir, 'node_modules'))) {
-      symlinkSync(path.resolve('node_modules'), path.join(dir, 'node_modules'), 'dir');
-    }
-  } catch { /* best-effort */ }
+  let setup;
+  try { setup = resolveWorktreeSetup(); }
+  catch (error) { fail(error.message); }
+  const command = worktreeSetupCommand(setup);
+
+  if (gitOk(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`])) { git(['worktree', 'add', dir, branch]); }
+  else { git(['worktree', 'add', '-b', branch, dir, baseBranch || 'main']); }
+  if (command) { provisionWorktree(dir, command, setup); }
+  out({ path: dir, branch, created: true });
 }
 
 // the-loop worktree-remove <path-or-branch> — the one sanctioned worktree-teardown

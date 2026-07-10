@@ -442,7 +442,7 @@ features:
 
   - id: worktree-setup
     title: Worktree-setup hook — per-project worktree provisioning command, replacing the node_modules symlink
-    status: designed
+    status: validated
     depends_on: [configure, onboard]
     notes:
       - "designed 2026-07-10 from docs/briefs/worktree-setup.md (ADR-0052); family shape { command, timeout? }, fallback { provisioning: none }, teardown-on-failure keeps the created:false early return sound"

@@ -35,7 +35,7 @@ to Define.**
 1. **Run the configure leg.** Invoke the `configure` skill — it prints the resolved hook
    inventory with `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" hooks-list` and interviews
    for the environment and personal hooks (interview skill, models, notification,
-   artifact stores). This is a recommended-answer interview: **every configure question
+   artifact stores, worktree setup). This is a recommended-answer interview: **every configure question
    carries a recommended answer**, so the human can accept the default with a nod and
    only deliberate where they disagree. Nothing is written to a settings layer without
    the human's confirmation.

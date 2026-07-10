@@ -19,9 +19,10 @@ twice at your prices; after it runs, reading is step 3's verification and is
 yours.
 
 1. **Worktree** — same as build: run the `the-loop worktree-create` command from your
-   prompt, work only in the printed path, remove the worktree when done. Before a
-   cold start, check whether the worktree already exists with work in it — a prior
-   drive that ran out of budget may have left an intact worktree and a
+   prompt, work only in the printed path, remove the worktree when done. Give that call
+   a generous Bash-tool timeout (600000 ms) because it may run the project's provisioning
+   command. Before a cold start, check whether the worktree already exists with work
+   in it — a prior drive that ran out of budget may have left an intact worktree and a
    finished-or-still-running executor for this exact task. If so, adopt it: attach to
    or let the running executor finish (step 3's stalled-vs-working check tells you
    which), then go straight to step 3's verification and step 4's commit rather than

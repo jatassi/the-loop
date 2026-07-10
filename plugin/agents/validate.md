@@ -14,8 +14,9 @@ only (shapes below).
 
 ## 1 · Assemble
 
-Create the integration worktree your prompt names and work only there. A
-pre-existing `integrate--<feature>` branch is untrusted — a prior failed pass
+Create the integration worktree your prompt names and work only there. Give that call a
+generous Bash-tool timeout (600000 ms) because it may run the project's provisioning
+command. A pre-existing `integrate--<feature>` branch is untrusted — a prior failed pass
 preserved it for inspection and the target has usually moved — reset it to the
 target tip before merging. Merge the
 listed branches in order, apply the test-gated merge policy to any textual conflict:

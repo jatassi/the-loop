@@ -13,7 +13,8 @@ only (shapes below).
 ## Worktree
 
 Run the `the-loop worktree-create` command your prompt names and do ALL work inside the
-printed path. The main checkout is the human's — never touch it. If the prompt lists
+printed path. Give that call a generous Bash-tool timeout (600000 ms) because it may run
+the project's provisioning command. The main checkout is the human's — never touch it. If the prompt lists
 sibling branches to merge, merge them first. A textual conflict is not automatically
 the plan being wrong: apply the test-gated merge policy — resolve only when you can state both
 sides' intents and write a resolution that serves both, then prove it by running both

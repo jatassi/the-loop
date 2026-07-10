@@ -1,0 +1,7 @@
+{
+  "the-loop": {
+    "worktreeSetup": {
+      "command": "npm ci"
+    }
+  }
+}

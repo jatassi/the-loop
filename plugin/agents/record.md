@@ -25,7 +25,9 @@ analyze.
 Compute `<date>` as `prepared_at`'s UTC calendar date (`YYYY-MM-DD`). Create a
 worktree with `<cli> worktree-create` (the invocation from the prompt's `cli:`
 trailer, or bare `the-loop` when absent) the same way build/validate/drive do,
-base branch = the run's target; do all work inside the printed path.
+base branch = the run's target; do all work inside the printed path. Give that call a
+generous Bash-tool timeout (600000 ms) because it may run the project's provisioning
+command.
 
 Inside that worktree, `<seq>` = 1 + the count of existing files matching
 `docs/calibration/runs/<date>-*.md` (glob the directory — do not assume a fixed
