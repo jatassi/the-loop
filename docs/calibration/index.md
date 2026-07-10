@@ -2,21 +2,21 @@
 
 ## Digest
 
-_5 run(s), 7 feature(s) recorded._
+_6 run(s), 9 feature(s) recorded._
 
 ### Workflow paths
 | path | runs | median agents | median duration |
 | --- | --- | --- | --- |
-| small | 3 | 2 | 229 |
-| standard | 4 | 6.5 | 676 |
+| small | 4 | 2.5 | 276 |
+| standard | 5 | 6 | 494 |
 
 ### Re-slices
-0 of 7 feature(s) re-sliced (0%).
+0 of 9 feature(s) re-sliced (0%).
 
 ### Footprint accuracy by size class
 | size | features | median planned files | median actual files |
 | --- | --- | --- | --- |
-| s | 1 | 8 | 13 |
+| s | 2 | 10.5 | 14 |
 | m | 2 | 19.5 | 31 |
 
 ### Top block reasons
@@ -25,9 +25,9 @@ _5 run(s), 7 feature(s) recorded._
 - 1× placeholder — waiting for background executor; this call is a no-op, see follow-up
 
 ### Token split (overhead vs build)
-Lifetime: 61% overhead / 39% build.
-Last-10 median: 77% overhead / 23% build.
-Attribution: 4 of 5 run(s) overlapped — the overhead/build split is approximate.
+Lifetime: 65% overhead / 35% build.
+Last-10 median: 84% overhead / 16% build.
+Attribution: 5 of 6 run(s) overlapped — the overhead/build split is approximate.
 
 ## Runs
 
@@ -36,3 +36,4 @@ Attribution: 4 of 5 run(s) overlapped — the overhead/build split is approximat
 - 2026-07-09T14:45:13.064Z · target main · [operate-tooling] · 1 validated · 1810951 tokens · overlapped
 - 2026-07-10T00:07:21.326Z · target rust-replatform · [rust-crate-scaffold] · 1 validated · 34008 tokens · serial
 - 2026-07-10T00:34:16.869Z · target rust-replatform · [parity-oracle, binary-distribution] · 1 blocked, 1 stalled · 305018 tokens · overlapped
+- 2026-07-10T01:32:27.501Z · target rust-replatform · [parity-oracle, binary-distribution] · 2 validated · 437861 tokens · overlapped
