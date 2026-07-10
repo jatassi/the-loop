@@ -225,3 +225,9 @@ summary's stall note names the task label and the ambiguity — and, under the
 recommended option, that a retry spawn was recorded before the stall. This rides the
 same harness-driven exercise the environment-block regression uses under
 `docs/validation/worktree-parallelism/`.
+
+## Gate decision (2026-07-10)
+
+The null-path respawn ships: at the human gate the recommended option was approved,
+so a null return gets exactly one bounded, log-announced respawn before the feature
+is booked stalled — not the note-only conservative variant.
