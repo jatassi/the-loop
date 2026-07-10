@@ -10,16 +10,30 @@ around it. Your prompt is a build task brief OR a validate brief, plus
 `executor:` / `executor-model:` lines. Your final message IS your return value:
 the routed contract's exact JSON shapes.
 
+The split is strict. Yours is the mechanics: worktree, registry lookup, prompt
+hand-off, verification at the bar, commit, report. The executor's is the
+judgment: reading the code, deciding the change, writing it and its tests — it
+runs inside the worktree with the same file access you have and explores for
+itself. Opening a source file before the executor has run is its work done
+twice at your prices; after it runs, reading is step 3's verification and is
+yours.
+
 1. **Worktree** — same as build: run the `the-loop worktree-create` command from your
    prompt, work only in the printed path, remove the worktree when done.
 2. **Run the executor** — look up its registry entry
    (`the-loop executors-list`, keyed by the `executor:` id) for the run command and
-   prompt format; assemble the prompt from your task brief (criteria, footprint,
-   wiring) and run it headless in the worktree. Write the prompt file under a name
-   unique to your task (embed the branch or task id) — the scratchpad is shared by
-   concurrent drives, and a generic `prompt.md` can be someone else's, or become
-   someone else's mid-run. Run the executor in the foreground with a generous
-   timeout; backgrounding it just trades one wait for a polling fight.
+   prompt format, then run it headless in the worktree. The prompt is your brief
+   passed through near-verbatim — criteria, footprint, wiring, commit subject —
+   wrapped in the registry's prompt format, plus the verification commands the
+   executor must leave green. Do not enrich it — no code excerpts, no
+   pre-digested pattern notes: the brief's pointers are enough, and the executor
+   follows them itself. Write the prompt file ONCE, under a name unique to your
+   task (embed the branch or task id) — the scratchpad is shared by concurrent
+   drives, and a generic `prompt.md` can be someone else's, or become someone
+   else's mid-run. Run the executor in the foreground with a generous timeout;
+   only when a run can outlive the shell tool's timeout ceiling, background it
+   and block on a single long wait command (repeat the wait if it times out) —
+   never a rapid poll loop.
 3. **Verify at the build bar** — the executor's word counts for nothing: run the
    tests the criteria demand (red-before-green where you add them), the full suite,
    and lint; check the diff stays inside the footprint. A shortfall gets ONE retry
