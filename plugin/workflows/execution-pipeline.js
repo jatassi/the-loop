@@ -42,11 +42,11 @@ function roleBinding(role) {
   log(`model-selection — role ${role} unbound, session-model fallback`);
   return { model: 'session' };
 }
-function modelOpts(binding) {
-  const opts = {};
-  if (binding.model !== 'session') { opts.model = binding.model; }
-  if (binding.effort !== undefined) { opts.effort = binding.effort; }
-  return opts;
+function modelOpts(b) {
+  const o = {};
+  if (b.model !== 'session') { o.model = b.model; }
+  if (b.effort !== undefined) { o.effort = b.effort; }
+  return o;
 }
 
 // ---- return schemas (the harness validates each agent's structured return; every
@@ -94,10 +94,7 @@ const zeroRoles = () => Object.fromEntries(ROLES.map((r) => [r, 0]));
 const featureObs = new Map();
 function obsFor(id) {
   let o = featureObs.get(id);
-  if (o === undefined) {
-    o = { workflow_path: null, tasks: [], agents: zeroRoles(), reslice: null };
-    featureObs.set(id, o);
-  }
+  if (o === undefined) { o = { workflow_path: null, tasks: [], agents: zeroRoles(), reslice: null }; featureObs.set(id, o); }
   return o;
 }
 const taskContracts = (tasks) => (tasks || []).map((t) => ({
@@ -116,29 +113,42 @@ let didSpawnsOverlap = false;
 
 // ---- the one spawn choke point: classifies thrown errors and environment blocks
 // into run-level halts / feature-level stalls that every stage reports identically.
-function isBudgetExhausted(error) {
-  return /budget/i.test(`${error?.name ?? ''} ${error?.code ?? ''}`);
+// Null / classified-transient throws: one log-announced respawn of the same prompt/opts.
+// Budget-exhausted still halts with no retry. Ordinary throws and environment blocks
+// keep single-spawn bare notes. Transient classifier: 5xx / network / "Server error
+// mid-response" — not ordinary messages like 'api hiccup'.
+const isBudgetExhausted = (error) => /budget/i.test(`${error?.name ?? ''} ${error?.code ?? ''}`);
+const isTransientError = (error) => /\b5\d\d\b|ECONNRESET|ETIMEDOUT|ENOTFOUND|network|Server error mid-response|API Error:/i.test(String(error?.message ?? ''));
+function toSpawnResult({ o, opts, featureId, didRetry }) {
+  if (o.e) {
+    if (isBudgetExhausted(o.e)) { return { halted: { reason: 'budget-exhausted', detail: o.e.message } }; }
+    return { stalled: { feature: featureId, agent: opts.agentType, note: didRetry ? `${opts.label}: ${o.e.message}` : o.e.message } };
+  }
+  if (o.v == null) { return { stalled: { feature: featureId, agent: opts.agentType, note: `${opts.label}: no result — user-skip or terminal API failure after harness retries; rerun to retry` } }; }
+  if (o.v.result === 'blocked' && o.v.kind === 'environment') { return { stalled: { feature: featureId, agent: opts.agentType, note: o.v.detail } }; }
+  return o.v;
 }
 async function spawn(prompt, opts, { featureId, role }) {
   const spentBefore = budget.spent();
   spawnsInFlight += 1;
   if (spawnsInFlight > 1) { didSpawnsOverlap = true; }
-  obsFor(featureId).agents[role] += 1;
-  let r;
+  const call = async () => {
+    obsFor(featureId).agents[role] += 1;
+    try { return { v: await agent(prompt, opts) }; } catch (error) { return { e: error }; }
+  };
   try {
-    r = await agent(prompt, opts);
-  } catch (error) {
-    if (isBudgetExhausted(error)) { return { halted: { reason: 'budget-exhausted', detail: error.message } }; }
-    return { stalled: { feature: featureId, agent: opts.agentType, note: error.message } };
+    let o = await call();
+    let didRetry = false;
+    if (o.e ? !isBudgetExhausted(o.e) && isTransientError(o.e) : o.v == null) {
+      didRetry = true;
+      log(`spawn retry 1/1 — ${opts.label}: ${o.e ? o.e.message : 'agent returned null'}`);
+      o = await call();
+    }
+    return toSpawnResult({ o, opts, featureId, didRetry });
   } finally {
     spawnsInFlight -= 1;
     budgetByRole[role] += Math.max(0, budget.spent() - spentBefore);
   }
-  if (r == null) { return { stalled: { feature: featureId, agent: opts.agentType, note: 'agent returned null' } }; }
-  if (r.result === 'blocked' && r.kind === 'environment') {
-    return { stalled: { feature: featureId, agent: opts.agentType, note: r.detail } };
-  }
-  return r;
 }
 
 // Record a signal on the shared lists. Returns 'halt' | 'fail' | null — the stage
@@ -280,11 +290,7 @@ async function withValidateLock(fn) {
   const { promise, resolve } = Promise.withResolvers();
   validateTurn = promise;
   await prev;
-  try {
-    return await fn();
-  } finally {
-    resolve();
-  }
+  try { return await fn(); } finally { resolve(); }
 }
 
 // ---- phases
@@ -356,10 +362,7 @@ function taskOutcome(f, r) {
   const flow = signalOf(r);
   if (flow === 'halt') { return 'halt'; }
   if (flow === 'fail') { return false; }
-  if (r.result === 'blocked') {
-    blocked.push({ feature: f.id, reason: r.detail, options: r.options });
-    return false;
-  }
+  if (r.result === 'blocked') { blocked.push({ feature: f.id, reason: r.detail, options: r.options }); return false; }
   return true;
 }
 

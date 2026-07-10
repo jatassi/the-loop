@@ -83,7 +83,9 @@ yours.
    field the engine surfaces downstream). An executor merely cut off mid-work,
    with no auth/availability failure of the environment itself, is a retryable
    infrastructure failure: report it so the feature lands in the retry lane, not
-   as a hard claim that the environment is broken.
+   as a hard claim that the environment is broken. A transient executor API failure
+   that returns no commit surfaces to the engine as a null/stall (retryable) — keep
+   failure narration in a field the engine surfaces, not only in the run log.
 
 Integrity lines are build's, unchanged: never weaken tests or suppress lint to get
 green — not yours, and not the executor's.

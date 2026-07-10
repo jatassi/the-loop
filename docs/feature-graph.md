@@ -432,7 +432,7 @@ features:
 
   - id: fix-null-return-stall-opaque
     title: a transient executor API failure (agent() returns null) becomes a terminal stall with an opaque note and no retry
-    status: designed
+    status: validated
     depends_on: []
     acceptance:
       - Given a spawn whose agent() returns null, when the run summary returns, then the feature's stall note carries its opts.label (feature/task/executor identity) and names the user-skip vs terminal-API-failure ambiguity — never the bare literal "agent returned null" (rewrites the test at execution-pipeline-halt.test.js that currently pins the opaque note)
