@@ -97,15 +97,18 @@ test('resolveTarget defaults to the JS CLI and honors ORACLE_TARGET and ORACLE_B
   assert.deepEqual(override.bin, { command: 'foo', prefixArgs: ['bar', 'baz'] });
 });
 
-test('loadPending lists remaining allowlisted commands and excludes live graph commands and --version', () => {
+test('loadPending lists remaining allowlisted commands and excludes live graph/plan commands and --version', () => {
   const pending = loadPending();
   assert.ok(Array.isArray(pending));
-  assert.ok(pending.includes('plan parse'));
+  assert.ok(!pending.includes('plan parse'));
+  assert.ok(!pending.includes('plan check'));
+  assert.ok(!pending.includes('plan task'));
   assert.ok(!pending.includes('status'));
   assert.ok(!pending.includes('list'));
   assert.ok(!pending.includes('check'));
   assert.ok(!pending.includes('set-status'));
   assert.ok(!pending.includes('--version'));
+  assert.ok(pending.includes('prepare-execution-context'));
 });
 
 test('loadCases discovers case modules from a directory and returns [] when absent', async () => {

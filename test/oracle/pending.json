@@ -1,7 +1,4 @@
 [
-  "plan parse",
-  "plan check",
-  "plan task",
   "prepare-execution-context",
   "worktree-create",
   "worktree-remove",

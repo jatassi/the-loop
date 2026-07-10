@@ -344,7 +344,7 @@ function featureForEmit(f, includeSection) {
 }
 
 /** @param {string} featureId @param {object} plan */
-function renderPlanMd(featureId, plan) {
+export function renderPlanMd(featureId, plan) {
   const payload = {
     feature: featureId,
     design_version: plan.design_version,
@@ -361,7 +361,7 @@ ${toYaml(payload)}
 }
 
 /** @param {string} featureId @param {object} plan */
-function renderPlanJson(featureId, plan) {
+export function renderPlanJson(featureId, plan) {
   const payload = {
     feature: featureId,
     design_version: plan.design_version,

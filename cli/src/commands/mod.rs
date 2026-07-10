@@ -7,3 +7,4 @@ pub mod graph;
 pub mod hooks_list;
 pub mod hooks_set;
 pub mod models_list;
+pub mod plan;

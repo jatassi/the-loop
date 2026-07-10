@@ -3,21 +3,15 @@
 // CLI, jsonRepo for the Rust binary — so both binaries read their own format of
 // the same shared definition.
 
-import { execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { HOME, pairSetup, REFUSE, tempSetup } from '../case-setup.js';
 import {
-  buildFixturePair,
   EXAMPLE_DEFINITION,
   malformedGraphSetup,
   refusalCatalogSetup,
 } from '../fixtures.js';
-
-const REFUSE = { exitCode: 1, stderr: 'present', stdoutBytes: '' };
-const ALPHA = { branch: 'loop/alpha' };
-const HOME = { isolateHome: true };
 
 const WELL_FORMED = {
   ...EXAMPLE_DEFINITION,
@@ -70,52 +64,6 @@ const ROLE_TABLE = {
   record: { model: 'haiku', provenance: 'default' },
 };
 
-const ALPHA_TASK = {
-  id: 'alpha-core', title: 'Implement alpha core', covers: [1, 2],
-  acceptance: 'alpha core satisfies both feature criteria',
-  footprint: ['src/alpha.js', 'test/alpha.test.js'],
-  size: 's', depends_on: [], judgment_level: 'standard',
-  wiring: 'foundational module the rest of the feature hangs on',
-};
-
-/** @param {string} dir */
-const rm = (dir) => rmSync(dir, { recursive: true, force: true });
-
-/**
- * @param {typeof EXAMPLE_DEFINITION} definition
- * @param {{ branch?: string, isolateHome?: boolean }} [opts]
- */
-function pairSetup(definition, { branch, isolateHome } = {}) {
-  return ({ target }) => {
-    const { yamlRepo, jsonRepo } = buildFixturePair(definition);
-    const cwd = target === 'rust' ? jsonRepo : yamlRepo;
-    if (branch) {
-      execSync(`git checkout -q ${branch}`, { cwd });
-    }
-    const emptyHome = isolateHome ? mkdtempSync(path.join(tmpdir(), 'oracle-home-')) : null;
-    return {
-      cwd,
-      env: emptyHome ? { HOME: emptyHome } : undefined,
-      cleanup: () => {
-        rm(yamlRepo);
-        rm(jsonRepo);
-        if (emptyHome) {
-          rm(emptyHome);
-        }
-      },
-    };
-  };
-}
-
-/** @param {string} prefix @param {(cwd: string) => void} [seed] */
-function tempSetup(prefix, seed) {
-  return () => {
-    const cwd = mkdtempSync(path.join(tmpdir(), prefix));
-    seed?.(cwd);
-    return { cwd, cleanup: () => rm(cwd) };
-  };
-}
-
 const emptyDir = tempSetup('oracle-empty-');
 
 const playbook = (id) => [
@@ -138,7 +86,6 @@ const badPlaybook = tempSetup('oracle-playbook-', (cwd) => {
 });
 
 const example = pairSetup(EXAMPLE_DEFINITION);
-const onAlpha = pairSetup(EXAMPLE_DEFINITION, ALPHA);
 const wellFormedHome = pairSetup(WELL_FORMED, HOME);
 const bareStringHome = pairSetup(EXAMPLE_DEFINITION, HOME);
 
@@ -243,59 +190,6 @@ export const cases = [
     argv: ['check'],
     setup: refusalCatalogSetup,
     expect: { exitCode: 1, stdoutMatch: /FAIL/ },
-  },
-  {
-    command: 'plan parse',
-    scenario: 'happy path',
-    argv: ['plan', 'parse', 'alpha'],
-    setup: onAlpha,
-    expect: {
-      exitCode: 0,
-      stdout: { feature: 'alpha', designVersion: 1, tasks: [ALPHA_TASK] },
-    },
-  },
-  {
-    command: 'plan parse',
-    scenario: 'refusal: missing plan file',
-    argv: ['plan', 'parse', 'ghost'],
-    setup: onAlpha,
-    expect: REFUSE,
-  },
-  {
-    command: 'plan check',
-    scenario: 'happy path OK',
-    argv: ['plan', 'check', 'alpha'],
-    setup: onAlpha,
-    expect: { exitCode: 0, stdoutMatch: /^OK\s+plan alpha: 1 task\(s\)/ },
-  },
-  {
-    command: 'plan check',
-    scenario: 'refusal: feature-id mismatch FAIL',
-    argv: ['plan', 'check', 'beta', 'docs/plans/alpha/plan.md'],
-    setup: onAlpha,
-    expect: { exitCode: 1, stdoutMatch: /FAIL plan beta: 1 task\(s\)/ },
-  },
-  {
-    command: 'plan task',
-    scenario: 'happy path',
-    argv: ['plan', 'task', 'alpha', 'alpha-core'],
-    setup: onAlpha,
-    expect: {
-      exitCode: 0,
-      stdout: {
-        feature: 'alpha',
-        design_version: 1,
-        task: ALPHA_TASK,
-        covers_criteria: ['alpha criterion one', 'alpha criterion two'],
-      },
-    },
-  },
-  {
-    command: 'plan task',
-    scenario: 'refusal: unknown task id',
-    argv: ['plan', 'task', 'alpha', 'no-such-task'],
-    setup: onAlpha,
-    expect: REFUSE,
   },
   {
     command: 'executors-list',

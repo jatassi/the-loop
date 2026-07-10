@@ -15,7 +15,7 @@
 //   {
 //     command:  string    // e.g. 'status', 'plan parse', '--version' — keys the allowlist
 //     scenario: string    // human label for the run
-//     argv:     string[]  // appended after the binary's prefix args
+//     argv:     string[] | (ctx) => string[]   // appended after the binary's prefix args
 //     env?:     Record<string,string>          // extra env (HOME isolation, …)
 //     setup?:   (ctx) => { cwd?, env?, cleanup? } | void   // builds a disposable fixture repo
 //     expect:   Expectation | (ctx) => Expectation         // ctx = { target }
@@ -117,10 +117,11 @@ export async function loadCases(dir = path.join(HERE, 'cases')) {
 export function runCase(caseSpec, { bin, target, pendingCommands = [] }) {
   const ctx = { target };
   const expectation = typeof caseSpec.expect === 'function' ? caseSpec.expect(ctx) : caseSpec.expect;
+  const argv = typeof caseSpec.argv === 'function' ? caseSpec.argv(ctx) : caseSpec.argv;
   const setup = caseSpec.setup ? caseSpec.setup(ctx) || {} : {};
   try {
     const env = { ...process.env, ...caseSpec.env, ...setup.env };
-    const spawned = spawnSync(bin.command, [...bin.prefixArgs, ...caseSpec.argv], { cwd: setup.cwd, env, encoding: 'utf8' });
+    const spawned = spawnSync(bin.command, [...bin.prefixArgs, ...argv], { cwd: setup.cwd, env, encoding: 'utf8' });
     const failures = evaluateExpectation(expectation, resultOf(spawned, setup.cwd));
     return verdictOf(caseSpec, failures, { target, pendingCommands });
   } finally {

@@ -28,7 +28,7 @@ pub struct CommandResult {
 
 impl CommandResult {
     #[must_use]
-    const fn ok(stdout: String) -> Self {
+    pub(crate) const fn ok(stdout: String) -> Self {
         Self {
             exit_code: 0,
             stdout,
@@ -37,7 +37,7 @@ impl CommandResult {
     }
 
     #[must_use]
-    fn refuse(msg: impl Into<String>) -> Self {
+    pub(crate) fn refuse(msg: impl Into<String>) -> Self {
         Self {
             exit_code: 1,
             stdout: String::new(),
@@ -46,7 +46,7 @@ impl CommandResult {
     }
 
     #[must_use]
-    const fn fail_stdout(stdout: String) -> Self {
+    pub(crate) const fn fail_stdout(stdout: String) -> Self {
         Self {
             exit_code: 1,
             stdout,

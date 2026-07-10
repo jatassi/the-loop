@@ -1,18 +1,20 @@
 //! CLI library surface for `the-loop`.
 //!
-//! Clap argv dispatch for `--version` and the graph subcommands (`check`, `list`,
-//! `set-status`, `status`), plus the feature-graph JSON model (canonical
-//! parse/emit) and pure graph validation. `status` carries the human summary and
-//! `--json` machine orientation. Shared stdout-JSON/stderr-fail helpers (`io`),
-//! compiled-in plugin defaults, the pure executor registry (`executors`:
-//! playbook parse + binding validation), the settings-layer reader / four-layer
-//! merge resolver (`settings`), the recorded-bindings section scan
-//! (`recorded_bindings`), and the pure byte-surgical settings writer
-//! (`settings_write`) back the config-surface command bodies under [`commands`]
-//! (`executors-list`, `models-list`, `hooks-list`, `hooks-set`).
+//! Clap argv dispatch for `--version`, the graph subcommands (`check`, `list`,
+//! `set-status`, `status`), the plan subcommands (`plan parse|check|task`), plus
+//! the feature-graph and plan JSON models (canonical parse/emit) and pure
+//! validation. `status` carries the human summary and `--json` machine
+//! orientation. Shared stdout-JSON/stderr-fail helpers (`io`), compiled-in
+//! plugin defaults, the pure executor registry (`executors`: playbook parse +
+//! binding validation), the settings-layer reader / four-layer merge resolver
+//! (`settings`), the recorded-bindings section scan (`recorded_bindings`), and
+//! the pure byte-surgical settings writer (`settings_write`) back the
+//! config-surface command bodies under [`commands`] (`executors-list`,
+//! `models-list`, `hooks-list`, `hooks-set`).
 
 mod commands;
 mod graph;
+mod plan;
 mod status;
 mod validate;
 
@@ -25,7 +27,12 @@ pub mod settings_write;
 pub use commands::graph::{
     CommandResult, DEFAULT_GRAPH, check, list, resolve_graph_path, set_status,
 };
+pub use commands::plan::{plan_check, plan_parse, plan_task};
 pub use graph::{Acceptance, Feature, FeatureGraph, ParseError, emit, parse};
+pub use plan::{
+    JUDGMENT_LEVELS, Plan, ResolvedTask, TASK_SIZES, Task, TaskAcceptance, emit as emit_plan,
+    parse as parse_plan, plan_path, resolve_task, validate as validate_plan,
+};
 pub use settings_write::{SettingsWriteError, write_settings_entry};
 pub use status::{
     ByStatus, IssueOut, Orientation, Position, Proposal, Refusal, State, blocking_proposed_ids,
@@ -130,6 +137,43 @@ pub enum Command {
         #[arg(value_name = "json-value")]
         json_value: String,
     },
+    /// Plan artifact commands (`parse` | `check` | `task`).
+    Plan {
+        #[command(subcommand)]
+        sub: PlanSub,
+    },
+}
+
+/// Nested `plan` subcommands.
+#[derive(Subcommand, Debug)]
+pub enum PlanSub {
+    /// Print the parsed plan as JSON (`feature`, `designVersion`, `tasks`).
+    Parse {
+        /// Feature id the plan belongs to (selects the default path).
+        feature_id: String,
+        /// Path to `plan.json` (default: `docs/plans/<id>/plan.json`).
+        path: Option<PathBuf>,
+    },
+    /// Validate the plan against the feature graph; OK/FAIL summary; exit 0/1.
+    Check {
+        /// Feature id the plan is being checked as.
+        feature_id: String,
+        /// Path to the plan file (default: `docs/plans/<id>/plan.json`).
+        plan: Option<PathBuf>,
+        /// Path to the feature graph (default: `docs/feature-graph.json`).
+        graph: Option<PathBuf>,
+    },
+    /// Print one task's brief (`feature`, `design_version`, `task`, `covers_criteria`).
+    Task {
+        /// Feature id the plan belongs to.
+        feature_id: String,
+        /// Task id within the plan.
+        task_id: String,
+        /// Path to the plan file (default: `docs/plans/<id>/plan.json`).
+        plan: Option<PathBuf>,
+        /// Path to the feature graph (default: `docs/feature-graph.json`).
+        graph: Option<PathBuf>,
+    },
 }
 
 impl Cli {
@@ -169,6 +213,22 @@ impl Cli {
                 commands::hooks_set::run(&family, &layer, &json_value);
                 ExitCode::SUCCESS
             }
+            Some(Command::Plan { sub }) => match sub {
+                PlanSub::Parse { feature_id, path } => {
+                    plan_parse(&feature_id, path).into_exit_code()
+                }
+                PlanSub::Check {
+                    feature_id,
+                    plan,
+                    graph,
+                } => plan_check(&feature_id, plan, graph).into_exit_code(),
+                PlanSub::Task {
+                    feature_id,
+                    task_id,
+                    plan,
+                    graph,
+                } => plan_task(&feature_id, &task_id, plan, graph).into_exit_code(),
+            },
             None => ExitCode::SUCCESS,
         }
     }
@@ -271,10 +331,7 @@ mod tests {
     #[test]
     fn check_list_set_status_parse_as_subcommands() {
         let check = Cli::try_parse_from(["the-loop", "check"]).expect("check");
-        assert!(matches!(
-            check.command,
-            Some(Command::Check { path: None })
-        ));
+        assert!(matches!(check.command, Some(Command::Check { path: None })));
 
         let list = Cli::try_parse_from(["the-loop", "list", "alt.json"]).expect("list");
         match list.command {
@@ -399,6 +456,65 @@ mod tests {
         match cli.command {
             Some(Command::HooksList) => {}
             other => panic!("expected HooksList, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plan_subcommands_parse() {
+        let parse =
+            Cli::try_parse_from(["the-loop", "plan", "parse", "alpha"]).expect("plan parse");
+        match parse.command {
+            Some(Command::Plan {
+                sub:
+                    PlanSub::Parse {
+                        feature_id,
+                        path: None,
+                    },
+            }) => assert_eq!(feature_id, "alpha"),
+            other => panic!("expected Plan::Parse, got {other:?}"),
+        }
+
+        let check = Cli::try_parse_from([
+            "the-loop",
+            "plan",
+            "check",
+            "alpha",
+            "docs/plans/alpha/plan.json",
+            "docs/feature-graph.json",
+        ])
+        .expect("plan check");
+        match check.command {
+            Some(Command::Plan {
+                sub:
+                    PlanSub::Check {
+                        feature_id,
+                        plan: Some(p),
+                        graph: Some(g),
+                    },
+            }) => {
+                assert_eq!(feature_id, "alpha");
+                assert_eq!(p, PathBuf::from("docs/plans/alpha/plan.json"));
+                assert_eq!(g, PathBuf::from("docs/feature-graph.json"));
+            }
+            other => panic!("expected Plan::Check, got {other:?}"),
+        }
+
+        let task = Cli::try_parse_from(["the-loop", "plan", "task", "alpha", "alpha-core"])
+            .expect("plan task");
+        match task.command {
+            Some(Command::Plan {
+                sub:
+                    PlanSub::Task {
+                        feature_id,
+                        task_id,
+                        plan: None,
+                        graph: None,
+                    },
+            }) => {
+                assert_eq!(feature_id, "alpha");
+                assert_eq!(task_id, "alpha-core");
+            }
+            other => panic!("expected Plan::Task, got {other:?}"),
         }
     }
 }

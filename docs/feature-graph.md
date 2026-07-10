@@ -363,7 +363,7 @@ features:
 
   - id: plan-commands-rust
     title: plan.json schema + plan parse/check/task in Rust
-    status: designed
+    status: validated
     depends_on: [graph-commands-rust]
     acceptance:
       - the plan schema at docs/plans/<id>/plan.json carries the task-contract shape — feature, design_version, and tasks each with id, title, covers, acceptance, footprint, size xs|s|m, judgment_level rote|standard|complex, depends_on, optional wiring — read and canonically re-emitted like the graph
