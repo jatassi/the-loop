@@ -1,9 +1,10 @@
 // run-presentation's --script-out leg on `spine prepare-execution-context`: with the
 // flag, a launch-ready copy of the canonical workflow script is written, its meta
-// description spliced to name the run's scope and target; without it, nothing is
-// written, and stdout stays the unchanged execution context either way. A canonical
-// script whose meta line doesn't carry the expected shape is a refusal — exit 1,
-// nothing written, stdout included.
+// description spliced to name the run's scope and target and its EMBEDDED_CONTEXT
+// spliced to the assembled execution context; without it, nothing is written, and
+// stdout stays the unchanged execution context either way. A canonical script whose
+// meta line or EMBEDDED_CONTEXT target doesn't carry the expected shape is a
+// refusal — exit 1, nothing written, stdout included.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -56,6 +57,29 @@ function pluginRootFixture(workflowScript) {
   return root;
 }
 
+// Mirror test/execution-pipeline-harness.js's load (AsyncFunction + harness globals)
+// but return the script's executionContext before Plan/Build/Validate runs — so a
+// spliced script can be asserted with no args without driving the full schedule.
+async function loadScriptExecutionContext(scriptPath, args) {
+  const META_LINE = /^(\s*)export const meta\b/m;
+  const body = readFileSync(scriptPath, 'utf8')
+    .replace(META_LINE, '$1const meta')
+    .replace(
+      /const executionContext = .+;/,
+      (m) => `${m}\nreturn executionContext;`,
+    );
+  const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
+  const run = new AsyncFunction('agent', 'parallel', 'pipeline', 'log', 'args', 'budget', body);
+  return run(
+    async () => null,
+    () => { throw new Error('parallel() is not used'); },
+    () => { throw new Error('pipeline() is not used'); },
+    () => {},
+    args,
+    { total: null, spent: () => 0, remaining: () => 0 },
+  );
+}
+
 const GRAPH = `# Fixture — Feature graph
 
 ## Feature graph
@@ -80,6 +104,22 @@ Narrative.
 Run the fixture CLI and expect pong on stdout.
 `;
 
+// Nested escaped quotes — the bug class that corrupted the Workflow args channel.
+// File content carries a backslash before the quotes: data-audio=\"on\"
+const DESIGN_WITH_NESTED_QUOTES = String.raw`# Widget design
+
+The live surface toggles with data-audio=\"on\" in its markup.
+`;
+
+const metaLine = /^export const meta\b.*;$/m;
+// Canonical target may carry a trailing comment; spliced form is a single JSON literal line.
+const embeddedLine = /^const EMBEDDED_CONTEXT = .+;.*$/m;
+
+// Strip both splice targets so two copies can be compared for "only spliced lines differ".
+function stripSplices(text) {
+  return text.replace(metaLine, '').replace(embeddedLine, '');
+}
+
 test("spine prepare-execution-context --script-out writes a spliced copy of the canonical workflow script naming this run's scope and target; without the flag nothing is written, and stdout stays the unchanged execution context either way", () => {
   const root = gitFixture({ 'docs/feature-graph.md': GRAPH, 'docs/architecture.md': DESIGN });
   try {
@@ -99,13 +139,35 @@ test("spine prepare-execution-context --script-out writes a spliced copy of the 
 
     const canonical = readFileSync('plugin/workflows/execution-pipeline.js', 'utf8');
     const spliced = readFileSync(scriptOut, 'utf8');
-    const metaLine = /^export const meta\b.*;$/m;
     assert.notEqual(spliced, canonical);
-    assert.equal(spliced.replace(metaLine, ''), canonical.replace(metaLine, '')); // differs only in meta
+    assert.equal(stripSplices(spliced), stripSplices(canonical)); // differs only in meta + EMBEDDED_CONTEXT
 
     const meta = new Function(`${spliced.match(metaLine)[0].replace(/^export /, '')}\nreturn meta;`)();
     assert.equal(meta.description, 'widget → main'); // scope-derived: the one in-scope id, arrow, target
     assert.equal(meta.name, 'execution-pipeline'); // meta.name is left alone
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("spine prepare-execution-context --script-out embeds the execution context so a harness load with no args deep-equals stdout, including nested escaped quotes in designDoc", async () => {
+  const root = gitFixture({
+    'docs/feature-graph.md': GRAPH,
+    'docs/architecture.md': DESIGN,
+    'docs/designs/widget/design.md': DESIGN_WITH_NESTED_QUOTES,
+  });
+  try {
+    const scriptOut = path.join(root, 'spliced-workflow.js');
+    const stdout = spine(
+      ['prepare-execution-context', '--features', 'widget', '--target-branch', 'main', '--script-out', scriptOut],
+      { cwd: root },
+    );
+    const assembled = JSON.parse(stdout);
+    assert.match(assembled.features.widget.designDoc, /data-audio=\\"on\\"/);
+
+    // No args — the embedded literal is the only source of the context.
+    const loaded = await loadScriptExecutionContext(scriptOut);
+    assert.deepEqual(loaded, assembled);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -118,6 +180,7 @@ test("spine prepare-execution-context --script-out exits 1 with nothing written 
     "  name: 'execution-pipeline',",
     "  description: 'a static description that never varies',",
     '};',
+    'const EMBEDDED_CONTEXT = null;',
     'const x = 1;',
     '',
   ].join('\n')); // meta spans multiple lines — no one-line `description: '…'` shape to splice
@@ -134,6 +197,34 @@ test("spine prepare-execution-context --script-out exits 1 with nothing written 
     assert.equal(failure.status, 1);
     assert.equal(failure.stdout, '');
     assert.match(failure.stderr, /description/);
+    assert.ok(!existsSync(scriptOut));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test("spine prepare-execution-context --script-out exits 1 with nothing written — stdout included — when the canonical script lacks the EMBEDDED_CONTEXT target line", () => {
+  const root = gitFixture({ 'docs/feature-graph.md': GRAPH, 'docs/architecture.md': DESIGN });
+  // Valid one-line meta (description splice would succeed) but no EMBEDDED_CONTEXT = null target.
+  const pluginRoot = pluginRootFixture([
+    "export const meta = { name: 'execution-pipeline', description: 'a static description that never varies', whenToUse: 'x', phases: [] };",
+    'const x = 1;',
+    '',
+  ].join('\n'));
+  try {
+    const scriptOut = path.join(root, 'spliced-workflow.js');
+    const bin = path.join(pluginRoot, 'bin/the-loop.js');
+    let failure;
+    try {
+      execFileSync('node', [bin, 'prepare-execution-context', '--features', 'widget', '--target-branch', 'main', '--script-out', scriptOut], { cwd: root, encoding: 'utf8' });
+    } catch (error) {
+      failure = error;
+    }
+    assert.ok(failure, 'expected the command to exit non-zero');
+    assert.equal(failure.status, 1);
+    assert.equal(failure.stdout, '');
+    assert.match(failure.stderr, /EMBEDDED_CONTEXT/);
     assert.ok(!existsSync(scriptOut));
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -97,3 +97,32 @@ test('bare `node --test` discovery of the shim module itself is a no-op pass', (
   assert.match(output, /ℹ pass 1/);
   assert.match(output, /ℹ fail 0/);
 });
+
+// ── execution-context transport: embedded literal preferred; args object/string fallback ──
+// Mirrors the resolution line in workflows/execution-pipeline.js so the harness keeps
+// proving the in-process args path (object and JSON-string) while the spliced-script
+// path can omit args entirely.
+test('EMBEDDED_CONTEXT is preferred over args; object and JSON-string args still work when EMBEDDED_CONTEXT is null', async () => {
+  const preferEmbedded = writeFixture(`
+    export const meta = { name: 'ctx-prefer' };
+    const EMBEDDED_CONTEXT = { source: 'embedded' };
+    const executionContext = EMBEDDED_CONTEXT ?? (typeof args === 'string' ? JSON.parse(args) : args);
+    return executionContext;
+  `);
+  const { result: preferred } = await runWorkflowScript(preferEmbedded, { args: { source: 'args' } });
+  assert.deepEqual(preferred, { source: 'embedded' });
+
+  const argsFallback = writeFixture(`
+    export const meta = { name: 'ctx-args' };
+    const EMBEDDED_CONTEXT = null;
+    const executionContext = EMBEDDED_CONTEXT ?? (typeof args === 'string' ? JSON.parse(args) : args);
+    return executionContext;
+  `);
+  const { result: fromObject } = await runWorkflowScript(argsFallback, { args: { source: 'object' } });
+  assert.deepEqual(fromObject, { source: 'object' });
+
+  const { result: fromString } = await runWorkflowScript(argsFallback, {
+    args: JSON.stringify({ source: 'json-string' }),
+  });
+  assert.deepEqual(fromString, { source: 'json-string' });
+});

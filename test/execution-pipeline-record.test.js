@@ -92,9 +92,21 @@ const EXPECTED_PAYLOAD = [
   '      duration_minutes: null',
 ].join('\n');
 
+// The CLI const's fallback when executionContext.cli is absent (same default plan/build/
+// validate prompts already use). The trailer lives outside the transcribed payload.
+const DEFAULT_CLI = 'node plugin/bin/the-loop.js';
+const withCliTrailer = (payload, cli = DEFAULT_CLI) => `${payload}\n\ncli: ${cli}`;
+// Payload portion of a record spawn prompt: everything before the deterministic trailer.
+const transcribedPayloadOf = (prompt) => {
+  const marker = '\n\ncli: ';
+  const idx = prompt.lastIndexOf(marker);
+  assert.ok(idx !== -1, 'record prompt must carry a cli: trailer');
+  return prompt.slice(0, idx);
+};
+
 // ── criterion 2: recordPayload is a pure deterministic function of the observations —
 // two runs of the same script scripted identically produce a byte-identical payload,
-// and it is the exact YAML the record agent receives verbatim ──
+// and the transcribed portion (before the cli trailer) is the exact pinned YAML ──
 test('the record payload is byte-identical across identical runs and matches the pinned YAML', async () => {
   const args = executionContextOf([feature('alpha')]);
   const run1 = await runWorkflowScript(SCRIPT, { agentReplies: validatedAlphaReplies, args, budget: BUDGET });
@@ -105,8 +117,37 @@ test('the record payload is byte-identical across identical runs and matches the
   assert.ok(payload1, 'a record agent was spawned in phase Record');
   assert.equal(payload1.opts.label, 'record');
   assert.equal(payload1.opts.agentType, 'record');
-  assert.equal(payload1.prompt, EXPECTED_PAYLOAD);
+  assert.equal(payload1.prompt, withCliTrailer(EXPECTED_PAYLOAD));
+  assert.equal(transcribedPayloadOf(payload1.prompt), EXPECTED_PAYLOAD);
   assert.equal(payload2.prompt, payload1.prompt); // deterministic: same observations → same bytes
+});
+
+// ── criterion 1 / 3 (cli-present): a non-PATH invocation bound on the execution context
+// is named by a deterministic trailer outside the transcribed payload; the payload
+// portion stays byte-identical to the pre-fix pinned YAML ──
+test('a bound cli rides the record prompt as a trailer outside the transcribed payload', async () => {
+  const boundCli = '/opt/the-loop/bin/the-loop --plugin /opt/the-loop/plugin';
+  const args = executionContextOf([feature('alpha')], { cli: boundCli });
+  const { spawns } = await runWorkflowScript(SCRIPT, { agentReplies: validatedAlphaReplies, args, budget: BUDGET });
+
+  const spawn = recordSpawn(spawns);
+  assert.ok(spawn, 'a record agent was spawned in phase Record');
+  assert.equal(spawn.prompt, withCliTrailer(EXPECTED_PAYLOAD, boundCli));
+  assert.equal(transcribedPayloadOf(spawn.prompt), EXPECTED_PAYLOAD);
+});
+
+// ── criterion 1 / 3 (cli-absent): without executionContext.cli the record spawn still
+// gets the CLI const's fallback trailer — never omits it — and the transcribed payload
+// stays byte-identical to the pinned YAML ──
+test('a cli-absent context still appends the default cli trailer to the record prompt', async () => {
+  const args = executionContextOf([feature('alpha')]); // no cli field
+  assert.equal(args.cli, undefined);
+  const { spawns } = await runWorkflowScript(SCRIPT, { agentReplies: validatedAlphaReplies, args, budget: BUDGET });
+
+  const spawn = recordSpawn(spawns);
+  assert.ok(spawn, 'a record agent was spawned in phase Record');
+  assert.equal(spawn.prompt, withCliTrailer(EXPECTED_PAYLOAD, DEFAULT_CLI));
+  assert.equal(transcribedPayloadOf(spawn.prompt), EXPECTED_PAYLOAD);
 });
 
 // ── criterion 1: two independent features run concurrently, so the attribution flag on

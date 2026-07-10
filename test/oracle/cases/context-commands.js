@@ -82,8 +82,9 @@ const WORKTREE_REL = path.join('.claude/worktrees', 'loop-widget');
  * Expected --script-out bytes: what the reference JS CLI emits for the same scope
  * and target — derived by subprocess in a scratch fixture (never an in-process
  * import), so the byte-identity contract is asserted against the reference
- * implementation's real output. The splice depends only on the canonical script,
- * scope, and target branch, so the scratch repo's content is irrelevant.
+ * implementation's real output. The splice depends on the canonical script, scope,
+ * target branch, and the assembled execution context (identical across clean-settings
+ * fixtures except the wall-clock preparedAt, which the comparison masks).
  */
 function expectedSplicedScript(scope, targetBranch) {
   const pair = buildFixturePair(definition());
@@ -105,6 +106,15 @@ function expectedSplicedScript(scope, targetBranch) {
 
 /** Refusal gate: empty stdout, present stderr, exit 1. */
 const GATE_REFUSAL = { exitCode: 1, stdoutBytes: '', stderr: 'present' };
+
+// preparedAt is stamped per invocation (wall clock) and rides the spliced script's
+// EMBEDDED_CONTEXT literal, so two invocations can never be byte-identical; mask it
+// before comparing and assert its shape separately.
+const PREPARED_AT_VALUE = /"preparedAt":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z"/;
+
+function maskPreparedAt(scriptText) {
+  return scriptText.replace(PREPARED_AT_VALUE, '"preparedAt":"<masked>"');
+}
 
 /** @param {(cwd: string) => string | void} check */
 function effect(check) {
@@ -196,7 +206,7 @@ const prepareCases = [
   },
   {
     command: 'prepare-execution-context',
-    scenario: '--script-out writes spliced workflow script byte-identical to expectation',
+    scenario: '--script-out writes spliced workflow script byte-identical to expectation modulo the stamped preparedAt',
     argv: [
       'prepare-execution-context',
       '--features', 'alpha',
@@ -206,13 +216,22 @@ const prepareCases = [
     setup: (ctx) => setupFixturePair(definition(), ctx.target),
     // Computed lazily at case run time — the expectation itself shells out to the
     // reference JS CLI.
-    expect: () => ({
-      exitCode: 0,
-      iso8601: ['preparedAt'],
-      fileBytes: {
-        'spliced-workflow.js': expectedSplicedScript(['alpha'], 'main'),
-      },
-    }),
+    expect: () => {
+      const expected = expectedSplicedScript(['alpha'], 'main');
+      return {
+        exitCode: 0,
+        iso8601: ['preparedAt'],
+        effects: effect((cwd) => {
+          const actual = readFileSync(path.join(cwd, 'spliced-workflow.js'), 'utf8');
+          if (!PREPARED_AT_VALUE.test(actual)) {
+            return 'spliced script lacks an ISO-8601 preparedAt in its EMBEDDED_CONTEXT literal';
+          }
+          if (maskPreparedAt(actual) !== maskPreparedAt(expected)) {
+            return 'spliced script bytes !== expectation (after masking preparedAt)';
+          }
+        }),
+      };
+    },
   },
   {
     command: 'prepare-execution-context',

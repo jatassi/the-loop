@@ -1,10 +1,10 @@
 // The run-presentation splice's pure core (src/splice-workflow-description.js):
-// scope-derived description shaping and the meta-line splice, both testable without a
-// repo or a real workflow script.
+// scope-derived description shaping, the meta-line splice, and the embedded-context
+// splice — all testable without a repo or a real workflow script.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { describeRun, spliceRunDescription } from '../plugin/src/splice-workflow-description.js';
+import { describeRun, spliceEmbeddedContext, spliceRunDescription } from '../plugin/src/splice-workflow-description.js';
 
 // ── describeRun ──
 test('describeRun lists every in-scope id, in scope order, arrow-joined to the target', () => {
@@ -50,4 +50,43 @@ test('spliceRunDescription refuses — throws, nothing to write — when the met
 
   const noDescription = "export const meta = { name: 'x' };\n";
   assert.throws(() => spliceRunDescription(noDescription, 'z'), /description/);
+});
+
+// ── spliceEmbeddedContext ──
+const WITH_EMBEDDED_TARGET = [
+  "export const meta = { name: 'execution-pipeline', description: 'static' };",
+  'const EMBEDDED_CONTEXT = null; // spliced to a literal by prepare-execution-context --script-out',
+  'const executionContext = EMBEDDED_CONTEXT ?? args;',
+  '',
+].join('\n');
+
+function evalEmbedded(scriptText) {
+  const match = scriptText.match(/^const EMBEDDED_CONTEXT = .+;$/m);
+  assert.ok(match, 'expected a spliced EMBEDDED_CONTEXT declaration');
+  return new Function(`${match[0]}\nreturn EMBEDDED_CONTEXT;`)();
+}
+
+test('spliceEmbeddedContext replaces null with a JSON literal of the execution context, leaving the rest of the script untouched', () => {
+  const ctx = { scope: ['widget'], target: 'main', features: { widget: { designDoc: 'plain' } } };
+  const spliced = spliceEmbeddedContext(WITH_EMBEDDED_TARGET, ctx);
+  assert.deepEqual(evalEmbedded(spliced), ctx);
+  assert.ok(spliced.includes('const executionContext = EMBEDDED_CONTEXT ?? args;'));
+  assert.ok(!spliced.includes('const EMBEDDED_CONTEXT = null'));
+});
+
+test('spliceEmbeddedContext is lossless for nested escaped quotes in designDoc', () => {
+  // The bug class: design-doc prose carrying nested \" (e.g. data-audio=\"on\").
+  const designDoc = String.raw`Accepts data-audio=\"on\" for audio.`;
+  const ctx = { scope: ['live-session'], features: { 'live-session': { designDoc } } };
+  const spliced = spliceEmbeddedContext(WITH_EMBEDDED_TARGET, ctx);
+  assert.deepEqual(evalEmbedded(spliced).features['live-session'].designDoc, designDoc);
+  assert.equal(spliced.match(/\n/g).length, WITH_EMBEDDED_TARGET.match(/\n/g).length);
+});
+
+test('spliceEmbeddedContext refuses — throws, nothing to write — when the EMBEDDED_CONTEXT target line is missing', () => {
+  const noTarget = "export const meta = { name: 'x', description: 'y' };\nconst rest = 1;\n";
+  assert.throws(() => spliceEmbeddedContext(noTarget, {}), /EMBEDDED_CONTEXT/);
+
+  const alreadySpliced = "const EMBEDDED_CONTEXT = {\"a\":1};\n";
+  assert.throws(() => spliceEmbeddedContext(alreadySpliced, {}), /EMBEDDED_CONTEXT/);
 });

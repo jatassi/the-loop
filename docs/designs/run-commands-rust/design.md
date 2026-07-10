@@ -33,12 +33,18 @@ the pure core in `plugin/src/prepare-execution-context.js`. Frozen semantics:
 - **`--script-out <path>`**: write a copy of the canonical workflow script
   (`plugin/workflows/execution-pipeline.js` — the binary needs its location: passed
   or resolved via the same compiled-in-defaults posture as config-commands-rust,
-  with the path overridable for fixtures) with the meta description spliced to name
-  scope + target (`describeRun`/`spliceRunDescription` in
-  `plugin/src/splice-workflow-description.js`: JSON-stringified value, meta stays one
-  physical line, shape-gate refusal = exit 1 **nothing written, stdout included**).
-  Output byte-identical to the JS CLI's on the same input script — it is a pure
-  string splice.
+  with the path overridable for fixtures) with two splices
+  (`describeRun`/`spliceRunDescription`/`spliceEmbeddedContext` in
+  `plugin/src/splice-workflow-description.js`): the meta description spliced to name
+  scope + target (JSON-stringified value, meta stays one physical line), and the
+  assembled execution context spliced as a JSON literal over the canonical script's
+  one-line `const EMBEDDED_CONTEXT = null;` target — the context rides the script
+  itself; the Workflow launch passes no `args`
+  (fix-execution-context-args-transport). Either shape gate failing — meta line or
+  EMBEDDED_CONTEXT line — is a refusal: exit 1 **nothing written, stdout included**.
+  Output byte-identical to the JS CLI's on the same input script and fixture, modulo
+  the `preparedAt` stamped inside the embedded context (the one legal wall-clock
+  read, so it can never match across invocations — the oracle masks it).
 
 ## worktree-create / worktree-remove
 
@@ -86,7 +92,8 @@ Cross-implementation the rendered index must be byte-identical on a paired corpu
 
 1. Gate refusals exit 1 with empty stdout; success prints the context JSON-equal on
    paired fixtures, `preparedAt` normalized, `cli` naming the Rust invocation.
-2. `--script-out` byte-identical splice; shape-gated exit 1 writes nothing.
+2. `--script-out` byte-identical splice (meta description + embedded context, modulo
+   the stamped `preparedAt`); either shape gate's exit 1 writes nothing.
 3. Oracle worktree cases pass (idempotent create, path-or-branch remove + prune).
 4. calibration-summarize over `runs/*.json` regenerates `index.md` byte-identical on
    a paired corpus; malformed record exits 1 naming the file.
