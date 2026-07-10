@@ -335,7 +335,7 @@ features:
   # ── rust replatform (ADR-0051): compiled binary + tool-owned JSON ────────
   - id: rust-crate-scaffold
     title: Rust workspace, clap CLI skeleton, and the clippy quality gate
-    status: designed
+    status: validated
     acceptance:
       - cargo build --release at the repo root produces a the-loop binary from the cli/ crate, and running it with --version prints the crate version and exits 0
       - the workspace lint profile denies warnings with the clippy all, pedantic, nursery, and cargo groups enabled and forbids reason-less allow attributes, and cargo fmt --check plus cargo clippy --all-targets plus cargo test all pass on the landed tree

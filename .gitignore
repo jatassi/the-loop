@@ -4,3 +4,4 @@
 .claude/worktrees/
 eval/fixtures-cache/
 eval/results/
+target/

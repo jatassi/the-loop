@@ -1,0 +1,10 @@
+{
+  "the-loop": {
+    "testHarness": {
+      "value": "npm test && cargo test"
+    },
+    "lint": {
+      "value": "npm run check && cargo fmt --check && cargo clippy --all-targets"
+    }
+  }
+}
