@@ -36,10 +36,20 @@ its wiring note to justify why it can't split). Every task carries: `id`, `title
 `covers` (1-based indexes into the feature's criteria — every criterion must be
 covered by some task), its own testable `acceptance`, `footprint` (expected files —
 disjointness is a bias, not a rule: chain via `depends_on` only when two tasks'
-edits to a shared file genuinely interact; registration-shaped sharing — a line or
-two in a barrel export, a route table — is fine left unordered, since the merge
-point resolves it under the test-gated merge policy; name the hub file in each
-toucher's `wiring` note so builders expect the textual conflict), `size`,
+edits to a shared file genuinely interact; every task's single commit must pass
+the project's own commit gate standalone. Registration-shaped sharing — a line or
+two in a barrel export, a route table, a hub merge — is fine left unordered only
+when that commit leaves the whole project green on its own. Where a whole-project
+commit gate is in force (a pre-commit hook that runs a whole-project
+typecheck/test/lint on every commit — surfaced in the plan prompt), a registration
+edit that a *later* task's code must satisfy (a hub member whose
+handler/implementation lands elsewhere) must NOT be split ahead of that
+implementer: place the registration edit in the same task/commit as the
+implementation that satisfies it, or order the registrar after the implementer via
+`depends_on`. The merge-point relaxation (test-gated merge policy) resolves textual
+conflicts only — it does not make an individually-unlandable commit landable; name
+the hub file in each toucher's `wiring` note so builders expect the textual
+conflict), `size`,
 `judgment_level` (`rote` = correctness fully captured by tests+lint, `complex` =
 judgment-heavy, else `standard`), and a one-sentence `wiring` note saying how it
 connects to the rest. Prefer wide, shallow dependency graphs — unordered tasks run

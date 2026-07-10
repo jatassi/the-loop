@@ -171,6 +171,8 @@ function planPrompt(f) {
     `feature: ${f.id} — ${f.title}`,
     `target: ${executionContext.target} · branch: ${f.branch} · plan file: docs/plans/${f.id}/plan.md`,
     `cli: ${CLI}`,
+    // Resolved precommit system, only when hooks is present (omit for older contexts).
+    ...(executionContext.hooks ? [`commit gate: ${executionContext.hooks.precommit.system}`] : []),
     '',
     'acceptance criteria:',
     criteriaList(f.acceptance),
@@ -546,8 +548,7 @@ if (executionContext.preparedAt) {
   if (halted?.reason === 'budget-exhausted') {
     log('calibration — record skipped: budget-exhausted halt would throw on a further spawn');
   } else {
-    const observations = { features: featureObs, byRole: budgetByRole, overlapped: didSpawnsOverlap };
-    const payload = recordPayload(observations, result, { preparedAt: executionContext.preparedAt, scope: executionContext.scope, target: executionContext.target });
+    const payload = recordPayload({ features: featureObs, byRole: budgetByRole, overlapped: didSpawnsOverlap }, result, { preparedAt: executionContext.preparedAt, scope: executionContext.scope, target: executionContext.target });
     const recordBinding = roleBinding('record');
     // Trailer names the CLI invocation for the record agent; it is NOT part of the
     // transcribed calibration artifact — `payload` stays byte-identical for capture.

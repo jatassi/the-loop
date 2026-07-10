@@ -415,7 +415,7 @@ features:
   # ── friction sweep 2026-07-10 (docs/research/friction-mining-2026-07-10.md) ──
   - id: fix-plan-commit-gate-blind-spot
     title: Plan leaves a registration-hub edit unordered from its implementer, emitting a task whose single commit cannot pass a whole-project pre-commit gate
-    status: designed
+    status: validated
     depends_on: []
     acceptance:
       - Given a project with a whole-project pre-commit gate (a hook running a whole-project typecheck/test/lint on every commit) and a feature whose design merges a new registration-hub member whose implementation is a separate concern, When Plan decomposes it, Then the hub-merge edit lands in the same task/commit as its implementer (or is ordered after it via depends_on) and never in a standalone schema-only task ahead of the implementer, so every emitted task's single commit passes the gate standalone — reproduced from the j45 exercise-library shape (ExerciseRpcs / J45Rpcs / exercise-handlers)
