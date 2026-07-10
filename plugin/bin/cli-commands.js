@@ -2,7 +2,7 @@
 // and sole caller) to keep that file's job to argv dispatch alone; this module holds
 // the actual command bodies and the small I/O helpers (read/out/clean/fail) they share.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -393,6 +393,9 @@ function linkNodeModules(dir) {
 export function worktreeRemoveCommand([target]) {
   if (!target) { fail('usage: spine worktree-remove <path-or-branch>'); }
   const dir = worktreeDirFor(target);
+  // Refuse when cwd is inside the target: removal strands the caller's shell in a
+  // deleted directory and the follow-up prune dies on an unreadable cwd.
+  if (`${process.cwd()}${path.sep}`.startsWith(`${realpathSync(path.resolve(dir))}${path.sep}`)) { fail(`refusing: cwd is inside ${dir} — cd out of the worktree first`); }
   git(['worktree', 'remove', '--force', dir]);
   git(['worktree', 'prune']);
   out({ removed: dir });

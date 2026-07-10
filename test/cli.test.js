@@ -307,6 +307,16 @@ test('spine worktree-remove also accepts the branch name; an unknown target exit
   } finally { cleanup(root); }
 });
 
+test('spine worktree-remove refuses when cwd is inside the target worktree, leaving it intact', () => {
+  const root = gitFixture({ 'README.md': '# fixture\n' });
+  try {
+    const created = JSON.parse(spine(['worktree-create', 'loop/widget', '--base-branch', 'main'], { cwd: root }));
+    const error = spineFails(['worktree-remove', 'loop/widget'], { cwd: path.join(root, created.path) });
+    assert.match(error.stderr, /cd out/);
+    assert.ok(existsSync(path.join(root, created.path, 'README.md')));
+  } finally { cleanup(root); }
+});
+
 test("spine models-list resolves the shipped plugin defaults relative to bin/the-loop.js's own location, never cwd, and succeeds with no project or local settings present", () => {
   const root = fixture({});
   try {
