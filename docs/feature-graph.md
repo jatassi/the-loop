@@ -335,7 +335,7 @@ features:
   # ── rust replatform (ADR-0051): compiled binary + tool-owned JSON ────────
   - id: rust-crate-scaffold
     title: Rust workspace, clap CLI skeleton, and the clippy quality gate
-    status: validated
+    status: shipped
     acceptance:
       - cargo build --release at the repo root produces a the-loop binary from the cli/ crate, and running it with --version prints the crate version and exits 0
       - the workspace lint profile denies warnings with the clippy all, pedantic, nursery, and cargo groups enabled and forbids reason-less allow attributes, and cargo fmt --check plus cargo clippy --all-targets plus cargo test all pass on the landed tree
@@ -343,7 +343,7 @@ features:
 
   - id: parity-oracle
     title: Dual-driver black-box oracle over paired YAML/JSON fixtures
-    status: validated
+    status: shipped
     depends_on: [rust-crate-scaffold]
     acceptance:
       - the oracle drives a CLI purely by subprocess — argv plus a fixture-repo cwd in, stdout JSON (key-order-insensitive), exit code, and refusal-path stderr presence asserted — with the binary under test selected by configuration, never imported in-process
@@ -353,7 +353,7 @@ features:
 
   - id: graph-commands-rust
     title: feature-graph.json schema + status/list/check/set-status in Rust
-    status: validated
+    status: shipped
     depends_on: [parity-oracle]
     acceptance:
       - the Rust binary reads docs/feature-graph.json and re-emits it canonically — schema key order, 2-space indent, trailing newline — so a hand-edit with shuffled keys and odd whitespace re-emits with content JSON-equal and bytes canonical
@@ -363,7 +363,7 @@ features:
 
   - id: plan-commands-rust
     title: plan.json schema + plan parse/check/task in Rust
-    status: validated
+    status: shipped
     depends_on: [graph-commands-rust]
     acceptance:
       - the plan schema at docs/plans/<id>/plan.json carries the task-contract shape — feature, design_version, and tasks each with id, title, covers, acceptance, footprint, size xs|s|m, judgment_level rote|standard|complex, depends_on, optional wiring — read and canonically re-emitted like the graph
@@ -371,7 +371,7 @@ features:
 
   - id: config-commands-rust
     title: models-list, executors-list, hooks-list, hooks-set in Rust
-    status: validated
+    status: shipped
     depends_on: [parity-oracle]
     acceptance:
       - models-list resolves plugin defaults < user < project < local under the namespaced the-loop settings key with per-role provenance, JSON-equal to the JS CLI on paired fixtures, and exits 1 with no table on a binding naming an unregistered executor or a model outside its playbook
@@ -381,7 +381,7 @@ features:
 
   - id: run-commands-rust
     title: prepare-execution-context, worktree verbs, calibration-summarize in Rust
-    status: validated
+    status: shipped
     depends_on: [graph-commands-rust, plan-commands-rust, config-commands-rust]
     notes:
       - "amended 2026-07-10 after main's worktree-setup (ADR-0052) merge: the worktree verbs' JS reference changed under this design — create provisions via the worktreeSetup binding (symlink retired) with teardown-on-failure, remove refuses from inside the target — and the config surfaces config-commands-rust ported drifted (worktreeSetup inventory family, hooks-list --compact); the drift catch-up rides here"
@@ -395,7 +395,7 @@ features:
 
   - id: binary-distribution
     title: cargo-dist release matrix — checksummed binaries and installers on GitHub Releases
-    status: validated
+    status: shipped
     depends_on: [rust-crate-scaffold]
     acceptance:
       - a tagged release publishes archives and sha256 checksums for aarch64-apple-darwin, x86_64-apple-darwin, x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, and x86_64-pc-windows-msvc, plus generated shell and powershell installers, from cargo-dist configuration committed in the repo — and no compiled artifact is committed to the git tree

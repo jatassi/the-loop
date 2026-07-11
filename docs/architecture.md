@@ -302,6 +302,20 @@ Health check:
 node -e 'const cp=require("child_process");const v=require("./plugin/.claude-plugin/plugin.json").version;const l=JSON.parse(cp.execSync("claude plugin list --json",{encoding:"utf8"}));const e=l.find(x=>x.id==="the-loop@the-loop");if(!(e&&e.enabled&&e.version===v))process.exit(1);cp.execSync("claude plugin details the-loop@the-loop",{stdio:"ignore"})'
 ```
 
+Binary leg (since v0.4.12, binary-distribution): bump `cli/Cargo.toml` to the
+release version in the same bump commit — the crate stays in lockstep with
+`plugin.json` because cargo-dist refuses a tag that doesn't match the crate
+version. Then `git push origin main && git push origin v<N>`; the tag triggers
+`.github/workflows/release.yml` (cargo-dist), which publishes the five-target
+archives, sha256 checksums, and both installers as GitHub Release `v<N>`. Watch
+with `gh run watch <id> --exit-status`. Verify by installing from the real
+release and checking `the-loop --version` prints `<N>`. **Private-repo caveat**
+(observed 2026-07-10): the README's anonymous one-liner 404s on a private repo —
+install via `gh release download v<N> -D <dir>` then run the downloaded
+`the-loop-installer.sh` with `THE_LOOP_DOWNLOAD_URL` pointed at a local server of
+that dir (`python3 -m http.server`), which keeps the installer's own checksum
+verification in the path.
+
 Rollback: `claude plugin uninstall the-loop@the-loop --scope user` (removes the
 just-deployed version — the safe state; recovery from there is human-verified). The
 rollback pointer for code is the previous release tag. Note: the health check fails
