@@ -15,6 +15,23 @@ doc per feature), [`docs/adr/`](docs/adr/) (the *why*),
 [`docs/glossary.md`](docs/glossary.md) (the vocabulary).
 `node plugin/bin/the-loop.js status` prints the status story on demand.
 
+## Install
+
+The compiled `the-loop` binary is distributed via [cargo-dist](https://opensource.axo.dev/cargo-dist/)
+GitHub Releases (checksummed per-target archives plus generated installers). Install
+once onto your PATH with the shell installer:
+
+```sh
+curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.sh | sh
+```
+
+Every loop surface invokes bare `the-loop` after that. A missing binary is an
+environment-shaped halt — re-run the one-liner above; there is no auto-fetch and
+no shim. Windows users can use the PowerShell installer from the same release
+(`the-loop-installer.ps1`). macOS Gatekeeper signing/notarization is out of scope;
+unsigned binaries fetched via `curl | sh` (not a browser) do not receive the
+quarantine attribute.
+
 ## How it runs
 
 - **`/the-loop`** orients from the graph and proposes the next action; the human

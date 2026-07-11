@@ -1,0 +1,20 @@
+[package]
+name = "the-loop"
+version = "0.1.0"
+edition = "2024"
+description = "An owned, composable agentic dev loop — Rust CLI scaffold"
+repository = "https://github.com/jatassi/the-loop"
+readme = "../README.md"
+keywords = ["cli", "agent", "claude", "dev-loop"]
+categories = ["command-line-utilities", "development-tools"]
+# Not published; SPDX reserved so clippy::cargo_common_metadata is satisfied
+# without inventing a public license decision for the monorepo.
+license = "LicenseRef-Proprietary"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints]
+workspace = true

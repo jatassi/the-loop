@@ -12,6 +12,15 @@ allowed-tools: Bash(node *), Bash(git *), Read, Workflow
 
 !`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status --json 2>&1`
 
+**Missing binary posture.** Surfaces that shell to bare `the-loop` and get
+command-not-found treat that as an environment-shaped halt — never a silent
+fallback. The remedy is the install one-liner (re-run it if a newer plugin
+expects a command the installed binary lacks; there is no version handshake):
+
+```sh
+curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.sh | sh
+```
+
 ## /begin
 
 State where the project stands (from the orientation JSON), propose the next action

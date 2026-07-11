@@ -335,7 +335,7 @@ features:
   # ── rust replatform (ADR-0051): compiled binary + tool-owned JSON ────────
   - id: rust-crate-scaffold
     title: Rust workspace, clap CLI skeleton, and the clippy quality gate
-    status: designed
+    status: validated
     acceptance:
       - cargo build --release at the repo root produces a the-loop binary from the cli/ crate, and running it with --version prints the crate version and exits 0
       - the workspace lint profile denies warnings with the clippy all, pedantic, nursery, and cargo groups enabled and forbids reason-less allow attributes, and cargo fmt --check plus cargo clippy --all-targets plus cargo test all pass on the landed tree
@@ -343,7 +343,7 @@ features:
 
   - id: parity-oracle
     title: Dual-driver black-box oracle over paired YAML/JSON fixtures
-    status: designed
+    status: validated
     depends_on: [rust-crate-scaffold]
     acceptance:
       - the oracle drives a CLI purely by subprocess — argv plus a fixture-repo cwd in, stdout JSON (key-order-insensitive), exit code, and refusal-path stderr presence asserted — with the binary under test selected by configuration, never imported in-process
@@ -353,7 +353,7 @@ features:
 
   - id: graph-commands-rust
     title: feature-graph.json schema + status/list/check/set-status in Rust
-    status: designed
+    status: validated
     depends_on: [parity-oracle]
     acceptance:
       - the Rust binary reads docs/feature-graph.json and re-emits it canonically — schema key order, 2-space indent, trailing newline — so a hand-edit with shuffled keys and odd whitespace re-emits with content JSON-equal and bytes canonical
@@ -363,7 +363,7 @@ features:
 
   - id: plan-commands-rust
     title: plan.json schema + plan parse/check/task in Rust
-    status: designed
+    status: validated
     depends_on: [graph-commands-rust]
     acceptance:
       - the plan schema at docs/plans/<id>/plan.json carries the task-contract shape — feature, design_version, and tasks each with id, title, covers, acceptance, footprint, size xs|s|m, judgment_level rote|standard|complex, depends_on, optional wiring — read and canonically re-emitted like the graph
@@ -371,7 +371,7 @@ features:
 
   - id: config-commands-rust
     title: models-list, executors-list, hooks-list, hooks-set in Rust
-    status: designed
+    status: validated
     depends_on: [parity-oracle]
     acceptance:
       - models-list resolves plugin defaults < user < project < local under the namespaced the-loop settings key with per-role provenance, JSON-equal to the JS CLI on paired fixtures, and exits 1 with no table on a binding naming an unregistered executor or a model outside its playbook
@@ -381,17 +381,21 @@ features:
 
   - id: run-commands-rust
     title: prepare-execution-context, worktree verbs, calibration-summarize in Rust
-    status: designed
+    status: validated
     depends_on: [graph-commands-rust, plan-commands-rust, config-commands-rust]
+    notes:
+      - "amended 2026-07-10 after main's worktree-setup (ADR-0052) merge: the worktree verbs' JS reference changed under this design — create provisions via the worktreeSetup binding (symlink retired) with teardown-on-failure, remove refuses from inside the target — and the config surfaces config-commands-rust ported drifted (worktreeSetup inventory family, hooks-list --compact); the drift catch-up rides here"
+      - "amended 2026-07-10 (validate finding): covers inside embedded plan tasks is the second sanctioned cross-era difference next to cli — each binary embeds its own era's plan faithfully (plan.md 1-based, plan.json 0-based); normalizing would either rewrite the frozen JS spec or make the Rust context disagree with its plan.json; the oracle masks exactly preparedAt+cli+covers and the split dies at json-cutover"
     acceptance:
-      - prepare-execution-context refuses (exit 1, nothing on stdout) on graph, scope, plan, or binding gate failures, and on success prints the execution context JSON-equal to the JS CLI on paired fixtures — design docs, plans read from feature branches, git-derived built tasks, models, hooks, probe, calibration digest — with preparedAt normalized and the cli field naming the Rust invocation as the one sanctioned difference
-      - with --script-out the command writes the spliced per-run workflow script byte-identical to the JS CLI's on the same canonical script, quote-safe, and shape-gated to exit 1 with nothing written when the meta line does not match
-      - the oracle's worktree-create and worktree-remove cases pass — create prints path/branch/created and is idempotent, remove resolves a path or a branch and prunes
+      - prepare-execution-context refuses (exit 1, nothing on stdout) on graph, scope, plan, or binding gate failures, and on success prints the execution context JSON-equal to the JS CLI on paired fixtures — design docs, plans read from feature branches, git-derived built tasks, models, hooks, probe, calibration digest — modulo exactly the sanctioned differences, preparedAt normalized, the cli field naming the per-binary invocation, and covers carrying each era's own index base
+      - with --script-out the command writes the per-run workflow script with both splices — meta description and embedded execution context — byte-identical to the JS CLI's on the same canonical script and fixture modulo exactly the masked sanctioned set (the stamped preparedAt, cli, covers), quote-safe, and shape-gated to exit 1 with nothing written when the meta line or the EMBEDDED_CONTEXT line does not match
+      - the oracle's worktree-create and worktree-remove cases pass — create prints path/branch/created, is idempotent, runs a bound worktreeSetup command in the new worktree via the system shell (default 600000 ms timeout, per-binding override) and on failure or timeout tears the worktree down and exits 1 with the environment-provisioning message ("worktree provisioning failed", command, path, layer, reason, stderr tail; timeouts worded as timeouts, never exit codes); remove resolves a path or a branch and prunes, refusing when cwd is inside the target
       - calibration-summarize reads docs/calibration/runs/*.json and regenerates docs/calibration/index.md byte-identical to the JS CLI's index on a paired corpus, exiting 1 naming the file on a malformed record
+      - the config surfaces that drifted at the worktree-setup merge are back at parity — worktreeSetup resolves in the Rust hooks-list and hooks-set (fallback provisioning none), hooks-list --compact matches the JS CLI line-for-line — and the full oracle corpus is green on the Rust target with only genuinely-unported commands pending
 
   - id: binary-distribution
     title: cargo-dist release matrix — checksummed binaries and installers on GitHub Releases
-    status: designed
+    status: validated
     depends_on: [rust-crate-scaffold]
     acceptance:
       - a tagged release publishes archives and sha256 checksums for aarch64-apple-darwin, x86_64-apple-darwin, x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, and x86_64-pc-windows-msvc, plus generated shell and powershell installers, from cargo-dist configuration committed in the repo — and no compiled artifact is committed to the git tree

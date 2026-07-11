@@ -55,6 +55,7 @@
 //                                    entry into the named settings layer (user|project|local);
 //                                    creates the file when absent; unrelated keys survive
 
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { parse } from '../src/parse-feature-graph.js';
@@ -69,6 +70,13 @@ const [cmd, ...rest] = process.argv.slice(2);
 
 try {
   switch (cmd) {
+    case '--version': {
+      const { version } = JSON.parse(
+        readFileSync(path.join(PLUGIN_ROOT, '.claude-plugin/plugin.json'), 'utf8'),
+      );
+      process.stdout.write(`the-loop ${version}\n`);
+      break;
+    }
     case 'status': {
       statusCommand(rest);
       break;
