@@ -612,7 +612,7 @@
       "id": "json-cutover",
       "section": "rust replatform (ADR-0051): compiled binary + tool-owned JSON",
       "title": "The atomic swap — migrate artifacts to JSON, flip every invocation site, delete the JS CLI",
-      "status": "designed",
+      "status": "shipped",
       "depends_on": [
         "run-commands-rust",
         "binary-distribution"
