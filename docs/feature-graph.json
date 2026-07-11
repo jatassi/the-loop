@@ -1,5 +1,5 @@
 {
-  "design_version": 29,
+  "design_version": 30,
   "features": [
     {
       "id": "document-foundation",
@@ -651,6 +651,24 @@
       "notes": [
         "designed 2026-07-10 from docs/briefs/worktree-setup.md (ADR-0052); family shape { command, timeout? }, fallback { provisioning: none }, teardown-on-failure keeps the created:false early return sound",
         "amended 2026-07-10: self-binding is npm ci, not the npm ci && cargo fetch polyglot join — cargo fetch exits 101 with no root Cargo.toml, so the original criterion would have made every worktree-create refuse and deadlocked the pipeline before rust-crate-scaffold (which lands the workspace and widens the binding) could ever build"
+      ]
+    },
+    {
+      "id": "using-the-loop-skill",
+      "section": "post-replatform amendments",
+      "title": "Bundled using-the-loop orientation skill — progressive-disclosure root for consumer sessions",
+      "status": "designed",
+      "depends_on": [],
+      "acceptance": [
+        "plugin/skills/using-the-loop/SKILL.md exists with frontmatter name using-the-loop, and the skill directory ships SKILL.md and nothing else (no references/ or other files)",
+        "the frontmatter description is <=400 characters and names all three trigger families: the concrete entry moments (starting a new feature or idea, fixing a reported bug, preparing a release, deciding what to build next), the protective moment naming loop-owned docs/ artifacts including feature-graph.json, and how-this-project-is-set-up curiosity",
+        "the body is <=150 lines and makes exactly the three moves: the loop-owned path table with the don't-hand-edit rule (feature-graph.json tool-owned; prose artifacts amended through their owning phases), /begin as the single entry point with no other bundled skill named anywhere in the body, and the map to deeper tiers (live state via CLI, story via the project's own artifacts)",
+        "every CLI invocation the body names exists in the shipping binary's help output, and every docs/ path it names matches one a loop phase actually writes",
+        "the skill is consumer-safe and self-contained: no ADR numbers or the-loop-internal document references appear anywhere in it, and it carries no project-specific content",
+        "dedup sweep done: the descriptions of begin, onboard, and configure and the top-level `the-loop --help` text carry no project-orientation trigger language and no prose duplicated from the new body; any trims land with this feature"
+      ],
+      "notes": [
+        "designed 2026-07-11 from docs/briefs/using-the-loop-skill.md; description text recorded verbatim in the design doc (three trigger families load-bearing, no loop coinages in tier 0); budgets enforced as validator measurement + write-skills pass, no standing lint rule; references/ decided zero (phase one-liner + consumer glossary cover the gap); trigger evals rejected at Define - description efficacy is an accepted-unverified assumption; cross-tool AGENTS.md discovery parked for a later intake"
       ]
     }
   ]
