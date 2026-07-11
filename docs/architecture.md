@@ -105,7 +105,7 @@ contract out of a plan). No agent contract says "read this whole file."
 | Artifact | Home | Nature |
 |---|---|---|
 | Architecture (this doc) | `docs/architecture.md` | living narrative + the recorded bindings below (validation, release, operations) |
-| Feature graph | `docs/feature-graph.md` | machine YAML; the durable state machine (→ `feature-graph.json`, tool-owned JSON, at json-cutover — ADR-0051) |
+| Feature graph | `docs/feature-graph.json` | tool-owned JSON (json-cutover, ADR-0051); the durable state machine — each record carries the four durable statuses `proposed \| designed \| validated \| shipped`, backlog stage first; everything in-flight (plans, branches, task commits) is derived from git at launch time; the YAML era's comment groupings live on as per-feature `section` values; JSON carries no prose — narrative lives here and in `docs/designs/` |
 | Feature design docs | `docs/designs/<id>/design.md` | one per feature; the context slice agents get |
 | Plans | `docs/plans/<id>/plan.md` **on the feature branch** | task contracts only; never merged — gone when the feature lands (→ `plan.json` at json-cutover — ADR-0051) |
 | Validation procedures | `docs/validation/<id>/procedure.md` | written at validation; replayed at release (their only replay point) |
