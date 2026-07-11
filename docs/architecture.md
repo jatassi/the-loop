@@ -4,7 +4,7 @@
 2026-07-04 as v2 by the taming reset (**ADR-0034–0040** — read those seven before
 touching any loop surface). Narrative and judgment live here and in
 [designs/](designs/); the machine feature graph lives in
-[feature-graph.md](feature-graph.md); vocabulary in [glossary.md](glossary.md). The
+`feature-graph.json` (tool-owned JSON); vocabulary in [glossary.md](glossary.md). The
 founding principle this system is measured against: **earns its context** — every
 component justifies its token cost.
 
@@ -37,7 +37,8 @@ idempotent re-run from what git already holds.
 
 ### The CLI and the execution context (ADR-0036/0038)
 
-`plugin/bin/the-loop.js` is the one CLI over the artifacts. Its load-bearing command is
+Bare `the-loop` — the compiled Rust binary, installed on PATH from a release — is
+the one CLI over the artifacts. Its load-bearing command is
 **`the-loop prepare-execution-context --features <ids>`**: it gates everything
 mechanically (graph validity, scope readiness, model-binding validity — refusing
 loudly replaces prose checklists) and assembles the **execution context** —
@@ -107,11 +108,11 @@ contract out of a plan). No agent contract says "read this whole file."
 | Architecture (this doc) | `docs/architecture.md` | living narrative + the recorded bindings below (validation, release, operations) |
 | Feature graph | `docs/feature-graph.json` | tool-owned JSON (json-cutover, ADR-0051); the durable state machine — each record carries the four durable statuses `proposed \| designed \| validated \| shipped`, backlog stage first; everything in-flight (plans, branches, task commits) is derived from git at launch time; the YAML era's comment groupings live on as per-feature `section` values; JSON carries no prose — narrative lives here and in `docs/designs/` |
 | Feature design docs | `docs/designs/<id>/design.md` | one per feature; the context slice agents get |
-| Plans | `docs/plans/<id>/plan.md` **on the feature branch** | task contracts only; never merged — gone when the feature lands (→ `plan.json` at json-cutover — ADR-0051) |
+| Plans | `docs/plans/<id>/plan.json` **on the feature branch** | task contracts only, tool-owned JSON (json-cutover, ADR-0051); never merged — gone when the feature lands |
 | Validation procedures | `docs/validation/<id>/procedure.md` | written at validation; replayed at release (their only replay point) |
 | Bug corpus | `docs/bugs/<bug-short-description>.md` | permanent; born at a diagnose intake, doubles as the fix's context slice |
 | Release records | `docs/releases/` (past: `ship-N.md`, historical; future: `v<version-number>/report.md`) | one short block per release |
-| Calibration records + index | `docs/calibration/` | per-run estimated-vs-actual evidence (permanent, ADR-0046) + wholly derived digest/index, CLI-regenerated (calibration-capture, designed 2026-07-08; records → `runs/<stamp>.json` at json-cutover — ADR-0051) |
+| Calibration records + index | `docs/calibration/` | per-run estimated-vs-actual evidence (permanent, ADR-0046) + wholly derived digest/index, CLI-regenerated (calibration-capture, ADR-0046; records are tool-owned `runs/<stamp>.json` since json-cutover — ADR-0051) |
 | ADRs / Glossary / brief / research | `docs/adr/` etc. | decision + vocabulary spine; never auto-loaded |
 
 ### Configuration — the hook inventory (ADR-0049)
@@ -193,17 +194,17 @@ ADR-0048).
 
 ### The Rust replatform (ADR-0051)
 
-Designed 2026-07-09; until the `json-cutover` feature lands, the node CLI and YAML
-artifacts described elsewhere in this doc remain the running truth. The deterministic
-toolchain replatforms to a **compiled Rust binary** named `the-loop` (crate at `cli/`,
+Designed 2026-07-09; **landed 2026-07-10** — the flip below is the running truth,
+and the node CLI plus its YAML artifacts are gone from the tree. The deterministic
+toolchain replatformed to a **compiled Rust binary** named `the-loop` (crate at `cli/`,
 outside the plugin bundle), distributed the way `beads` distributes `bd`: cargo-dist
 publishes checksummed per-target archives and generated installers to GitHub Releases
 (five targets — mac arm64/x64, linux x64/arm64 musl-static, windows x64); the human
 installs once via the installer one-liner; every surface invokes bare `the-loop` on
 PATH; a missing binary fails loudly with the install one-liner as its stated remedy;
 no compiled artifact is ever committed. The invocation seam is unchanged — CLI via
-Bash, JSON stdout, exit codes as gates — and the execution context's `cli` field flips
-from `node "<plugin>/bin/the-loop.js"` to `the-loop` at cutover. Durable payloads
+Bash, JSON stdout, exit codes as gates — and the execution context's `cli` field flipped
+from the node CLI invocation to `the-loop` at cutover. Durable payloads
 become **pure tool-owned JSON** — `docs/feature-graph.json`, `docs/plans/<id>/plan.json`,
 `docs/calibration/runs/<stamp>.json`; executor playbooks keep their prose, machine-block
 fence flipping to json — emitted canonically (schema key order, 2-space indent) so a
@@ -270,11 +271,11 @@ The fixture-repo binding (this repo's own binding): validation exercises the CLI
 from the outside, as a user would — never in-process imports.
 
 - **Bring up**: `node bin/create-sample-repo.js` — creates a temp git repo seeded as
-  a plausible v2 target repository (feature-graph.md + architecture.md + design
+  a plausible target repository (feature-graph.json + architecture.md + design
   docs, committed) and prints its path. `node bin/create-sample-repo.js empty` seeds
   the bare unconfigured variant.
-- **Exercise**: shell steps driving `node <plugin-root>/bin/the-loop.js …` and
-  `node <plugin-root>/bin/the-loop.js status --json` against the fixture repo (cwd =
+- **Exercise**: shell steps driving bare `the-loop …` and
+  `the-loop status --json` against the fixture repo (cwd =
   the fixture), asserting on printed JSON and exit codes. Sparing headless `claude -p`
   invocations are sanctioned for agent-pack surfaces, and are the first thing shed
   under time pressure.

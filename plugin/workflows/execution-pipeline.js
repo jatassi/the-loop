@@ -15,7 +15,7 @@ const EMBEDDED_CONTEXT = null; // spliced to a literal by prepare-execution-cont
 // fallback — some callers deliver a JSON-encoded string rather than a parsed object.
 const parseHarnessArgs = (a) => (typeof a === 'string' ? JSON.parse(a) : a);
 const executionContext = EMBEDDED_CONTEXT ?? parseHarnessArgs(args);
-const CLI = executionContext.cli || 'node plugin/bin/the-loop.js';
+const CLI = executionContext.cli || 'the-loop';
 
 // ---- agent-type resolution. Installed-plugin sessions register the plugin's agents
 // under the plugin namespace (`the-loop:plan`, …); only a repo that symlinks

@@ -11,7 +11,7 @@ feature's name for a feature-sized intake, the project's own name for a whole-pr
 intake — chosen at capture and reused verbatim by Design.
 Define owns the invitation and the brief; the interview
 between them belongs to the interview port. Read the resolved `interview` hook from the
-inventory — `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" hooks-list` — and load whatever
+inventory — `the-loop hooks-list` — and load whatever
 skill it names as the bound interview skill. Its shipped fallback is `/grilling`; a
 project that binds another interview skill resolves to that one instead.
 

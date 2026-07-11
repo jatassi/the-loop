@@ -21,7 +21,7 @@ recorded side (present / absent / opted-out) but never writes it.
 
 Run the inventory and show it before anything else:
 
-!`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" hooks-list`
+!`the-loop hooks-list`
 
 Relay it in plain prose: every settings family with its resolved value, the layer it
 came from, and its provenance (`default | user | project | local | fallback`), plus the
@@ -47,7 +47,7 @@ Recommended-answer posture throughout. For each hook the human wants to touch:
    with one surgical write per family — unrelated keys in the target settings file
    survive untouched:
 
-   `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" hooks-set <family> <layer> <json-value>`
+   `the-loop hooks-set <family> <layer> <json-value>`
 
    Write **only on confirmation**, one family at a time. After the writes, re-run
    `hooks-list` so the human sees each new value with its updated layer and provenance.

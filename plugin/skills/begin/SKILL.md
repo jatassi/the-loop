@@ -10,7 +10,7 @@ allowed-tools: Bash(node *), Bash(git *), Read, Workflow
 - Requested jump (may be empty): `$ARGUMENTS`
 - Orientation — machine truth from the feature graph:
 
-!`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status --json 2>&1`
+!`the-loop status --json 2>&1`
 
 **Missing binary posture.** Surfaces that shell to bare `the-loop` and get
 command-not-found treat that as an environment-shaped halt — never a silent
@@ -98,7 +98,7 @@ graph and print a visible fallback line noting the feature graph is served from 
 
 1. Confirm the scope: the dependency-ready eligible set, or the human's subset.
 2. Assemble, gate, and splice in one call:
-   `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" prepare-execution-context --features <id,id,…> --target-branch <ref> --script-out <session-scratch path>`
+   `the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> --script-out <session-scratch path>`
    — `--target-branch` is required: name the target branch explicitly — the branch
    the session is working on, unless the design narrative names another. Never
    pass a target branch the checkout's artifacts didn't come from. `--script-out`
@@ -131,5 +131,5 @@ graph and print a visible fallback line noting the feature graph is served from 
    - `halted` — the run stopped (budget only); report the detail.
 
 No status bookkeeping: the validators already updated the graph on the target branch,
-and `git log` is the run history. `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status`
+and `git log` is the run history. `the-loop status`
 prints the status story on demand.

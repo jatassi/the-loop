@@ -71,7 +71,7 @@ downstream agent. Three artifacts come out (ADR-0037):
 
    The moment the stack is chosen, capture the settings-side project hooks that only
    exist once a stack is known — test harness, lint, pre-commit — via
-   `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" hooks-set <family> <layer>
+   `the-loop hooks-set <family> <layer>
    <json-value>` (the `testHarness`, `lint`, and `precommit` families). This is where
    the **lint-policy elicitation** lives: recommend the stricter policy for the
    chosen stack and land it in the project's real lint config — never a parallel
@@ -85,7 +85,7 @@ downstream agent. Three artifacts come out (ADR-0037):
    but first ask "does a standard industry term already name this?"; if yes, use it
    and record nothing (the ratchet). A hard-to-reverse, surprising, real-trade-off
    decision gets offered as an ADR in `docs/adr/`. All three criteria or no record.
-5. **Lint**: `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" check` until it prints OK.
+5. **Lint**: `the-loop check` until it prints OK.
    Acceptance criteria are the validator's only brief — observable, binary, vague
    adjectives made measurable or cut, and each exercisable by the validator that
    will judge it: a criterion needing an environment the validator won't have (a
