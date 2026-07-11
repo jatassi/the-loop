@@ -1,11 +1,10 @@
-// The parity-oracle entry: discovers every case module under test/oracle/cases/,
-// runs each case through the subprocess driver against the configured target, and
-// prints one pass/fail/pending summary line. Corpus tasks add case files here with
-// no edit to this entry.
+// The oracle entry: discovers every case module under test/oracle/cases/, runs each
+// case through the subprocess driver against the Rust binary (build first:
+// `cargo build --release`), and prints one pass/fail/pending summary line. Corpus
+// tasks add case files here with no edit to this entry.
 //
-//   npm test                            runs this entry against the JS CLI (must be all-green)
-//   npm run oracle:rust                 runs it against the Rust binary (pending allowed)
-//   ORACLE_BIN=… ORACLE_TARGET=rust     select an explicit binary / target by hand
+//   npm test          runs this entry (must be all-green, zero pending)
+//   ORACLE_BIN=…      select an explicit binary by hand
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -29,9 +28,8 @@ test('parity oracle corpus', async (t) => {
 
   const counts = summarize(verdicts);
   process.stdout.write(`${formatSummary(counts, target)}\n`);
-  // The corpus must be 100% green against the JS CLI (no fails, no pendings).
-  if (target === 'js') {
-    assert.equal(counts.fail, 0, 'JS-target oracle must have zero failures');
-    assert.equal(counts.pending, 0, 'the pending allowlist never applies to the JS target');
-  }
+  // Since json-cutover the corpus must be 100% green: zero pending is the standing
+  // bar (the allowlist emptied before the flip and only a regression refills it).
+  assert.equal(counts.fail, 0, 'oracle must have zero failures');
+  assert.equal(counts.pending, 0, 'oracle must have zero pending cases');
 });

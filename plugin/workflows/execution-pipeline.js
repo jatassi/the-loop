@@ -15,7 +15,7 @@ const EMBEDDED_CONTEXT = null; // spliced to a literal by prepare-execution-cont
 // fallback — some callers deliver a JSON-encoded string rather than a parsed object.
 const parseHarnessArgs = (a) => (typeof a === 'string' ? JSON.parse(a) : a);
 const executionContext = EMBEDDED_CONTEXT ?? parseHarnessArgs(args);
-const CLI = executionContext.cli || 'node plugin/bin/the-loop.js';
+const CLI = executionContext.cli || 'the-loop';
 
 // ---- agent-type resolution. Installed-plugin sessions register the plugin's agents
 // under the plugin namespace (`the-loop:plan`, …); only a repo that symlinks
@@ -100,13 +100,9 @@ function obsFor(id) {
 const taskContracts = (tasks) => (tasks || []).map((t) => ({
   id: t.id, size: t.size ?? null, judgment_level: t.judgment_level ?? null, footprint: t.footprint || [],
 }));
-// YAML scalars for the record payload. `yamlUnknown` renders script-final unknowns as
-// `~` (and JSON-quotes present strings for validity); `yamlToken` passes a bare token
-// through, `~` when absent; `yamlInline`/`yamlRoleMap` render the two flow collections.
-const yamlUnknown = (v) => (v == null ? '~' : JSON.stringify(v));
-const yamlToken = (v) => v ?? '~';
-const yamlInline = (arr) => `[${arr.join(', ')}]`;
-const yamlRoleMap = (m) => `{ ${ROLES.map((r) => `${r}: ${m[r]}`).join(', ')} }`;
+// Role maps in the record payload always carry every role, in ROLES order — key
+// insertion order is what makes JSON.stringify byte-deterministic here.
+const roleMapOf = (m) => Object.fromEntries(ROLES.map((r) => [r, m[r]]));
 const budgetByRole = zeroRoles();
 let spawnsInFlight = 0;
 let didSpawnsOverlap = false;
@@ -470,11 +466,12 @@ async function runFeature(id) {
 }
 
 // ---- record-payload assembly (ADR-0046): a pure, deterministic function over what the
-// script observed → the byte-final YAML the record agent transcribes verbatim. Ordering
-// is fixed (scope order for features, plan order for tasks, the ROLES order for every
-// role map); `prepared_at` is the only timestamp; `features[].actual` is emitted as
-// explicit `null`s the record agent fills with git-derived enrichment. Same observations
-// in → byte-identical string out. Hand-rolled because this script imports nothing.
+// script observed → the byte-final JSON (json-cutover, ADR-0051) the record agent
+// transcribes verbatim. Ordering is fixed (scope order for features, plan order for
+// tasks, the ROLES order for every role map — key insertion order is emission order);
+// `prepared_at` is the only timestamp; `features[].actual` is emitted as explicit
+// `null`s the record agent fills with git-derived enrichment. Same observations in →
+// byte-identical string out. Hand-rolled because this script imports nothing.
 function recordPayload(obs, result, run) {
   const completedSet = new Set(result.completed);
   const blockedBy = new Map(result.blocked.map((b) => [b.feature, b]));
@@ -487,41 +484,34 @@ function recordPayload(obs, result, run) {
   };
   const reasonOf = (id) => (blockedBy.get(id)?.reason ?? stalledBy.get(id)?.note ?? null);
   const emptyObs = { workflow_path: null, tasks: [], agents: zeroRoles(), reslice: null };
-  const featureBlock = (id) => {
+  const featureRecord = (id) => {
     const f = obs.features.get(id) || emptyObs;
-    const taskLines = f.tasks.length === 0
-      ? ['    tasks: []']
-      : ['    tasks:', ...f.tasks.map((t) => `      - { id: ${t.id}, size: ${yamlToken(t.size)}, judgment_level: ${yamlToken(t.judgment_level)}, footprint: ${yamlInline(t.footprint)} }`)];
-    return [
-      `  - id: ${id}`,
-      `    workflow_path: ${yamlToken(f.workflow_path)}`,
-      `    outcome: ${outcomeOf(id)}`,
-      `    reason: ${yamlUnknown(reasonOf(id))}`,
-      `    reslice: ${yamlUnknown(f.reslice)}`,
-      `    agents: ${yamlRoleMap(f.agents)}`,
-      ...taskLines,
+    return {
+      id,
+      workflow_path: f.workflow_path ?? null,
+      outcome: outcomeOf(id),
+      reason: reasonOf(id),
+      reslice: f.reslice ?? null,
+      agents: roleMapOf(f.agents),
+      tasks: f.tasks.map((t) => ({ id: t.id, size: t.size ?? null, judgment_level: t.judgment_level ?? null, footprint: t.footprint })),
       // features[].actual arrives as explicit nulls the record agent fills from git (ADR-0038).
-      '    actual:',
-      '      files_touched: null',
-      '      insertions: null',
-      '      deletions: null',
-      '      commits: null',
-      '      duration_minutes: null',
-    ];
+      actual: { files_touched: null, insertions: null, deletions: null, commits: null, duration_minutes: null },
+    };
   };
-  return [
-    'run:',
-    `  prepared_at: ${run.preparedAt}`,
-    `  target: ${run.target}`,
-    `  scope: ${yamlInline(run.scope)}`,
-    '  tokens:',
-    `    spent: ${result.budget.spent}`,
-    `    by_role: ${yamlRoleMap(obs.byRole)}`,
-    `    attribution: ${obs.overlapped ? 'overlapped' : 'serial'}`,
-    `  halted: ${result.halted ? yamlUnknown(result.halted.reason) : '~'}`,
-    'features:',
-    ...run.scope.flatMap((id) => featureBlock(id)),
-  ].join('\n');
+  return JSON.stringify({
+    run: {
+      prepared_at: run.preparedAt,
+      target: run.target,
+      scope: run.scope,
+      tokens: {
+        spent: result.budget.spent,
+        by_role: roleMapOf(obs.byRole),
+        attribution: obs.overlapped ? 'overlapped' : 'serial',
+      },
+      halted: result.halted ? result.halted.reason : null,
+    },
+    features: run.scope.map((id) => featureRecord(id)),
+  }, null, 2);
 }
 
 // ---- the run: concurrency policy over the scoped subgraph (ADR-0038). Deps outside

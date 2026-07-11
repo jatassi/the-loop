@@ -1,0 +1,121 @@
+{
+  "run": {
+    "prepared_at": "2026-07-10T00:34:16.869Z",
+    "target": "rust-replatform",
+    "scope": [
+      "parity-oracle",
+      "binary-distribution"
+    ],
+    "tokens": {
+      "spent": 305018,
+      "by_role": {
+        "plan": 45153,
+        "build": 45892,
+        "drive": 434428,
+        "validate": 0
+      },
+      "attribution": "overlapped"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "parity-oracle",
+      "workflow_path": "standard",
+      "outcome": "blocked",
+      "reason": "AC2 unmet (format-sensitive fixtures not dual-variant): test/oracle/fixtures.js does build YAML+JSON pairs from one shared definition, but most cases do not feed the correct half to each target. test/oracle/cases/read-commands.js builds a pair via buildFixturePair yet always sets cwd to yamlRepo — jsonRepo is only ever cleaned up, never selected by ORACLE_TARGET (confirmed: file's own header comment reads 'Cases target the JS yamlRepo fixture half; Rust pending allowlist handles the rest', and pairSetup() unconditionally returns cwd: yamlRepo). test/oracle/cases/write-commands.js never calls buildFixturePair at all — set-status seeds only docs/feature-graph.md (verified via grep: 8 .md references, 0 .json) and calibration-summarize only docs/calibration/runs/*.md (verified: 4 .md references, 0 .json). Only prepare-execution-context in context-commands.js actually selects yamlRepo vs jsonRepo by target. hooks-set/worktree fixtures are format-neutral (already JSON) so those are fine.; AC3 unmet (missing refusal case for worktree-create): of 45 total corpus cases, every named command has at least one happy-path and one refusal case except worktree-create, which has only two cases ('create-new' and 'idempotent re-create'), both happy-path, zero refusal (confirmed via grep against test/oracle/cases/context-commands.js). The JS target is otherwise fully green: npm test prints 'oracle [js]: 45 pass, 0 fail, 0 pending' with the full 340-test suite passing and lint clean.; AC4 unmet (default Rust binary path is wrong, producing a misleading parity number): the cargo workspace (root Cargo.toml, cli/ as member) places the compiled binary at <repo-root>/target/release/the-loop, but test/oracle/driver.js's defaultBin('rust') resolves to cli/target/release/the-loop, which never exists under that workspace layout. Verified directly: `cargo build --release` from repo root produces target/release/the-loop (the-loop 0.1.0 via --version, exit 0); `npm run oracle:rust` (default path) reports 'oracle [rust]: 0 pass, 1 fail, 44 pending' with a hard failure on --version (spawnSync ENOENT on the wrong path) even though --version is not on the pending allowlist and the Rust binary genuinely implements it; with ORACLE_BIN=target/release/the-loop it correctly reports 'oracle [rust]: 1 pass, 0 fail, 44 pending'. The canonical npm script therefore misreports an already-correct ported command as a plumbing failure, undermining criterion 4's promise that parity progress is one trustworthy number.; AC1 largely met with a minor hygiene note: driver.js always invokes the CLI under test via spawnSync(bin.command, [...prefixArgs, ...argv]) keyed off ORACLE_BIN/ORACLE_TARGET, with no in-process import of either CLI implementation used to drive it. However test/oracle/cases/context-commands.js imports plugin/src/splice-workflow-description.js and test/oracle/fixtures.test.js imports plugin/src/parse-feature-graph.js and plugin/src/plan.js — used only to compute expected assertion values / verify fixture semantic equivalence, not to drive the subprocess under test, so this does not violate criterion 1's letter but is worth tightening.; Integrity gates: clean. No eslint-disable (or equivalent) added anywhere under test/oracle/, no lint-config edits, npm test (340/340) and npm run lint both green before and after the executor's judging pass, and no deleted or weakened tests observed — the oracle test surface is purely additive.",
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 6,
+        "validate": 0
+      },
+      "tasks": [
+        {
+          "id": "compare-rules",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "test/oracle/compare.js",
+            "test/oracle/compare.test.js"
+          ]
+        },
+        {
+          "id": "fixture-pairs",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "test/oracle/fixtures.js",
+            "test/oracle/fixtures.test.js"
+          ]
+        },
+        {
+          "id": "oracle-driver",
+          "size": "s",
+          "judgment_level": "complex",
+          "footprint": [
+            "test/oracle/driver.js",
+            "test/oracle/driver.test.js",
+            "test/oracle/oracle.test.js",
+            "test/oracle/pending.json",
+            "package.json"
+          ]
+        },
+        {
+          "id": "corpus-read",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "test/oracle/cases/read-commands.js",
+            "plugin/bin/the-loop.js"
+          ]
+        },
+        {
+          "id": "corpus-write",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "test/oracle/cases/write-commands.js"
+          ]
+        },
+        {
+          "id": "corpus-context",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "test/oracle/cases/context-commands.js"
+          ]
+        }
+      ],
+      "actual": {
+        "files_touched": null,
+        "insertions": null,
+        "deletions": null,
+        "commits": null,
+        "duration_minutes": null
+      }
+    },
+    {
+      "id": "binary-distribution",
+      "workflow_path": "small",
+      "outcome": "stalled",
+      "reason": "placeholder — waiting for background executor; this call is a no-op, see follow-up",
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 0,
+        "drive": 1,
+        "validate": 0
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": null,
+        "insertions": null,
+        "deletions": null,
+        "commits": null,
+        "duration_minutes": null
+      }
+    }
+  ]
+}

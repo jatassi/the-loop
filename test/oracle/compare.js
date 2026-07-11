@@ -146,7 +146,7 @@ export function isIso8601Shape(value) {
 
 /**
  * execution-context `cli` field check against a per-binary expected value.
- * The caller supplies the expected string (e.g. `node plugin/bin/the-loop.js` vs `the-loop`);
+ * The caller supplies the expected string (e.g. `the-loop` vs a custom install path);
  * this module holds no binary knowledge.
  * @param {unknown} actual
  * @param {unknown} expected

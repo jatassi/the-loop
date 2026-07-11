@@ -1,15 +1,16 @@
 // Oracle cases for worktree-create bound-success and provisioning-refusal (ADR-0052).
-// Self-contained: node builtins only. The rust-replatform corpus driver will readdir-
-// discover this module and flat-map `cases` — no sibling imports, no harness on this
-// branch yet. test/worktree-setup-oracle-cases.test.js executes these end-to-end here.
+// Self-contained: node builtins only. The corpus driver readdir-discovers this module
+// and flat-maps `cases`; test/worktree-setup-oracle-cases.test.js also executes these
+// end-to-end via runCli.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// This file lives at test/oracle/cases/ — three ups reach the repo root.
-export const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../plugin/bin/the-loop.js');
+// This file lives at test/oracle/cases/ — three ups reach the repo root. The cargo
+// workspace root owns target/, so the release binary lives there, never under cli/.
+export const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../target/release/the-loop');
 
 const git = (cwd, args) => {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
@@ -36,9 +37,9 @@ export function makeGitFixture(files = {}) {
   return { cwd, cleanup };
 }
 
-/** Spawn the JS CLI with absolute bin path (never depends on process cwd). */
+/** Spawn the binary with absolute path (never depends on process cwd). */
 export function runCli(argv, { cwd, env = process.env } = {}) {
-  return spawnSync('node', [CLI, ...argv], {
+  return spawnSync(CLI, argv, {
     cwd,
     env,
     encoding: 'utf8',

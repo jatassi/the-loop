@@ -85,13 +85,13 @@ test('isIso8601Shape: malformed values fail', () => {
 
 // ── isCliFieldEqual (per-binary) ──
 test('isCliFieldEqual: matching per-binary expected value', () => {
-  assert.equal(isCliFieldEqual('node plugin/bin/the-loop.js', 'node plugin/bin/the-loop.js'), true);
+  assert.equal(isCliFieldEqual('/opt/loop/bin/the-loop', '/opt/loop/bin/the-loop'), true);
   assert.equal(isCliFieldEqual('the-loop', 'the-loop'), true);
 });
 
 test('isCliFieldEqual: mismatching per-binary expected value', () => {
-  assert.equal(isCliFieldEqual('node plugin/bin/the-loop.js', 'the-loop'), false);
-  assert.equal(isCliFieldEqual('the-loop', 'node plugin/bin/the-loop.js'), false);
+  assert.equal(isCliFieldEqual('/opt/loop/bin/the-loop', 'the-loop'), false);
+  assert.equal(isCliFieldEqual('the-loop', '/opt/loop/bin/the-loop'), false);
 });
 
 // ── bytesEqual (--script-out) ──

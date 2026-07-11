@@ -1,13 +1,12 @@
-// Shared setup helpers for parity-oracle case modules: dual-format fixture-pair
-// contexts (each case selects its fixture half by target — yamlRepo for the JS CLI,
-// jsonRepo for the Rust binary) and throwaway temp-dir contexts.
+// Shared setup helpers for oracle case modules: disposable fixture-repo contexts
+// (JSON artifacts — the only era since json-cutover) and throwaway temp dirs.
 
 import { execSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { buildFixturePair } from './fixtures.js';
+import { buildFixtureRepo } from './fixtures.js';
 
 export const REFUSE = { exitCode: 1, stderr: 'present', stdoutBytes: '' };
 export const ALPHA = { branch: 'loop/alpha' };
@@ -20,10 +19,9 @@ export const rm = (dir) => rmSync(dir, { recursive: true, force: true });
  * @param {typeof import('./fixtures.js').EXAMPLE_DEFINITION} definition
  * @param {{ branch?: string, isolateHome?: boolean }} [opts]
  */
-export function pairSetup(definition, { branch, isolateHome } = {}) {
-  return ({ target }) => {
-    const { yamlRepo, jsonRepo } = buildFixturePair(definition);
-    const cwd = target === 'rust' ? jsonRepo : yamlRepo;
+export function repoSetup(definition, { branch, isolateHome } = {}) {
+  return () => {
+    const cwd = buildFixtureRepo(definition);
     if (branch) {
       execSync(`git checkout -q ${branch}`, { cwd });
     }
@@ -32,8 +30,7 @@ export function pairSetup(definition, { branch, isolateHome } = {}) {
       cwd,
       env: emptyHome ? { HOME: emptyHome } : undefined,
       cleanup: () => {
-        rm(yamlRepo);
-        rm(jsonRepo);
+        rm(cwd);
         if (emptyHome) {
           rm(emptyHome);
         }

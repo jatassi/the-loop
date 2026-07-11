@@ -2,7 +2,7 @@
 name: begin
 description: "the-loop's front door — begin a working session: states where the project stands and proposes the next action; /begin <phase> jumps straight to a phase"
 argument-hint: "[phase]"
-allowed-tools: Bash(node *), Bash(git *), Read, Workflow
+allowed-tools: Bash(the-loop *), Bash(node *), Bash(git *), Read, Workflow
 ---
 
 ## Context
@@ -10,7 +10,7 @@ allowed-tools: Bash(node *), Bash(git *), Read, Workflow
 - Requested jump (may be empty): `$ARGUMENTS`
 - Orientation — machine truth from the feature graph:
 
-!`node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status --json 2>&1`
+!`the-loop status --json 2>&1`
 
 **Missing binary posture.** Surfaces that shell to bare `the-loop` and get
 command-not-found treat that as an environment-shaped halt — never a silent
@@ -56,7 +56,7 @@ it; fetch feature bodies only once the chosen route needs them.
 
 Resolve `artifactStores.features` (it rides the `hooks-list` inventory) before the
 orientation and the launch leg. When it resolves `local` — the default — everything
-above and below runs unchanged against `docs/feature-graph.md`. When it resolves to a
+above and below runs unchanged against `docs/feature-graph.json`. When it resolves to a
 **nondefault** binding, the feature graph is no longer an in-repo file: its records,
 dependency edges, acceptance prose, and statuses are sole truth on the bound surface,
 and both the status orientation and the launch leg run against an ephemeral snapshot
@@ -64,14 +64,14 @@ instead of the local file:
 
 1. **Materialize the snapshot.** Follow `docs/adapters/features.md` — its Access
    section names the surface's shape (MCP server, CLI, …), the auth/workspace context,
-   and the read calls — read the bound surface, and materialize the same YAML graph
+   and the read calls — read the bound surface, and materialize the same JSON graph
    model as an ephemeral snapshot file under session scratch. The snapshot is
    gitignored, never committed, and torn down at run end (leave nothing behind, the way
    the loop sweeps its own temp files). Materialize it before any graph read.
 2. **Point the subcommands at the snapshot.** Pass its path as `--graph-path` to every
    graph-consuming subcommand — `status`, `prepare-execution-context`, `set-status`,
    `check` — so the pure core runs against the snapshot while the default
-   `docs/feature-graph.md` path stays untouched for local projects.
+   `docs/feature-graph.json` path stays untouched for local projects.
 3. **Invert status writes — surface-first.** Where an unbound run would `set-status`
    on the file, a bound run updates the bound surface first (the mutate operation the
    adapter doc's Operations names), then refreshes the snapshot from it. Truth lands on
@@ -82,23 +82,23 @@ instead of the local file:
 **A bound-but-unreachable surface at use time is a can't-run, never a fallback.** If
 the surface can't be reached when the snapshot must be materialized or a mutate
 written, stop and report a can't-run naming the surface (e.g. `features is bound to
-Linear and Linear is unreachable`). Never fall back to local `docs/feature-graph.md` —
+Linear and Linear is unreachable`). Never fall back to local `docs/feature-graph.json` —
 a stale or absent local file would fork project truth. This is a surfaced can't-run,
 distinct from a run that started and failed.
 
 **Unbinding is a migration, not a settings toggle.** To return a bound project to
 local, follow the adapter doc's caveats: export the surface's truth back to
-`docs/feature-graph.md` — one final materialized snapshot, this time committed — then
+`docs/feature-graph.json` — one final materialized snapshot, this time committed — then
 remove the `artifactStores.features` pointer and the adapter doc. Once
 `artifactStores.features` resolves `local` again, subsequent runs read the in-repo
 graph and print a visible fallback line noting the feature graph is served from local
-`docs/feature-graph.md`.
+`docs/feature-graph.json`.
 
 ## The prepare-execution-context leg
 
 1. Confirm the scope: the dependency-ready eligible set, or the human's subset.
 2. Assemble, gate, and splice in one call:
-   `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" prepare-execution-context --features <id,id,…> --target-branch <ref> --script-out <session-scratch path>`
+   `the-loop prepare-execution-context --features <id,id,…> --target-branch <ref> --script-out <session-scratch path>`
    — `--target-branch` is required: name the target branch explicitly — the branch
    the session is working on, unless the design narrative names another. Never
    pass a target branch the checkout's artifacts didn't come from. `--script-out`
@@ -131,5 +131,5 @@ graph and print a visible fallback line noting the feature graph is served from 
    - `halted` — the run stopped (budget only); report the detail.
 
 No status bookkeeping: the validators already updated the graph on the target branch,
-and `git log` is the run history. `node "${CLAUDE_PLUGIN_ROOT}/bin/the-loop.js" status`
+and `git log` is the run history. `the-loop status`
 prints the status story on demand.

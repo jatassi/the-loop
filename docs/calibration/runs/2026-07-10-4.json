@@ -1,0 +1,65 @@
+{
+  "run": {
+    "prepared_at": "2026-07-10T01:26:11.203Z",
+    "target": "main",
+    "scope": [
+      "fix-execution-context-args-transport",
+      "fix-record-prompt-cli"
+    ],
+    "tokens": {
+      "spent": 116674,
+      "by_role": {
+        "plan": 21017,
+        "build": 0,
+        "drive": 83933,
+        "validate": 0
+      },
+      "attribution": "overlapped"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "fix-execution-context-args-transport",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 0,
+        "drive": 2,
+        "validate": 0
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 10,
+        "insertions": 258,
+        "deletions": 38,
+        "commits": 4,
+        "duration_minutes": 34
+      }
+    },
+    {
+      "id": "fix-record-prompt-cli",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 0,
+        "drive": 2,
+        "validate": 0
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 4,
+        "insertions": 59,
+        "deletions": 10,
+        "commits": 3,
+        "duration_minutes": 29
+      }
+    }
+  ]
+}

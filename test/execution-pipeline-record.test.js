@@ -1,5 +1,5 @@
 // The calibration-capture leg (ADR-0046): after the run summary is assembled the script
-// spawns the `record` agent to transcribe a byte-final YAML payload the script computed
+// spawns the `record` agent to transcribe a byte-final JSON payload the script computed
 // as a pure function of what it observed. These tests drive the real
 // workflows/execution-pipeline.js through the harness and pin: the deterministic payload
 // (same observations → byte-identical string), that a not-fully-green run still records,
@@ -64,37 +64,38 @@ const validatedAlphaReplies = byLabel({
   'validate:alpha': validated('alpha'),
 });
 
-const EXPECTED_PAYLOAD = [
-  'run:',
-  '  prepared_at: 2026-07-08T14:02:11Z',
-  '  target: main',
-  '  scope: [alpha]',
-  '  tokens:',
-  '    spent: 5',
-  '    by_role: { plan: 0, build: 0, drive: 0, validate: 0 }',
-  '    attribution: serial',
-  '  halted: ~',
-  'features:',
-  '  - id: alpha',
-  '    workflow_path: standard',
-  '    outcome: validated',
-  '    reason: ~',
-  '    reslice: ~',
-  '    agents: { plan: 1, build: 2, drive: 0, validate: 1 }',
-  '    tasks:',
-  '      - { id: t1, size: s, judgment_level: standard, footprint: [src/a.js, test/a.test.js] }',
-  '      - { id: t2, size: m, judgment_level: complex, footprint: [src/b.js] }',
-  '    actual:',
-  '      files_touched: null',
-  '      insertions: null',
-  '      deletions: null',
-  '      commits: null',
-  '      duration_minutes: null',
-].join('\n');
+const EXPECTED_PAYLOAD = JSON.stringify({
+  run: {
+    prepared_at: '2026-07-08T14:02:11Z',
+    target: 'main',
+    scope: ['alpha'],
+    tokens: {
+      spent: 5,
+      by_role: { plan: 0, build: 0, drive: 0, validate: 0 },
+      attribution: 'serial',
+    },
+    halted: null,
+  },
+  features: [
+    {
+      id: 'alpha',
+      workflow_path: 'standard',
+      outcome: 'validated',
+      reason: null,
+      reslice: null,
+      agents: { plan: 1, build: 2, drive: 0, validate: 1 },
+      tasks: [
+        { id: 't1', size: 's', judgment_level: 'standard', footprint: ['src/a.js', 'test/a.test.js'] },
+        { id: 't2', size: 'm', judgment_level: 'complex', footprint: ['src/b.js'] },
+      ],
+      actual: { files_touched: null, insertions: null, deletions: null, commits: null, duration_minutes: null },
+    },
+  ],
+}, null, 2);
 
 // The CLI const's fallback when executionContext.cli is absent (same default plan/build/
 // validate prompts already use). The trailer lives outside the transcribed payload.
-const DEFAULT_CLI = 'node plugin/bin/the-loop.js';
+const DEFAULT_CLI = 'the-loop';
 const withCliTrailer = (payload, cli = DEFAULT_CLI) => `${payload}\n\ncli: ${cli}`;
 // Payload portion of a record spawn prompt: everything before the deterministic trailer.
 const transcribedPayloadOf = (prompt) => {
@@ -106,8 +107,8 @@ const transcribedPayloadOf = (prompt) => {
 
 // ── criterion 2: recordPayload is a pure deterministic function of the observations —
 // two runs of the same script scripted identically produce a byte-identical payload,
-// and the transcribed portion (before the cli trailer) is the exact pinned YAML ──
-test('the record payload is byte-identical across identical runs and matches the pinned YAML', async () => {
+// and the transcribed portion (before the cli trailer) is the exact pinned JSON ──
+test('the record payload is byte-identical across identical runs and matches the pinned JSON', async () => {
   const args = executionContextOf([feature('alpha')]);
   const run1 = await runWorkflowScript(SCRIPT, { agentReplies: validatedAlphaReplies, args, budget: BUDGET });
   const run2 = await runWorkflowScript(SCRIPT, { agentReplies: validatedAlphaReplies, args, budget: BUDGET });
@@ -124,7 +125,7 @@ test('the record payload is byte-identical across identical runs and matches the
 
 // ── criterion 1 / 3 (cli-present): a non-PATH invocation bound on the execution context
 // is named by a deterministic trailer outside the transcribed payload; the payload
-// portion stays byte-identical to the pre-fix pinned YAML ──
+// portion stays byte-identical to the pre-fix pinned JSON ──
 test('a bound cli rides the record prompt as a trailer outside the transcribed payload', async () => {
   const boundCli = '/opt/the-loop/bin/the-loop --plugin /opt/the-loop/plugin';
   const args = executionContextOf([feature('alpha')], { cli: boundCli });
@@ -138,7 +139,7 @@ test('a bound cli rides the record prompt as a trailer outside the transcribed p
 
 // ── criterion 1 / 3 (cli-absent): without executionContext.cli the record spawn still
 // gets the CLI const's fallback trailer — never omits it — and the transcribed payload
-// stays byte-identical to the pinned YAML ──
+// stays byte-identical to the pinned JSON ──
 test('a cli-absent context still appends the default cli trailer to the record prompt', async () => {
   const args = executionContextOf([feature('alpha')]); // no cli field
   assert.equal(args.cli, undefined);
@@ -165,7 +166,7 @@ test('a run whose spawns overlap tags the token attribution overlapped', async (
 
   const { spawns } = await runWorkflowScript(SCRIPT, { agentReplies: replies, args, budget: BUDGET });
 
-  assert.match(recordSpawn(spawns).prompt, /attribution: overlapped/);
+  assert.match(recordSpawn(spawns).prompt, /"attribution": "overlapped"/);
 });
 
 // ── criterion 3 (capture on a not-fully-green run): a feature that blocks still lands its
@@ -182,9 +183,9 @@ test('a blocked run still spawns the record, capturing the blocked outcome and r
   assert.deepEqual(result.blocked, [{ feature: 'alpha', reason: 'two criteria contradict', options: ['split it'] }]);
   const payload = recordSpawn(spawns);
   assert.ok(payload, 'the record agent was spawned despite the block');
-  assert.match(payload.prompt, /outcome: blocked/);
-  assert.match(payload.prompt, /reason: "two criteria contradict"/);
-  assert.match(payload.prompt, /reslice: "two criteria contradict"/);
+  assert.match(payload.prompt, /"outcome": "blocked"/);
+  assert.match(payload.prompt, /"reason": "two criteria contradict"/);
+  assert.match(payload.prompt, /"reslice": "two criteria contradict"/);
 });
 
 // ── criterion 3 (budget-exhausted skip): a budget-named throw halts the run; a further

@@ -1,12 +1,11 @@
-// Parity-oracle corpus: read-only CLI commands plus --version.
-// Each dual-format case selects its fixture half by target — yamlRepo for the JS
-// CLI, jsonRepo for the Rust binary — so both binaries read their own format of
-// the same shared definition.
+// Oracle corpus: read-only CLI commands plus --version, exercised against the
+// Rust binary on JSON-artifact fixture repos (the regression suite since
+// json-cutover).
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { HOME, pairSetup, REFUSE, tempSetup } from '../case-setup.js';
+import { HOME, REFUSE, repoSetup, tempSetup } from '../case-setup.js';
 import {
   EXAMPLE_DEFINITION,
   malformedGraphSetup,
@@ -30,29 +29,25 @@ const DANGLING = {
   )),
 };
 
-/** Alpha list node — Rust JSON fixtures carry optional `section`; YAML does not. */
-const alphaListFeature = (target) => ({
+const alphaListFeature = {
   id: 'alpha',
-  ...(target === 'rust' && { section: 'fixture skeleton' }),
+  section: 'fixture skeleton',
   title: 'Alpha feature',
   status: 'designed',
   depends_on: [],
   acceptance: ['alpha criterion one', 'alpha criterion two'],
   notes: ['alpha design note'],
-});
+};
 
 const betaListFeature = {
   id: 'beta', title: 'Beta feature', status: 'proposed', depends_on: ['alpha'],
 };
 
-/** Human status header names the graph file each binary actually reads. */
-const statusHumanMatch = (target) => {
-  const ext = target === 'rust' ? 'json' : 'md';
-  return new RegExp(
-    String.raw`^# Status — projected from docs/feature-graph\.` + ext
-      + String.raw`\n[\s\S]*Total: 2 feature\(s\) at design_version 1[\s\S]*\*\*Next:\*\* \`alpha\``,
-  );
-};
+/** Human status header names the graph file the binary reads. */
+const STATUS_HUMAN_MATCH = new RegExp(
+  String.raw`^# Status — projected from docs/feature-graph\.json`
+    + String.raw`\n[\s\S]*Total: 2 feature\(s\) at design_version 1[\s\S]*\*\*Next:\*\* \`alpha\``,
+);
 
 const ROLE_TABLE = {
   plan: { model: 'session', provenance: 'default' },
@@ -85,9 +80,9 @@ const badPlaybook = tempSetup('oracle-playbook-', (cwd) => {
   );
 });
 
-const example = pairSetup(EXAMPLE_DEFINITION);
-const wellFormedHome = pairSetup(WELL_FORMED, HOME);
-const bareStringHome = pairSetup(EXAMPLE_DEFINITION, HOME);
+const example = repoSetup(EXAMPLE_DEFINITION);
+const wellFormedHome = repoSetup(WELL_FORMED, HOME);
+const bareStringHome = repoSetup(EXAMPLE_DEFINITION, HOME);
 
 export const cases = [
   {
@@ -95,10 +90,10 @@ export const cases = [
     scenario: 'happy path human-readable',
     argv: ['status'],
     setup: example,
-    expect: ({ target }) => ({
+    expect: {
       exitCode: 0,
-      stdoutMatch: statusHumanMatch(target),
-    }),
+      stdoutMatch: STATUS_HUMAN_MATCH,
+    },
   },
   {
     command: 'status',
@@ -135,7 +130,7 @@ export const cases = [
   },
   {
     command: 'status',
-    scenario: 'refusal: unparseable graph (broken YAML fence vs broken JSON)',
+    scenario: 'refusal: unparseable graph (broken JSON)',
     argv: ['status', '--json'],
     setup: malformedGraphSetup,
     expect: REFUSE,
@@ -145,13 +140,13 @@ export const cases = [
     scenario: 'happy path',
     argv: ['list'],
     setup: example,
-    expect: ({ target }) => ({
+    expect: {
       exitCode: 0,
       stdout: {
         designVersion: 1,
-        features: [alphaListFeature(target), betaListFeature],
+        features: [alphaListFeature, betaListFeature],
       },
-    }),
+    },
   },
   {
     command: 'list',
@@ -171,22 +166,19 @@ export const cases = [
     command: 'check',
     scenario: 'refusal: dangling dependency FAIL',
     argv: ['check'],
-    setup: pairSetup(DANGLING),
+    setup: repoSetup(DANGLING),
     expect: { exitCode: 1, stdoutMatch: /FAIL 2 features/ },
   },
   {
     command: 'check',
-    scenario: 'refusal: malformed graph (broken YAML fence vs broken JSON)',
+    scenario: 'refusal: malformed graph (broken JSON)',
     argv: ['check'],
     setup: malformedGraphSetup,
-    // JS puts parse errors on stderr with empty stdout; Rust prints FAIL on stdout.
-    expect: ({ target }) => (target === 'rust'
-      ? { exitCode: 1, stdoutMatch: /FAIL|malformed/i }
-      : { exitCode: 1, stderr: 'present', stdoutBytes: '' }),
+    expect: { exitCode: 1, stdoutMatch: /FAIL|malformed/i },
   },
   {
     command: 'check',
-    scenario: 'refusal: catalog (bad status, missing acceptance, self/cycle, unknown key on JSON)',
+    scenario: 'refusal: catalog (bad status, missing acceptance, self/cycle, unknown key)',
     argv: ['check'],
     setup: refusalCatalogSetup,
     expect: { exitCode: 1, stdoutMatch: /FAIL/ },

@@ -38,7 +38,7 @@ const ARCHITECTURE_MD: &str = "docs/architecture.md";
 /// Calibration index scanned for the `## Digest` section (cwd-relative).
 const CALIBRATION_INDEX: &str = "docs/calibration/index.md";
 /// The `cli` invocation every downstream worker shells to — the one sanctioned
-/// content difference from the JS CLI (which emits `node "<plugin>/bin/the-loop.js"`).
+/// content difference from the retired JS CLI (which emitted a node invocation).
 const RUST_CLI: &str = "the-loop";
 
 /// Run `prepare-execution-context`. Prints the execution context on stdout, or

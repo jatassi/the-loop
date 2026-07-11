@@ -24,7 +24,7 @@ function executionContextOf(features, overrides = {}) {
     probe: 'bring-up: node app · exercise: curl /health · teardown: kill',
     models: {},
     agentNamespace: '', // bare agent types; a real run resolves the-loop:<role> (see the namespace test)
-    cli: 'node /plugin/bin/the-loop.js',
+    cli: '/opt/loop/bin/custom-loop',
     features: Object.fromEntries(features.map((f) => [f.id, f])),
     ...overrides,
   };
@@ -78,7 +78,7 @@ test('a dependency-linked pair runs Plan→Build→Validate per feature — stan
   // plan task brief: criteria numbered, design doc pushed, CLI path carried
   assert.ok(prompt('plan:alpha').includes('1. alpha works'));
   assert.ok(prompt('plan:alpha').includes('design doc for alpha'));
-  assert.ok(prompt('plan:alpha').includes('node /plugin/bin/the-loop.js'));
+  assert.ok(prompt('plan:alpha').includes('/opt/loop/bin/custom-loop'));
   // build task briefs: the branch DAG — t1 branches from the feature branch, t2 from t1's
   assert.ok(prompt('build:(2/2) alpha/t1').includes('worktree-create loop/alpha--t1 --base-branch loop/alpha'));
   assert.ok(prompt('build:(1/2) alpha/t2').includes('worktree-create loop/alpha--t2 --base-branch loop/alpha--t1'));

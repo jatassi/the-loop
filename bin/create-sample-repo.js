@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // bringUp for the fixture-repo probe (this repo's validation-procedure binding): create
-// a temp git repo seeded as a plausible v2 target repository and print its path. Exercises
-// then drive `node bin/the-loop.js` (and, sparingly, headless agents) against it from
+// a temp git repo seeded as a plausible target repository and print its path. Exercises
+// then drive bare `the-loop` (and, sparingly, headless agents) against it from
 // the outside, as a user would; teardown is `rm -rf` of the printed path.
 // Lives in bin/, not test/ — Node's test runner executes every .js under test/**.
 //
-//   create-sample-repo         populated: feature-graph.md + architecture.md +
+//   create-sample-repo         populated: feature-graph.json + architecture.md +
 //                               designs/, committed on main
 //   create-sample-repo empty   bare `git init` repo (unconfigured exercises)
 
@@ -14,33 +14,39 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const GRAPH = `# Fixture project — Feature graph
-
-A three-feature target repository for probe exercises: one validated feature, one
-designed behind it, and one proposed record (backlog stage, no design doc yet) so
-the validation procedure can exercise the not-designed and missing-acceptance gates
-against it.
-
-## Feature graph
-
-\`\`\`yaml
-design_version: 1
-features:
-  - id: greet-core
-    title: Core greeting module
-    status: validated
-    depends_on: []
-    acceptance: greet(name) returns a greeting containing the name
-  - id: greet-cli
-    title: CLI entry point
-    status: designed
-    depends_on: [greet-core]
-    acceptance: [running the CLI prints a greeting to stdout, an empty name exits 1 with a usage line]
-  - id: greet-farewell
-    title: Farewell command
-    status: proposed
-\`\`\`
-`;
+// A three-feature target repository for probe exercises: one validated feature, one
+// designed behind it, and one proposed record (backlog stage, no design doc yet) so
+// the validation procedure can exercise the not-designed and missing-acceptance gates
+// against it. Tool-owned JSON (json-cutover, ADR-0051) — prose lives in the docs.
+const GRAPH = `${JSON.stringify({
+  design_version: 1,
+  features: [
+    {
+      id: 'greet-core',
+      title: 'Core greeting module',
+      status: 'validated',
+      depends_on: [],
+      acceptance: ['greet(name) returns a greeting containing the name'],
+    },
+    {
+      id: 'greet-cli',
+      title: 'CLI entry point',
+      status: 'designed',
+      depends_on: ['greet-core'],
+      acceptance: [
+        'running the CLI prints a greeting to stdout',
+        'an empty name exits 1 with a usage line',
+      ],
+    },
+    {
+      id: 'greet-farewell',
+      title: 'Farewell command',
+      status: 'proposed',
+      depends_on: [],
+      acceptance: [],
+    },
+  ],
+}, null, 2)}\n`;
 
 const DESIGN = `# Fixture project — Architecture
 
@@ -85,7 +91,7 @@ git('git config user.name "loop probe"');
 
 if (variant === 'populated') {
   mkdirSync(path.join(root, 'docs'), { recursive: true });
-  writeFileSync(path.join(root, 'docs/feature-graph.md'), GRAPH);
+  writeFileSync(path.join(root, 'docs/feature-graph.json'), GRAPH);
   writeFileSync(path.join(root, 'docs/architecture.md'), DESIGN);
   for (const [id, text] of Object.entries(FEATURE_DOCS)) {
     mkdirSync(path.join(root, `docs/designs/${id}`), { recursive: true });

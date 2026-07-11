@@ -642,7 +642,7 @@ Tag the release.
             inputs,
             prepared_at: "2026-04-01T12:00:00.000Z",
             calibration: None,
-            cli: Some("node /plugin/bin/the-loop.js"),
+            cli: Some("/opt/loop/bin/custom-loop"),
         });
 
         assert_wire_key_order(
@@ -663,7 +663,7 @@ Tag the release.
         assert_eq!(ctx.scope, vec!["a", "b"]);
         assert_eq!(ctx.probe.as_deref(), Some("run the probe"));
         assert_eq!(ctx.prepared_at, "2026-04-01T12:00:00.000Z");
-        assert_eq!(ctx.cli.as_deref(), Some("node /plugin/bin/the-loop.js"));
+        assert_eq!(ctx.cli.as_deref(), Some("/opt/loop/bin/custom-loop"));
 
         let a = &ctx.features.0[0].1;
         assert_eq!(a.id, "a");
@@ -756,7 +756,7 @@ Tag the release.
             inputs,
             prepared_at,
             calibration: Some(calibration),
-            cli: Some("node /plugin/bin/the-loop.js"),
+            cli: Some("/opt/loop/bin/custom-loop"),
         });
         assert_eq!(ctx.calibration.as_deref(), Some(calibration));
         assert_eq!(ctx.prepared_at, prepared_at);
@@ -790,7 +790,7 @@ Tag the release.
             inputs,
             prepared_at: "2026-04-01T12:00:00.000Z",
             calibration: None,
-            cli: Some("node /plugin/bin/the-loop.js"),
+            cli: Some("/opt/loop/bin/custom-loop"),
         });
         let wire = serde_json::to_string(&ctx).expect("serialize");
         assert!(!wire.contains("\"calibration\""), "calibration key omitted");

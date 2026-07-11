@@ -1,29 +1,21 @@
 {
   "name": "the-loop",
   "version": "0.1.0",
-  "description": "An owned, composable agentic dev loop built from native Claude Code primitives \u2014 shipped as a plugin. Its first job is to build itself.",
+  "description": "An owned, composable agentic dev loop built from native Claude Code primitives — shipped as a plugin. Its first job is to build itself.",
   "type": "module",
   "private": true,
   "author": "Jackson Atassi <jackson.atassi@outlook.com>",
   "bin": {
-    "the-loop": "./plugin/bin/the-loop.js",
     "create-sample-repo": "./bin/create-sample-repo.js"
-  },
-  "exports": {
-    ".": "./plugin/src/index.js"
   },
   "scripts": {
     "test": "node --test test/*.test.js test/oracle/*.test.js",
-    "oracle:rust": "ORACLE_TARGET=rust node --test test/oracle/oracle.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check": "node plugin/bin/the-loop.js check && eslint ."
+    "check": "the-loop check && eslint ."
   },
   "engines": {
     "node": ">=22.11"
-  },
-  "dependencies": {
-    "yaml": "^2.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

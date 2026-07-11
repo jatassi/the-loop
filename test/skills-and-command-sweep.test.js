@@ -35,8 +35,8 @@ test('frame, ship, and craft skill directories are renamed with matching frontma
 test('plugin/skills/begin/SKILL.md routes on the collapsed status subcommand, prepare-execution-context flags, and the new project states', () => {
   const cmd = read('plugin/skills/begin/SKILL.md');
 
-  assert.match(cmd, /the-loop\.js"\s+status\s+--json/, 'the context call should read `status --json`');
-  assert.match(cmd, /\bnode "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/the-loop\.js" status\b(?!\s*--json)/, 'the closing call should read bare `status`');
+  assert.match(cmd, /!`the-loop status --json/, 'the context call should read `status --json` on the bare binary');
+  assert.match(cmd, /`the-loop status`/, 'the closing call should read bare `status`');
   assert.ok(!/\borient\b/.test(cmd), 'the retired `orient` subcommand should not be named');
   assert.ok(!/\bledger\b/.test(cmd), 'the retired `ledger` subcommand should not be named');
 
@@ -128,7 +128,7 @@ test('the code-quality baseline carries the distilled naming rule, and mapped te
     assert.ok(!allText.includes(stale), `stale term "${stale}" should be swept from skills/`);
   }
   // new terms present
-  for (const fresh of ['docs/architecture.md', 'docs/feature-graph.md', 'docs/designs/', 'docs/runbooks/', 'docs/bugs/', 'docs/glossary.md']) {
+  for (const fresh of ['docs/architecture.md', 'docs/feature-graph.json', 'docs/designs/', 'docs/runbooks/', 'docs/bugs/', 'docs/glossary.md']) {
     assert.ok(allText.includes(fresh), `renamed path "${fresh}" should appear in skills/`);
   }
 });

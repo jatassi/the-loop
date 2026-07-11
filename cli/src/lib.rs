@@ -61,12 +61,11 @@ use clap::{Parser, Subcommand};
 
 use crate::executors::{PlaybookEntry, Registry, parse_executors};
 
-/// Plugin model-bindings defaults (`plugin/config/model-bindings.json`), compiled in.
-pub const DEFAULT_MODEL_BINDINGS_JSON: &str =
-    include_str!("../../plugin/config/model-bindings.json");
+/// Plugin model-bindings defaults (`cli/config/model-bindings.json`), compiled in.
+pub const DEFAULT_MODEL_BINDINGS_JSON: &str = include_str!("../config/model-bindings.json");
 
-/// Plugin hook-defaults (`plugin/config/hook-defaults.json`), compiled in.
-pub const DEFAULT_HOOK_DEFAULTS_JSON: &str = include_str!("../../plugin/config/hook-defaults.json");
+/// Plugin hook-defaults (`cli/config/hook-defaults.json`), compiled in.
+pub const DEFAULT_HOOK_DEFAULTS_JSON: &str = include_str!("../config/hook-defaults.json");
 
 /// Default grok executor playbook (json-fenced), compiled in as the default registry.
 pub const DEFAULT_GROK_PLAYBOOK: &str = include_str!("../config/executors/grok.md");

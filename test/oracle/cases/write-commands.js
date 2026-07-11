@@ -2,20 +2,15 @@
 // calibration-summarize. Each case shells out via the oracle driver against a
 // per-case disposable fixture tree and asserts only observable outputs —
 // stdout, exit code, stderr presence, and files written (or left unwritten).
-// Format-sensitive fixtures (the feature graph, calibration records) are emitted
-// per target from one shared definition via the fixtures.js emitters — YAML for
-// the JS CLI, pure JSON for the Rust binary; settings files are format-neutral.
+// Fixtures are pure-JSON artifacts (the only era since json-cutover).
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import YAML from 'yaml';
-
-import { renderIndex } from '../../../plugin/src/calibration-summarize.js';
 import { bytesEqual } from '../compare.js';
 import { renderCalibrationRecord, renderFeatureGraph } from '../fixtures.js';
 
-// ── Shared definitions (one source; per-target emission picks the format) ──
+// ── Shared definitions ──
 
 const GRAPH_DEF = {
   design_version: 1,
@@ -72,21 +67,11 @@ const RECORD_B = {
   ],
 };
 
-// A malformed record is malformed *in the target's own format* — a broken YAML
-// fence for the JS CLI, broken JSON for the Rust binary.
-const BAD_RECORD_BY_FORMAT = {
-  yaml: {
-    rel: 'docs/calibration/runs/2026-07-02-1.md',
-    text: ['# broken', '', '```yaml', 'run: [this: is, : not valid', '```', ''].join('\n'),
-  },
-  json: {
-    rel: 'docs/calibration/runs/2026-07-02-1.json',
-    text: '{ "run": [this is not valid json\n',
-  },
+// A malformed record: broken JSON.
+const BAD_RECORD = {
+  rel: 'docs/calibration/runs/2026-07-02-1.json',
+  text: '{ "run": [this is not valid json\n',
 };
-
-/** @param {'js' | 'rust'} target @returns {'yaml' | 'json'} */
-const formatFor = (target) => (target === 'rust' ? 'json' : 'yaml');
 
 // Exact pre-seed used by cli-hooks unrelated-keys-survive (quirky formatting).
 const SETTINGS_WITH_UNRELATED = `{
@@ -132,23 +117,18 @@ function fixture(files) {
   };
 }
 
-/** Seed the shared graph definition in the target's own format. */
-function graphSetup({ target }) {
-  const { rel, text } = renderFeatureGraph(GRAPH_DEF, formatFor(target));
+/** Seed the shared graph definition. */
+function graphSetup() {
+  const { rel, text } = renderFeatureGraph(GRAPH_DEF);
   return fixture({ [rel]: text });
 }
 
-/** Seed calibration run records in the target's own format. */
+/** Seed calibration run records. */
 function calibrationSetup(records) {
-  return ({ target }) => {
-    const entries = records.map((r) => renderRecordEntry(r, formatFor(target)));
+  return () => {
+    const entries = records.map((r) => (r === 'BAD' ? BAD_RECORD : renderCalibrationRecord(r)));
     return fixture(Object.fromEntries(entries.map(({ rel, text }) => [rel, text])));
   };
-}
-
-/** @param {object} recOrRaw @param {'yaml' | 'json'} format */
-function renderRecordEntry(recOrRaw, format) {
-  return recOrRaw === 'BAD' ? BAD_RECORD_BY_FORMAT[format] : renderCalibrationRecord(recOrRaw, format);
 }
 
 /** @param {string} cwd @param {string} rel */
@@ -173,28 +153,9 @@ function assertAbsent(cwd, rel) {
   }
 }
 
-/**
- * Parse the graph artifact under cwd in whichever format was seeded — the
- * fenced-yaml markdown for the JS variant, pure JSON for the Rust variant.
- * @param {string} cwd
- * @returns {object}
- */
+/** @param {string} cwd @returns {object} */
 function parseGraphArtifact(cwd) {
-  if (existsSync(path.join(cwd, 'docs/feature-graph.json'))) {
-    return JSON.parse(readText(cwd, 'docs/feature-graph.json'));
-  }
-  const text = readText(cwd, 'docs/feature-graph.md');
-  const match = text.match(/```yaml\n([\s\S]*?)\n```/);
-  if (!match) {
-    throw new Error('no fenced yaml block in feature-graph.md');
-  }
-  return YAML.parse(match[1]);
-}
-
-/** The graph artifact's seeded bytes for whichever variant is on the tree. */
-function seededGraph(cwd) {
-  const format = existsSync(path.join(cwd, 'docs/feature-graph.json')) ? 'json' : 'yaml';
-  return renderFeatureGraph(GRAPH_DEF, format);
+  return JSON.parse(readText(cwd, 'docs/feature-graph.json'));
 }
 
 /** @param {object} byId @param {string} id @param {string} want @returns {string|void} */
@@ -219,21 +180,15 @@ function assertWidgetValidated(cwd) {
 
 /** @returns {string|void} */
 function assertGraphUnwritten(cwd) {
-  const { rel, text } = seededGraph(cwd);
+  const { rel, text } = renderFeatureGraph(GRAPH_DEF);
   return assertUnchanged(cwd, rel, text);
 }
 
-/**
- * Expected index.md bytes from the JS renderer over RECORD_A/B in yaml form —
- * what the JS CLI itself would emit for this corpus, used as a cross-target oracle.
- */
-function expectedCalibrationIndex() {
-  const records = [RECORD_A, RECORD_B].map((rec) => {
-    const { rel, text } = renderCalibrationRecord(rec, 'yaml');
-    return { file: rel, text };
-  });
-  return renderIndex(records);
-}
+// Byte-frozen regression snapshot of the index the binary emits for RECORD_A/B —
+// captured at json-cutover from the release binary, which had just been proven
+// byte-identical to the retired JS renderer over a paired corpus (run-commands-rust
+// AC4). A renderer change that alters these bytes must be deliberate.
+const EXPECTED_CALIBRATION_INDEX = "# Calibration memory\n\n## Digest\n\n_2 run(s), 2 feature(s) recorded._\n\n### Workflow paths\n| path | runs | median agents | median duration |\n| --- | --- | --- | --- |\n| small | 1 | 2 | — |\n| standard | 1 | 5 | 20 |\n\n### Re-slices\n1 of 2 feature(s) re-sliced (50%).\n\n### Footprint accuracy by size class\n| size | features | median planned files | median actual files |\n| --- | --- | --- | --- |\n| s | 1 | 2 | 3 |\n\n### Top block reasons\n- 1× dep conflict on parser\n\n### Token split (overhead vs build)\nLifetime: 32% overhead / 68% build.\nLast-10 median: 40% overhead / 60% build.\nAttribution: 1 of 2 run(s) overlapped — the overhead/build split is approximate.\n\n## Runs\n\n- 2026-07-01T10:00:00Z · target main · [f-a] · 1 validated · 100000 tokens · serial\n- 2026-07-02T09:00:00Z · target main · [f-b] · 1 blocked · 10000 tokens · overlapped\n";
 
 /** @returns {string|void} */
 function assertCalibrationIndex(cwd) {
@@ -242,8 +197,8 @@ function assertCalibrationIndex(cwd) {
     return 'docs/calibration/index.md was not written';
   }
   const text = readFileSync(indexPath, 'utf8');
-  if (!bytesEqual(text, expectedCalibrationIndex())) {
-    return 'docs/calibration/index.md is not byte-identical to JS renderIndex output';
+  if (!bytesEqual(text, EXPECTED_CALIBRATION_INDEX)) {
+    return 'docs/calibration/index.md drifted from the frozen regression snapshot';
   }
 }
 

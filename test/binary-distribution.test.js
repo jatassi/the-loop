@@ -276,10 +276,10 @@ test('criterion 3: README install section and begin skill carry the install one-
     /command-not-found|missing binary|not on PATH|not found/i,
     'begin skill must name the missing-binary / command-not-found posture',
   );
-  // Still the Node CLI invocation — do not change that in this task.
+  // Since json-cutover every invocation is the bare binary on PATH.
   assert.match(
     begin,
-    /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/the-loop\.js"/,
-    'begin skill must still invoke the Node CLI directly in this slice',
+    /!`the-loop status --json/,
+    'begin skill must invoke the bare the-loop binary',
   );
 });

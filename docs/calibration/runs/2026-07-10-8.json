@@ -1,0 +1,43 @@
+{
+  "run": {
+    "prepared_at": "2026-07-10T05:46:42.750Z",
+    "target": "rust-replatform",
+    "scope": [
+      "plan-commands-rust"
+    ],
+    "tokens": {
+      "spent": 102990,
+      "by_role": {
+        "plan": 18454,
+        "build": 0,
+        "drive": 79577,
+        "validate": 0
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "plan-commands-rust",
+      "workflow_path": "small",
+      "outcome": "blocked",
+      "reason": "lint: `npx eslint .` fails on test/oracle/cases/read-commands.js with max-lines 354 > 350 (skipBlankLines/skipComments); the rust-replatform base of the same file lints clean under the same ESLint config — this feature's plan-case edits (target-aware alphaTask()/argv closures for the JS 1-based vs Rust 0-based covers split) introduced the breach; suite status otherwise green: cargo build --release ok; cargo test --release 173 pass; node --test test/oracle/*.test.js 74 pass (JS target); ORACLE_TARGET=rust node --test test/oracle/oracle.test.js 49 pass with plan parse/check/task cases live (not pending); npm test 355 pass; no docs/plans/**/plan.{md,json} landed in the diff vs rust-replatform; no eslint-disable or lint-config edits in the feature diff; criterion 1 (schema + canonical re-emit): met — plan parse happy path on dual-format fixtures returns feature/designVersion/tasks with id,title,covers,acceptance,footprint,size,judgment_level,depends_on,wiring; Rust unit tests canonical_fixture_round_trips_byte_for_byte and task_key_order_on_emit_matches_schema pass; CLI plan check OK on oracle fixtures; criterion 2 (oracle + refusals exit parity): behavioral exit-code parity confirmed by manual exercise — feature-mismatch, covers-out-of-range (bad-covers-ref), bad-judgment-level ('urgent'), and task-dependency-cycle all exit 1 on both `node plugin/bin/the-loop.js` and `target/release/the-loop`; however the oracle's persisted `plan check` case corpus only wires the feature-mismatch refusal among the four named scenarios — the other three are proven only by Rust-only unit tests (no JS comparison) plus this ad hoc validator check, not by a regression-guarded oracle case",
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 0,
+        "drive": 2,
+        "validate": 0
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": null,
+        "insertions": null,
+        "deletions": null,
+        "commits": null,
+        "duration_minutes": null
+      }
+    }
+  ]
+}

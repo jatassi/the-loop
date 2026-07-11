@@ -1,0 +1,43 @@
+{
+  "run": {
+    "prepared_at": "2026-07-10T06:25:24.013Z",
+    "target": "rust-replatform",
+    "scope": [
+      "plan-commands-rust"
+    ],
+    "tokens": {
+      "spent": 172983,
+      "by_role": {
+        "plan": 8492,
+        "build": 0,
+        "drive": 29232,
+        "validate": 0
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "plan-commands-rust",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 0,
+        "drive": 1,
+        "validate": 0
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 14,
+        "insertions": 2237,
+        "deletions": 135,
+        "commits": 1,
+        "duration_minutes": 20
+      }
+    }
+  ]
+}

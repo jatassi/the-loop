@@ -63,13 +63,13 @@ function filesUnder(dir) {
   const entries = readdirSync(dir, { recursive: true });
   return entries
     .map((rel) => path.join(dir, rel))
-    .filter((full) => /\.(md|js)$/.test(full) && statSync(full).isFile());
+    .filter((full) => /\.(md|js|rs)$/.test(full) && statSync(full).isFile());
 }
 
 test('every living surface greps clean of validation-sense "runbook"/"docs/runbooks" — only the operational genre remains', () => {
-  // plugin/skills/, plugin/agents/, plugin/src, plugin/workflows: every .md and .js
-  // file, read fresh from the live tree.
-  const surfaceFiles = ['plugin/skills', 'plugin/agents', 'plugin/src', 'plugin/workflows'].flatMap((dir) => filesUnder(dir));
+  // plugin/skills/, plugin/agents/, plugin/workflows, cli/src: every .md, .js, and
+  // .rs file, read fresh from the live tree (plugin/src retired at json-cutover).
+  const surfaceFiles = ['plugin/skills', 'plugin/agents', 'plugin/workflows', 'cli/src'].flatMap((dir) => filesUnder(dir));
   for (const full of surfaceFiles) {
     assertSwept(read(full), full);
   }
@@ -86,14 +86,13 @@ test('every living surface greps clean of validation-sense "runbook"/"docs/runbo
   assertSwept(read('docs/architecture.md'), 'docs/architecture.md');
   assertSwept(read('README.md'), 'README.md');
 
-  // docs/feature-graph.md acceptance strings, minus operate-tooling's own — this
-  // task's contract text, which must quote the old heading/path to describe what
+  // docs/feature-graph.json acceptance strings, minus operate-tooling's own — that
+  // record's contract text must quote the old heading/path to describe what
   // replaced it.
-  const graph = read('docs/feature-graph.md');
-  const opStart = graph.indexOf('  - id: operate-tooling');
-  const opEnd = graph.indexOf('\n  - id: ', opStart + 1);
-  const graphMinusOperateTooling = opStart === -1
-    ? graph
-    : graph.slice(0, opStart) + graph.slice(opEnd === -1 ? graph.length : opEnd);
-  assertSwept(graphMinusOperateTooling, 'docs/feature-graph.md (outside operate-tooling\'s own acceptance)');
+  const graph = JSON.parse(read('docs/feature-graph.json'));
+  const graphMinusOperateTooling = JSON.stringify({
+    ...graph,
+    features: graph.features.filter((f) => f.id !== 'operate-tooling'),
+  });
+  assertSwept(graphMinusOperateTooling, 'docs/feature-graph.json (outside operate-tooling\'s own record)');
 });
