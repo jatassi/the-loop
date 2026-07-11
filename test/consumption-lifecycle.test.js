@@ -76,12 +76,12 @@ test('begin reports a bound-but-unreachable surface as a can\'t-run naming the s
 });
 
 // ── criterion 4: unbinding is a documented migration that exports truth back to
-// docs/feature-graph.md, and once features resolves local again runs show a visible
+// docs/feature-graph.json, and once features resolves local again runs show a visible
 // fallback line ──
-test('begin documents unbinding as a migration that exports truth to docs/feature-graph.md with a visible fallback line afterward', () => {
+test('begin documents unbinding as a migration that exports truth to docs/feature-graph.json with a visible fallback line afterward', () => {
   const begin = read(BEGIN);
   assert.match(begin, /Unbinding is a migration/i);
-  assert.match(begin, /export the surface's truth back to\s*\n?\s*`?docs\/feature-graph\.md`?/i);
+  assert.match(begin, /export the surface's truth back to\s*\n?\s*`?docs\/feature-graph\.json`?/i);
   // committed export, distinct from the ephemeral run-time snapshots
   assert.match(begin, /this time committed/i);
   // once features resolves local again, a visible fallback line

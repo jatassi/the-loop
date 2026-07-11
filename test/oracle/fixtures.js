@@ -1,20 +1,16 @@
-// Dual-format fixture generator for the parity oracle: one shared JS definition
-// emits two disposable temp git repos — YAML-in-markdown for the JS CLI target,
-// pure-JSON (ADR-0051) for the Rust target. Extends the create-sample-repo
-// seeding idiom (mkdtemp + git init + throwaway user + committed seed).
+// Fixture generator for the oracle — the Rust binary's black-box regression suite
+// since json-cutover: one shared JS definition emits a disposable temp git repo of
+// pure-JSON artifacts (ADR-0051). Extends the create-sample-repo seeding idiom
+// (mkdtemp + git init + throwaway user + committed seed).
 
 import { execSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import YAML from 'yaml';
-
-/** @typedef {'yaml' | 'json'} FixtureFormat */
-
 /**
  * Example definition covering all six artifact kinds criterion 1 lists.
- * Task `covers` are canonical 0-based acceptance indices; YAML emission adds 1.
+ * Task `covers` are canonical 0-based acceptance indices.
  */
 export const EXAMPLE_DEFINITION = {
   design_version: 1,
@@ -123,33 +119,21 @@ export const EXAMPLE_DEFINITION = {
 };
 
 /**
- * Emit one definition's feature graph as a single artifact in the named format —
- * the same emitters buildFixturePair uses, exposed so corpus cases can seed a
- * format-correct file from a shared definition without a full git pair.
+ * Emit one definition's feature graph as a single artifact — the same emitter
+ * buildFixtureRepo uses, exposed so corpus cases can seed a file from a shared
+ * definition without a full git repo.
  * @param {{ design_version: number, features: object[] }} def
- * @param {FixtureFormat} format
  * @returns {{ rel: string, text: string }}
  */
-export function renderFeatureGraph(def, format) {
-  return format === 'yaml'
-    ? { rel: 'docs/feature-graph.md', text: renderGraphMd(def) }
-    : { rel: 'docs/feature-graph.json', text: renderGraphJson(def) };
+export function renderFeatureGraph(def) {
+  return { rel: 'docs/feature-graph.json', text: renderGraphJson(def) };
 }
 
 /**
- * Malformed graph bytes in the target's own format — broken YAML fence (unresolved
- * alias) for the JS CLI, broken JSON for the Rust binary. Used by paired check /
- * status --json refusal cases.
- * @param {FixtureFormat} format
+ * Malformed graph bytes (broken JSON). Used by check / status --json refusal cases.
  * @returns {{ rel: string, text: string }}
  */
-export function renderMalformedGraph(format) {
-  if (format === 'yaml') {
-    return {
-      rel: 'docs/feature-graph.md',
-      text: '# Fixture\n\n## Feature graph\n\n```yaml\ndesign_version: 1\nfeatures: *undefinedAlias\n```\n',
-    };
-  }
+export function renderMalformedGraph() {
   return {
     rel: 'docs/feature-graph.json',
     text: '{ "design_version": 1, features: [\n',
@@ -158,13 +142,10 @@ export function renderMalformedGraph(format) {
 
 /**
  * Shared refusal-catalog graph: bad status, missing acceptance on a non-proposed
- * feature, self-edge, and a two-node cycle. The JSON half also carries an unknown
- * key so Rust's unknown-key refusal is exercised; YAML omits it (JS schema ignores
- * unknown feature keys).
- * @param {FixtureFormat} format
+ * feature, self-edge, a two-node cycle, and an unknown key (unknown-key refusal).
  * @returns {{ design_version: number, features: object[] }}
  */
-export function refusalCatalogDefinition(format) {
+export function refusalCatalogDefinition() {
   return {
     design_version: 1,
     features: [
@@ -174,7 +155,7 @@ export function refusalCatalogDefinition(format) {
         status: 'building',
         depends_on: [],
         acceptance: ['has acceptance so only status fails'],
-        ...(format === 'json' && { extra_unknown: true }),
+        extra_unknown: true,
       },
       { id: 'no-acc', title: 'Missing acceptance', status: 'designed', depends_on: [] },
       { id: 'self', title: 'Self edge', status: 'proposed', depends_on: ['self'] },
@@ -183,9 +164,6 @@ export function refusalCatalogDefinition(format) {
     ],
   };
 }
-
-/** @param {'js' | 'rust'} target @returns {FixtureFormat} */
-const formatForTarget = (target) => (target === 'rust' ? 'json' : 'yaml');
 
 /** Disposable cwd with one relative file; cleaned up by the oracle driver. */
 function seedFile(rel, text) {
@@ -196,107 +174,70 @@ function seedFile(rel, text) {
   return { cwd, cleanup: () => rmSync(cwd, { recursive: true, force: true }) };
 }
 
-/** Seed a malformed graph in the target's own format (broken YAML vs broken JSON). */
-export function malformedGraphSetup({ target }) {
-  const { rel, text } = renderMalformedGraph(formatForTarget(target));
+/** Seed a malformed graph (broken JSON). */
+export function malformedGraphSetup() {
+  const { rel, text } = renderMalformedGraph();
   return seedFile(rel, text);
 }
 
-/**
- * Refusal-catalog graph per target: shared offenses on both halves; unknown key
- * only on the JSON half (raw JSON keeps the key renderFeatureGraph would strip).
- */
-export function refusalCatalogSetup({ target }) {
-  const format = formatForTarget(target);
-  const def = refusalCatalogDefinition(format);
-  if (format === 'json') {
-    return seedFile('docs/feature-graph.json', `${JSON.stringify(def, null, 2)}\n`);
-  }
-  const { rel, text } = renderFeatureGraph(def, 'yaml');
-  return seedFile(rel, text);
+/** Refusal-catalog graph (raw JSON keeps the unknown key renderFeatureGraph would strip). */
+export function refusalCatalogSetup() {
+  const def = refusalCatalogDefinition();
+  return seedFile('docs/feature-graph.json', `${JSON.stringify(def, null, 2)}\n`);
 }
 
 /**
- * Emit one calibration run record as a single artifact in the named format.
+ * Emit one calibration run record as a single artifact.
  * @param {{ stamp: string, run: object, features: object[] }} rec
- * @param {FixtureFormat} format
  * @returns {{ rel: string, text: string }}
  */
-export function renderCalibrationRecord(rec, format) {
-  return format === 'yaml'
-    ? { rel: `docs/calibration/runs/${rec.stamp}.md`, text: renderCalibrationMd(rec) }
-    : { rel: `docs/calibration/runs/${rec.stamp}.json`, text: renderCalibrationJson(rec) };
+export function renderCalibrationRecord(rec) {
+  return { rel: `docs/calibration/runs/${rec.stamp}.json`, text: renderCalibrationJson(rec) };
 }
 
 /**
- * Build a pair of disposable temp git repos from one shared definition.
+ * Build a disposable temp git repo from one shared definition.
  * @param {typeof EXAMPLE_DEFINITION} definition
- * @returns {{ yamlRepo: string, jsonRepo: string }}
+ * @returns {string} repo root
  */
-export function buildFixturePair(definition) {
-  return {
-    yamlRepo: buildRepo(definition, 'yaml'),
-    jsonRepo: buildRepo(definition, 'json'),
-  };
-}
-
-/** @param {typeof EXAMPLE_DEFINITION} definition @param {FixtureFormat} format */
-function buildRepo(definition, format) {
-  const root = mkdtempSync(path.join(tmpdir(), `loop-oracle-${format}-`));
+export function buildFixtureRepo(definition) {
+  const root = mkdtempSync(path.join(tmpdir(), 'loop-oracle-'));
   const git = (cmd) => execSync(cmd, { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
   git('git init -q -b main');
   git('git config user.email oracle@the-loop.local');
   git('git config user.name "loop oracle"');
 
-  writeMainArtifacts(root, definition, format);
+  writeMainArtifacts(root, definition);
   git('git add -A');
   git('git commit -qm "fixture: seeded target repository"');
 
-  commitPlansOnFeatureBranches({ root, def: definition, format, git });
+  commitPlansOnFeatureBranches({ root, def: definition, git });
   return root;
 }
 
-/** @param {string} root @param {typeof EXAMPLE_DEFINITION} def @param {FixtureFormat} format */
-function writeMainArtifacts(root, def, format) {
-  writeText(root, format === 'yaml' ? 'docs/feature-graph.md' : 'docs/feature-graph.json',
-    format === 'yaml' ? renderGraphMd(def) : renderGraphJson(def));
+/** @param {string} root @param {typeof EXAMPLE_DEFINITION} def */
+function writeMainArtifacts(root, def) {
+  writeText(root, 'docs/feature-graph.json', renderGraphJson(def));
   writeText(root, 'docs/architecture.md', renderArchitecture(def.architecture));
   writeText(root, '.claude/settings.json', `${JSON.stringify(def.settings, null, 2)}\n`);
-  writeExecutors(root, def.executors, format);
-  writeCalibration(root, def.calibration, format);
-}
-
-/** @param {string} root @param {object} executors @param {FixtureFormat} format */
-function writeExecutors(root, executors, format) {
-  const entries = Object.entries(executors || {});
-  for (const [id, playbook] of entries) {
-    writeText(root, `config/executors/${id}.md`, renderExecutor(playbook, format));
+  const executors = Object.entries(def.executors || {});
+  for (const [id, playbook] of executors) {
+    writeText(root, `config/executors/${id}.md`, renderExecutor(playbook));
   }
-}
-
-/** @param {string} root @param {object[]} records @param {FixtureFormat} format */
-function writeCalibration(root, records, format) {
-  const list = records || [];
-  for (const rec of list) {
-    if (format === 'yaml') {
-      writeText(root, `docs/calibration/runs/${rec.stamp}.md`, renderCalibrationMd(rec));
-    } else {
-      writeText(root, `docs/calibration/runs/${rec.stamp}.json`, renderCalibrationJson(rec));
-    }
+  const records = def.calibration || [];
+  for (const rec of records) {
+    writeText(root, `docs/calibration/runs/${rec.stamp}.json`, renderCalibrationJson(rec));
   }
 }
 
 /**
- * @param {{ root: string, def: typeof EXAMPLE_DEFINITION, format: FixtureFormat, git: (cmd: string) => void }} ctx
+ * @param {{ root: string, def: typeof EXAMPLE_DEFINITION, git: (cmd: string) => void }} ctx
  */
-function commitPlansOnFeatureBranches({ root, def, format, git }) {
+function commitPlansOnFeatureBranches({ root, def, git }) {
   const entries = Object.entries(def.plans || {});
   for (const [featureId, plan] of entries) {
     git(`git checkout -q -b loop/${featureId}`);
-    const rel = format === 'yaml'
-      ? `docs/plans/${featureId}/plan.md`
-      : `docs/plans/${featureId}/plan.json`;
-    writeText(root, rel, format === 'yaml' ? renderPlanMd(featureId, plan) : renderPlanJson(featureId, plan));
+    writeText(root, `docs/plans/${featureId}/plan.json`, renderPlanJson(featureId, plan));
     git('git add -A');
     git(`git commit -qm "fixture: plan for ${featureId}"`);
     git('git checkout -q main');
@@ -306,35 +247,19 @@ function commitPlansOnFeatureBranches({ root, def, format, git }) {
 // ── emitters ──────────────────────────────────────────────────────────────
 
 /** @param {typeof EXAMPLE_DEFINITION} def */
-function renderGraphMd(def) {
-  const payload = {
-    design_version: def.design_version,
-    features: def.features.map((f) => featureForEmit(f, false)),
-  };
-  return `# Fixture — Feature graph
-
-## Feature graph
-
-\`\`\`yaml
-${toYaml(payload)}
-\`\`\`
-`;
-}
-
-/** @param {typeof EXAMPLE_DEFINITION} def */
 function renderGraphJson(def) {
   const payload = {
     design_version: def.design_version,
-    features: def.features.map((f) => featureForEmit(f, true)),
+    features: def.features.map((f) => featureForEmit(f)),
   };
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
-/** @param {object} f @param {boolean} includeSection */
-function featureForEmit(f, includeSection) {
+/** @param {object} f */
+function featureForEmit(f) {
   return omitUndefined({
     id: f.id,
-    ...(includeSection && f.section != null && { section: f.section }),
+    ...(f.section != null && { section: f.section }),
     title: f.title,
     status: f.status,
     depends_on: f.depends_on ?? [],
@@ -344,39 +269,21 @@ function featureForEmit(f, includeSection) {
 }
 
 /** @param {string} featureId @param {object} plan */
-export function renderPlanMd(featureId, plan) {
-  const payload = {
-    feature: featureId,
-    design_version: plan.design_version,
-    tasks: (plan.tasks || []).map((t) => taskForEmit(t, true)),
-  };
-  return `# ${featureId} — plan
-
-## Tasks
-
-\`\`\`yaml
-${toYaml(payload)}
-\`\`\`
-`;
-}
-
-/** @param {string} featureId @param {object} plan */
 export function renderPlanJson(featureId, plan) {
   const payload = {
     feature: featureId,
     design_version: plan.design_version,
-    tasks: (plan.tasks || []).map((t) => taskForEmit(t, false)),
+    tasks: (plan.tasks || []).map((t) => taskForEmit(t)),
   };
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
-/** @param {object} t @param {boolean} oneBasedCovers */
-function taskForEmit(t, oneBasedCovers) {
-  const covers = t.covers || [];
+/** @param {object} t */
+function taskForEmit(t) {
   return omitUndefined({
     id: t.id,
     title: t.title,
-    covers: oneBasedCovers ? covers.map((k) => k + 1) : [...covers],
+    covers: [...(t.covers || [])],
     acceptance: t.acceptance,
     footprint: t.footprint ?? [],
     size: t.size,
@@ -401,30 +308,16 @@ ${arch?.release_runbook || ''}
 `;
 }
 
-/** @param {object} playbook @param {FixtureFormat} format */
-function renderExecutor(playbook, format) {
-  const lang = format === 'yaml' ? 'yaml' : 'json';
-  const body = format === 'yaml'
-    ? toYaml(playbook.machine)
-    : JSON.stringify(playbook.machine, null, 2);
+/** @param {object} playbook */
+function renderExecutor(playbook) {
   return `# ${playbook.machine.id}
 
 ${playbook.prose || 'Fixture executor.'}
 
 ## Machine block
 
-\`\`\`${lang}
-${body}
-\`\`\`
-`;
-}
-
-/** @param {object} rec */
-function renderCalibrationMd(rec) {
-  return `# Calibration run ${rec.stamp}
-
-\`\`\`yaml
-${toYaml({ run: rec.run, features: rec.features })}
+\`\`\`json
+${JSON.stringify(playbook.machine, null, 2)}
 \`\`\`
 `;
 }
@@ -435,10 +328,6 @@ function renderCalibrationJson(rec) {
 }
 
 // ── small helpers ─────────────────────────────────────────────────────────
-
-function toYaml(data) {
-  return YAML.stringify(data, { lineWidth: 0 }).trimEnd();
-}
 
 function omitUndefined(obj) {
   const out = {};

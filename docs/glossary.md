@@ -72,7 +72,7 @@ ADR-0034/0037/0045.
 
 ### the-loop CLI
 **aliases:** spine (historical) · **status:** active
-The one CLI over the loop (`bin/the-loop.js`): `status` (human summary by default,
+The one CLI over the loop (the compiled `the-loop` binary): `status` (human summary by default,
 `--json` for the machine orientation), feature-graph/plan parsing and checking,
 status flips, the [[execution context]] assembler, worktree lifecycle, model/executor
 resolution.

@@ -71,8 +71,6 @@ test('pending mechanics: a Rust failure on an allowlisted command is pending, st
   const rustNotListed = run(failingCase, { target: 'rust', pendingCommands: [] });
   assert.equal(rustNotListed.status, 'fail');
 
-  const jsTarget = run(failingCase, { target: 'js', pendingCommands: ['json'] });
-  assert.equal(jsTarget.status, 'fail');
 });
 
 test('summarize + formatSummary yield one pass/fail/pending count line naming the target', () => {
@@ -83,15 +81,11 @@ test('summarize + formatSummary yield one pass/fail/pending count line naming th
   assert.match(line, /2 pass, 1 fail, 1 pending/);
 });
 
-test('resolveTarget defaults to the JS CLI and honors ORACLE_TARGET and ORACLE_BIN', () => {
-  const js = resolveTarget({});
-  assert.equal(js.target, 'js');
-  assert.equal(js.bin.command, 'node');
-  assert.ok(js.bin.prefixArgs[0].endsWith('plugin/bin/the-loop.js'));
-
-  const rust = resolveTarget({ ORACLE_TARGET: 'rust' });
-  assert.equal(rust.target, 'rust');
-  assert.ok(rust.bin.command.endsWith('the-loop'));
+test('resolveTarget defaults to the release binary and honors ORACLE_BIN', () => {
+  const dflt = resolveTarget({});
+  assert.equal(dflt.target, 'rust');
+  assert.ok(dflt.bin.command.endsWith('target/release/the-loop'));
+  assert.deepEqual(dflt.bin.prefixArgs, []);
 
   const override = resolveTarget({ ORACLE_BIN: 'foo bar baz' });
   assert.deepEqual(override.bin, { command: 'foo', prefixArgs: ['bar', 'baz'] });

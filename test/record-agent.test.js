@@ -12,8 +12,6 @@ import {
 } from 'node:fs';
 import { test } from 'node:test';
 
-import { bindingFor, resolveModels } from '../plugin/src/resolve-model-bindings.js';
-
 const read = (p) => readFileSync(p, 'utf8');
 
 // ── criterion 1: record.md is a rote transcriber with the contracted tools,
@@ -58,9 +56,10 @@ test('plugin/agents/record.md covers worktree publish, summarize, and target-onl
   );
 });
 
-// ── criterion 3: model binding + dev symlink + models table resolves the role ──
-test('plugin/config/model-bindings.json binds record to haiku with no executor', () => {
-  const bindings = JSON.parse(read('plugin/config/model-bindings.json'));
+// ── criterion 3: model binding + dev symlink. (Role-table resolution itself is
+// oracle-covered via the models-list cases against the binary.) ──
+test('cli/config/model-bindings.json binds record to haiku with no executor', () => {
+  const bindings = JSON.parse(read('cli/config/model-bindings.json'));
   assert.deepEqual(bindings.record, { model: 'haiku' });
   assert.equal('executor' in bindings.record, false, 'record must not carry an executor key');
 });
@@ -86,8 +85,3 @@ test('.claude/agents/record.md is a symlink matching sibling agent link shape', 
   );
 });
 
-test('resolveModels/bindingFor resolves the record role to haiku default', () => {
-  const defaults = JSON.parse(read('plugin/config/model-bindings.json'));
-  const table = resolveModels({ defaults });
-  assert.deepEqual(bindingFor(table, 'record'), { model: 'haiku', provenance: 'default' });
-});

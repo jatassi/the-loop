@@ -1,24 +1,29 @@
-// The fixture-repo probe's bringUp: the fixture must be a plausible v2 target repository —
-// spine parses and validates its seeded feature-graph.md, /begin's machineOrientation() reads
-// it as a configured project, and the empty variant reads as unconfigured.
+// The fixture-repo probe's bringUp: the fixture must be a plausible target repository —
+// the binary parses and validates its seeded feature-graph.json, `the-loop status --json`
+// reads it as a configured project, and the empty variant reads as unconfigured.
+// Subprocess-only: the binary on target/release is the one CLI (json-cutover).
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-import { detectState, machineOrientation } from '../plugin/src/propose-next-action.js';
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The cargo workspace root owns target/: build with `cargo build --release` first.
+const CLI = path.join(REPO_ROOT, 'target/release/the-loop');
 
 const bringUp = (variant = '') => execSync(`node bin/create-sample-repo.js ${variant}`, { encoding: 'utf8' }).trim();
+const statusJson = (cwd) => JSON.parse(execFileSync(CLI, ['status', '--json'], { cwd, encoding: 'utf8' }));
 
-test('populated fixture: a committed repo on main whose feature-graph.md passes spine check and orients configured', () => {
+test('populated fixture: a committed repo on main whose feature-graph.json passes check and orients configured', () => {
   const root = bringUp();
   try {
     assert.ok(existsSync(path.join(root, '.git')));
-    const check = execSync(`node plugin/bin/the-loop.js check ${path.join(root, 'docs/feature-graph.md')}`, { encoding: 'utf8' });
+    const check = execFileSync(CLI, ['check'], { cwd: root, encoding: 'utf8' });
     assert.match(check, /^OK +3 features/);
 
-    const o = machineOrientation(root);
+    const o = statusJson(root);
     assert.equal(o.mode, 'configured');
     assert.deepEqual(o.proposal, {
       kind: 'advance-eligible-set', features: ['greet-cli'],
@@ -38,7 +43,7 @@ test('empty fixture: a bare repo that reads as unconfigured', () => {
   const root = bringUp('empty');
   try {
     assert.ok(existsSync(path.join(root, '.git')));
-    assert.equal(detectState(root).mode, 'unconfigured');
+    assert.equal(statusJson(root).mode, 'unconfigured');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

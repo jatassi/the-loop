@@ -1,15 +1,14 @@
-// Parity-oracle subprocess driver: runs a data-driven case table by spawning the
-// binary under test (never importing either implementation in-process) and rendering
-// a per-case verdict through the comparison-rules module. This file owns the
-// case-table shape that all three corpus tasks feed, target selection, the
-// per-command pending allowlist, and the one-line pass/fail/pending summary.
+// Oracle subprocess driver — the Rust binary's black-box regression suite since
+// json-cutover (the parity era's JS target retired with the JS CLI): runs a
+// data-driven case table by spawning the binary under test (never importing the
+// implementation in-process) and rendering a per-case verdict through the
+// comparison-rules module. This file owns the case-table shape the corpus feeds,
+// the per-command pending allowlist, and the one-line pass/fail/pending summary.
 //
-// Configuration (both read from the environment, never from an in-process import):
-//   ORACLE_TARGET  'js' (default) | 'rust' — selects the default binary and whether
-//                  the pending allowlist applies (Rust only).
-//   ORACLE_BIN     overrides the binary command, e.g. 'node /abs/plugin/bin/the-loop.js'
-//                  or '/abs/target/release/the-loop'. Whitespace-split into a
-//                  command plus prefix args; a case's argv is appended after them.
+// Configuration (read from the environment, never from an in-process import):
+//   ORACLE_BIN     overrides the binary command, e.g. '/abs/target/release/the-loop'.
+//                  Whitespace-split into a command plus prefix args; a case's argv
+//                  is appended after them.
 //
 // A case is a plain object:
 //   {
@@ -52,24 +51,20 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../..');
 
 /**
- * Resolve the run target and the binary command from the environment.
+ * Resolve the binary command from the environment. `target` is the vestigial
+ * constant 'rust' — the pending allowlist and summary line still key off it.
  * @param {NodeJS.ProcessEnv} [env]
- * @returns {{ target: 'js' | 'rust', bin: { command: string, prefixArgs: string[] } }}
+ * @returns {{ target: 'rust', bin: { command: string, prefixArgs: string[] } }}
  */
 export function resolveTarget(env = process.env) {
-  const target = env.ORACLE_TARGET === 'rust' ? 'rust' : 'js';
-  const binString = env.ORACLE_BIN || defaultBin(target);
-  return { target, bin: parseBin(binString) };
+  const binString = env.ORACLE_BIN || defaultBin();
+  return { target: 'rust', bin: parseBin(binString) };
 }
 
-/** @param {'js' | 'rust'} target */
-function defaultBin(target) {
-  if (target === 'rust') {
-    // The workspace root Cargo.toml owns the target dir: cargo puts the cli/ crate's
-    // binary at <repo-root>/target/release, never under cli/.
-    return path.join(REPO_ROOT, 'target/release/the-loop');
-  }
-  return `node ${path.join(REPO_ROOT, 'plugin/bin/the-loop.js')}`;
+function defaultBin() {
+  // The workspace root Cargo.toml owns the target dir: cargo puts the cli/ crate's
+  // binary at <repo-root>/target/release, never under cli/.
+  return path.join(REPO_ROOT, 'target/release/the-loop');
 }
 
 /** @param {string} binString @returns {{ command: string, prefixArgs: string[] }} */
