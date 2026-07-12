@@ -4,6 +4,6 @@
   "build.standard": { "model": "grok-4.5", "executor": "grok" },
   "build.complex": { "model": "opus" },
   "drive": { "model": "sonnet" },
-  "validate": { "model": "grok-4.5", "executor": "grok" },
+  "validate": { "model": "opus" },
   "record": { "model": "haiku" }
 }

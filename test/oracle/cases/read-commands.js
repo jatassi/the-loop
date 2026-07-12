@@ -55,7 +55,7 @@ const ROLE_TABLE = {
   'build.standard': { model: 'sonnet', provenance: 'project' },
   'build.complex': { model: 'opus', provenance: 'default' },
   drive: { model: 'sonnet', provenance: 'default' },
-  validate: { model: 'grok-4.5', executor: 'grok', provenance: 'default' },
+  validate: { model: 'opus', provenance: 'default' },
   record: { model: 'haiku', provenance: 'default' },
 };
 
@@ -269,7 +269,7 @@ export const cases = [
       exitCode: 0,
       stdoutBytes: [
         'interview: {"skill":"grilling","provenance":"default"}',
-        'modelBindings: {"plan":{"model":"session","provenance":"default"},"build.rote":{"model":"grok-4.5","executor":"grok","provenance":"default"},"build.standard":{"model":"sonnet","provenance":"project"},"build.complex":{"model":"opus","provenance":"default"},"drive":{"model":"sonnet","provenance":"default"},"validate":{"model":"grok-4.5","executor":"grok","provenance":"default"},"record":{"model":"haiku","provenance":"default"}}',
+        'modelBindings: {"plan":{"model":"session","provenance":"default"},"build.rote":{"model":"grok-4.5","executor":"grok","provenance":"default"},"build.standard":{"model":"sonnet","provenance":"project"},"build.complex":{"model":"opus","provenance":"default"},"drive":{"model":"sonnet","provenance":"default"},"validate":{"model":"opus","provenance":"default"},"record":{"model":"haiku","provenance":"default"}}',
         'testHarness: {"command":"npm test","provenance":"project"}',
         'lint: {"value":"detected-convention","provenance":"fallback"}',
         'precommit: {"system":"none","provenance":"default"}',

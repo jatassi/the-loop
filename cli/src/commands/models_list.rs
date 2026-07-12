@@ -369,8 +369,12 @@ mod tests {
             json!({"model": "sonnet", "provenance": "project"})
         );
         assert_eq!(value["plan"]["provenance"], "default");
-        // Embedded defaults carry grok executor bindings.
-        assert_eq!(value["validate"]["executor"], "grok");
+        // Embedded defaults: validate is agent-routed opus, builds carry grok.
+        assert_eq!(
+            value["validate"],
+            json!({"model": "opus", "provenance": "default"})
+        );
+        assert_eq!(value["build.rote"]["executor"], "grok");
 
         let _ = fs::remove_dir_all(&project);
         let _ = fs::remove_dir_all(&home);
