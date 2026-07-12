@@ -1,0 +1,43 @@
+{
+  "run": {
+    "prepared_at": "2026-07-11T23:45:23.460Z",
+    "target": "main",
+    "scope": [
+      "using-the-loop-skill"
+    ],
+    "tokens": {
+      "spent": 67907,
+      "by_role": {
+        "plan": 1434,
+        "build": 0,
+        "drive": 29039,
+        "validate": 0
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "using-the-loop-skill",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 0,
+        "drive": 2,
+        "validate": 0
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 5,
+        "insertions": 481,
+        "deletions": 2,
+        "commits": 3,
+        "duration_minutes": 28
+      }
+    }
+  ]
+}

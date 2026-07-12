@@ -2,16 +2,16 @@
 
 ## Digest
 
-_15 run(s), 20 feature(s) recorded._
+_16 run(s), 21 feature(s) recorded._
 
 ### Workflow paths
 | path | runs | median agents | median duration |
 | --- | --- | --- | --- |
-| small | 8 | 3 | 34 |
+| small | 9 | 3 | 31.5 |
 | standard | 12 | 4.5 | 205.5 |
 
 ### Re-slices
-0 of 20 feature(s) re-sliced (0%).
+0 of 21 feature(s) re-sliced (0%).
 
 ### Footprint accuracy by size class
 | size | features | median planned files | median actual files |
@@ -27,9 +27,9 @@ _15 run(s), 20 feature(s) recorded._
 - 1× Suite-green defect (blocks all four criteria's evidentiary basis): `cargo test --workspace` is NOT reliably green under cargo's default parallel test execution. Across 10 default-parallel runs in the assembled integration worktree I observed 4 failures, split between `commands::models_list::tests::build_models_table_validate_errors_and_warnings` and `commands::models_list::tests::build_models_table_merges_layers_with_provenance` (both new tests introduced by this diff, in cli/src/commands/models_list.rs). Forcing `--test-threads=1` produced 3/3 green runs, isolating the cause: multiple tests directly call `std::env::set_current_dir(...)` on the shared process (also present, same pattern, in cli/src/commands/hooks_list.rs), and a `HomeGuard` test helper mutates `std::env::set_var("HOME", ...)` carrying a SAFETY comment that asserts 'Single-threaded unit tests in this module do not race on HOME' — an assumption that is false under cargo test's default multi-threaded scheduling and is the actual mechanism of the observed races.; The executor's own judge-only run reproduced this exact failure ('One unit test failed... The failure looks like a parallel-cwd race') and simply re-ran until green before reporting `validated` with 'Required gates green'. Treating a reproduced, mechanism-identified flake as noise rather than a defect is precisely the kind of test-suite unreliability the validate bar exists to catch — a suite that only passes some fraction of runs isn't evidence any criterion is reliably met.; This is a code/test defect in the merged branches themselves (models_list.rs and hooks_list.rs test helpers), not something a judge-only executor is authorized to patch (it must not alter the tree) and not something my mechanical re-run can wave through: per the fail-closed rule, a verdict I cannot gate is a fail, not a pass. No criterion is thereby proven unmet on its logic, but none can be certified either while the harness that's supposed to prove them is racy.
 
 ### Token split (overhead vs build)
-Lifetime: 77% overhead / 23% build.
+Lifetime: 78% overhead / 22% build.
 Last-10 median: 100% overhead / 0% build.
-Attribution: 8 of 15 run(s) overlapped — the overhead/build split is approximate.
+Attribution: 8 of 16 run(s) overlapped — the overhead/build split is approximate.
 
 ## Runs
 
@@ -48,3 +48,4 @@ Attribution: 8 of 15 run(s) overlapped — the overhead/build split is approxima
 - 2026-07-10T06:50:44.512Z · target rust-replatform · [run-commands-rust] · 1 blocked · 535188 tokens · overlapped
 - 2026-07-10T07:51:26.271Z · target rust-replatform · [run-commands-rust] · 1 blocked · 599450 tokens · serial
 - 2026-07-10T08:15:50.879Z · target rust-replatform · [run-commands-rust] · 1 validated · 679277 tokens · serial
+- 2026-07-11T23:45:23.460Z · target main · [using-the-loop-skill] · 1 validated · 67907 tokens · serial
