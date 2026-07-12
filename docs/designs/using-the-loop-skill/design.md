@@ -58,7 +58,7 @@ canonical path list:
 | `docs/glossary.md` | pinned project vocabulary |
 | `docs/adr/` | architectural decision records |
 | `docs/bugs/` | RCA docs from diagnose |
-| `docs/runbooks/` | operational runbooks |
+| `docs/runbooks/<topic>.md` | operational runbooks |
 | `docs/validation/` · `docs/releases/` · `docs/calibration/` · `docs/adapters/` | validation procedures, release reports, run calibration, bound-store adapters |
 
 The rule the table carries: `feature-graph.json` is written only by the loop's

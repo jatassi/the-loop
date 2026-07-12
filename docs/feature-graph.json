@@ -657,7 +657,7 @@
       "id": "using-the-loop-skill",
       "section": "post-replatform amendments",
       "title": "Bundled using-the-loop orientation skill — progressive-disclosure root for consumer sessions",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [],
       "acceptance": [
         "plugin/skills/using-the-loop/SKILL.md exists with frontmatter name using-the-loop, and the skill directory ships SKILL.md and nothing else (no references/ or other files)",
