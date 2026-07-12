@@ -8,6 +8,11 @@
     },
     "worktreeSetup": {
       "command": "npm ci && cargo fetch"
+    },
+    "modelBindings": {
+      "validate": {
+        "model": "opus"
+      }
     }
   }
 }

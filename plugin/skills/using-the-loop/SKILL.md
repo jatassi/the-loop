@@ -37,8 +37,6 @@ the next action; `/begin <phase>` jumps straight to a phase.
 
 ## Live state and deeper tiers
 
-Live state comes from the CLI, not from prose that can go stale:
-
 - `the-loop status` (`--json` for machine orientation)
 - `the-loop list` (the parsed graph)
 - `the-loop hooks-list` (the resolved configuration)
