@@ -1,5 +1,5 @@
 {
-  "design_version": 30,
+  "design_version": 31,
   "features": [
     {
       "id": "document-foundation",
@@ -669,6 +669,37 @@
       ],
       "notes": [
         "designed 2026-07-11 from docs/briefs/using-the-loop-skill.md; description text recorded verbatim in the design doc (three trigger families load-bearing, no loop coinages in tier 0); budgets enforced as validator measurement + write-skills pass, no standing lint rule; references/ decided zero (phase one-liner + consumer glossary cover the gap); trigger evals rejected at Define - description efficacy is an accepted-unverified assumption; cross-tool AGENTS.md discovery parked for a later intake"
+      ]
+    },
+    {
+      "id": "cli-upgrade",
+      "section": "post-replatform amendments",
+      "title": "the-loop upgrade — replace the installed binary with the latest release by re-running its installer",
+      "status": "designed",
+      "depends_on": [
+        "binary-distribution"
+      ],
+      "acceptance": [
+        "given a fixture release (local HTTP directory serving the generated installer, a current-platform archive holding a newer build, and its sha256 sidecar) and an older build installed via that installer with its receipt present, the-loop upgrade with THE_LOOP_DOWNLOAD_URL pointed at the fixture replaces the installed binary — its --version prints the fixture's newer version — and prints a JSON payload naming from and to versions with exit 0",
+        "given the same fixture with a corrupted archive, the-loop upgrade exits nonzero, the previously installed binary remains at its path and still runs, and stderr names the verification failure",
+        "with no install receipt present for the current binary, the-loop upgrade exits nonzero without fetching or swapping, and stderr names the manual install one-liner as the remedy",
+        "a build compiled without the upgrade cargo feature parses the-loop upgrade but exits nonzero naming the install one-liner, and committed cargo-dist configuration enables the feature for dist release builds",
+        "a committed GitHub Actions workflow defines a windows-latest job running the fixture-release upgrade exercise, and the Release runbook's ready checks name that job — its green run is a release-gate check, not a validate-time assertion"
+      ]
+    },
+    {
+      "id": "begin-version-handshake",
+      "section": "post-replatform amendments",
+      "title": "/begin plugin-CLI version handshake — auto-heal the breaking skew direction at the front door",
+      "status": "designed",
+      "depends_on": [
+        "cli-upgrade"
+      ],
+      "acceptance": [
+        "the begin skill's context preamble captures both the installed binary version (the-loop --version) and the plugin manifest version, and the skill states that a failed capture skips the handshake without blocking orientation",
+        "the skill body directs: binary older than plugin runs the-loop upgrade before any route action and reports one line on success; on upgrade failure it reports one line naming the manual install one-liner and continues on the old binary",
+        "the skill body directs: binary newer than plugin proceeds with a one-line marketplace plugin-update nudge, and equal versions produce no handshake output",
+        "the missing-binary posture no longer claims there is no version handshake, and its install one-liner remains the stated remedy for a missing binary and a failed upgrade"
       ]
     }
   ]

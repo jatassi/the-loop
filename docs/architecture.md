@@ -202,7 +202,12 @@ publishes checksummed per-target archives and generated installers to GitHub Rel
 (five targets — mac arm64/x64, linux x64/arm64 musl-static, windows x64); the human
 installs once via the installer one-liner; every surface invokes bare `the-loop` on
 PATH; a missing binary fails loudly with the install one-liner as its stated remedy;
-no compiled artifact is ever committed. The invocation seam is unchanged — CLI via
+no compiled artifact is ever committed. The binary updates itself via
+`the-loop upgrade` — a thin, feature-gated orchestration that re-runs the latest
+release's own installer (which carries the sha256 verification) — and `/begin` holds
+the plugin↔CLI version handshake, auto-running `upgrade` when the binary is older
+than the plugin and nudging a marketplace update in the other direction
+(cli-upgrade + begin-version-handshake, designed 2026-07-11). The invocation seam is unchanged — CLI via
 Bash, JSON stdout, exit codes as gates — and the execution context's `cli` field flipped
 from the node CLI invocation to `the-loop` at cutover. Durable payloads
 become **pure tool-owned JSON** — `docs/feature-graph.json`, `docs/plans/<id>/plan.json`,
