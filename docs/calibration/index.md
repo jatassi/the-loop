@@ -2,16 +2,16 @@
 
 ## Digest
 
-_16 run(s), 21 feature(s) recorded._
+_17 run(s), 22 feature(s) recorded._
 
 ### Workflow paths
 | path | runs | median agents | median duration |
 | --- | --- | --- | --- |
-| small | 9 | 3 | 31.5 |
+| small | 10 | 3 | 29 |
 | standard | 12 | 4.5 | 205.5 |
 
 ### Re-slices
-0 of 21 feature(s) re-sliced (0%).
+0 of 22 feature(s) re-sliced (0%).
 
 ### Footprint accuracy by size class
 | size | features | median planned files | median actual files |
@@ -29,7 +29,7 @@ _16 run(s), 21 feature(s) recorded._
 ### Token split (overhead vs build)
 Lifetime: 78% overhead / 22% build.
 Last-10 median: 100% overhead / 0% build.
-Attribution: 8 of 16 run(s) overlapped — the overhead/build split is approximate.
+Attribution: 8 of 17 run(s) overlapped — the overhead/build split is approximate.
 
 ## Runs
 
@@ -49,3 +49,4 @@ Attribution: 8 of 16 run(s) overlapped — the overhead/build split is approxima
 - 2026-07-10T07:51:26.271Z · target rust-replatform · [run-commands-rust] · 1 blocked · 599450 tokens · serial
 - 2026-07-10T08:15:50.879Z · target rust-replatform · [run-commands-rust] · 1 validated · 679277 tokens · serial
 - 2026-07-11T23:45:23.460Z · target main · [using-the-loop-skill] · 1 validated · 67907 tokens · serial
+- 2026-07-23T04:14:14.509Z · target main · [fix-test-fixture-tempdir-collision] · 1 validated · 22209 tokens · serial

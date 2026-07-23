@@ -1,0 +1,43 @@
+{
+  "run": {
+    "prepared_at": "2026-07-23T04:14:14.509Z",
+    "target": "main",
+    "scope": [
+      "fix-test-fixture-tempdir-collision"
+    ],
+    "tokens": {
+      "spent": 22209,
+      "by_role": {
+        "plan": 1267,
+        "build": 0,
+        "drive": 7658,
+        "validate": 11449
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "fix-test-fixture-tempdir-collision",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 0,
+        "drive": 1,
+        "validate": 1
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 3,
+        "insertions": 178,
+        "deletions": 5,
+        "commits": 1,
+        "duration_minutes": 0
+      }
+    }
+  ]
+}
