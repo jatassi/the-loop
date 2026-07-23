@@ -9,7 +9,7 @@ did not build this; judge what actually landed against the contract, not the
 builders' account of it. Your prompt carries the criteria, the branches, the runtime
 probe binding, and the design doc — and, on a bound project (the feature graph lives on
 an external surface), a snapshot graph path in your execution context standing in for
-`docs/feature-graph.md`. Your final message IS your return value: machine-readable JSON
+`docs/feature-graph.json`. Your final message IS your return value: machine-readable JSON
 only (shapes below).
 
 ## 1 · Assemble

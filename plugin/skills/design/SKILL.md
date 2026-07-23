@@ -28,24 +28,35 @@ downstream agent. Three artifacts come out (ADR-0037):
   brownfield assess-and-fill or a prior Design pass — read it back and confirm it's
   still accurate rather than re-asking from scratch; interview only the gaps a
   section is missing. Only a genuinely empty section gets the full interview.
-- `docs/feature-graph.md` — the machine feature graph, one ```yaml block under
-  `## Feature graph`:
+- `docs/feature-graph.json` — the machine feature graph, plain JSON with a
+  top-level `design_version` integer and a `features` array (snake_case keys —
+  the binary rejects camelCase with unknown-key errors):
 
-  ```yaml
-  design_version: 1
-  features:
-    - id: kebab-case-stable-handle
-      title: one line
-      status: designed          # proposed | designed | validated | shipped — durable states only
-      depends_on: [other-id]    # build-order edges; also draw one when a feature
-                                # designs better knowing another's final shape
-      acceptance:
-        - an observable, binary criterion (Given/When/Then is the default shape)
+  ```json
+  {
+    "design_version": 1,
+    "features": [
+      {
+        "id": "kebab-case-stable-handle",
+        "title": "one line",
+        "status": "designed",
+        "depends_on": ["other-id"],
+        "acceptance": [
+          "an observable, binary criterion (Given/When/Then is the default shape)"
+        ]
+      }
+    ]
+  }
   ```
 
-  A `proposed` record — recorded intent parked on the backlog, not yet designed —
-  needs only `id` and `title`; acceptance is Design's output, not intake's, so it's
-  optional (a sketch is welcome, not demanded) until you promote it here.
+  `status` is one of `proposed | designed | validated | shipped` — durable states
+  only. `depends_on` holds build-order edges; also draw one when a feature designs
+  better knowing another's final shape. A `proposed` record — recorded intent
+  parked on the backlog, not yet designed — needs only `id` and `title`;
+  acceptance is Design's output, not intake's, so it's optional (a sketch is
+  welcome, not demanded) until you promote it here. `the-loop check` validates
+  schema, edges, and round-trip; `set-status` and the emitter canonicalize
+  formatting (2-space indent), so follow any hand-edit with `the-loop check`.
 
 - `docs/designs/<id>/design.md` — one design doc per feature, written for the
   stateless agent who wasn't in the room: what it is, how it fits the architecture,

@@ -101,19 +101,26 @@ never worked | unknown
                          procedure for the fix itself
 ```
 
-### The fix — for `docs/feature-graph.md`
+### The fix — for `docs/feature-graph.json`
 
-An ordinary, transient feature record:
+An ordinary, transient feature record appended to the `features` array (the
+branch `loop/fix-<slug>` falls out of the id for free; edges only for
+build-order coupling with other in-flight work):
 
-```yaml
-- id: fix-<slug>            # branch loop/fix-<slug> falls out for free
-  title: one-line defect statement
-  status: designed
-  depends_on: []             # edges only for build-order coupling with other in-flight work
-  acceptance:
-    - regression-shaped Given/When/Then — the repro (or the inspected failure mode)
-      as the first criterion; the builder derives the failing test from it
+```json
+{
+  "id": "fix-<slug>",
+  "title": "one-line defect statement",
+  "status": "designed",
+  "depends_on": [],
+  "acceptance": [
+    "regression-shaped Given/When/Then — the repro (or the inspected failure mode) as the first criterion; the builder derives the failing test from it"
+  ]
+}
 ```
+
+Run `the-loop check` after the edit — it validates schema, edges, and the
+canonical round-trip formatting.
 
 ## 5 · Gate
 

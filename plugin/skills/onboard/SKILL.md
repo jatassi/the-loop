@@ -21,7 +21,7 @@ marker and nothing is stored to remember the choice: the scenario is derived fre
 what the tree holds each pass.
 
 - **Greenfield** — an empty or near-empty repo with no loop artifacts (no
-  `docs/architecture.md`, no `docs/feature-graph.md`, little or no source). Run the
+  `docs/architecture.md`, no `docs/feature-graph.json`, little or no source). Run the
   greenfield route below.
 - **Brownfield** — a repo that already carries code and tests but no loop artifacts. Run
   the configure leg, then assess-and-fill the existing infrastructure and the recorded

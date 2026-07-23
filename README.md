@@ -81,5 +81,5 @@ node:test suites, eslint) is plain ESM JavaScript, no build step, Node ≥ 22.11
 ```
 npm install      # dev tooling only (eslint, node:test)
 npm test         # node --test
-npm run check    # validate + round-trip docs/feature-graph.md, then eslint
+npm run check    # validate + round-trip docs/feature-graph.json, then eslint
 ```
