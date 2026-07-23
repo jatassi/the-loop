@@ -1,5 +1,5 @@
 {
-  "design_version": 31,
+  "design_version": 32,
   "features": [
     {
       "id": "document-foundation",
@@ -700,6 +700,18 @@
         "the skill body directs: binary older than plugin runs the-loop upgrade before any route action and reports one line on success; on upgrade failure it reports one line naming the manual install one-liner and continues on the old binary",
         "the skill body directs: binary newer than plugin proceeds with a one-line marketplace plugin-update nudge, and equal versions produce no handshake output",
         "the missing-binary posture no longer claims there is no version handshake, and its install one-liner remains the stated remedy for a missing binary and a failed upgrade"
+      ]
+    },
+    {
+      "id": "fix-test-fixture-tempdir-collision",
+      "title": "concurrent worktree tests collide on one temp fixture directory, so git init races itself",
+      "status": "designed",
+      "depends_on": [],
+      "acceptance": [
+        "given the worktree test fixture helper, when N>=8 threads each call tempfile_dir many times, then every returned path is distinct — a unit test asserting this fails against the current timestamp-derived name and passes after the fix",
+        "given the 13 worktree unit tests, when `cargo test --manifest-path cli/Cargo.toml --lib commands::worktree -- --test-threads=13` runs 25 consecutive times, then all 25 runs are green (baseline: 3/25)",
+        "given a fixture directory path that somehow already exists, when tempfile_dir is called for it, then it panics on AlreadyExists rather than returning a shared directory",
+        "given all fixture labels (wt-fixture, wt-home, wt-home-in, wt-resolve-only, wt-resolve-home), when names are generated, then they draw from one process-wide counter so no two labels can re-collide, and tempfile_dir keeps its current signature and call sites"
       ]
     }
   ]

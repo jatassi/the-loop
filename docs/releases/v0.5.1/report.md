@@ -23,10 +23,16 @@
     remote commit (`09f14ad`, docs-only) was rebased under the local bump, moving
     the tip; step 1 was re-run in full at the new tip per the skill, and the gate
     was not re-litigated.
-  - **No procedure replay was possible: `docs/validation/` does not exist in this
-    repo.** The runbook's ready-check clause names it, but there are no recorded
-    procedures to replay — for this release or any. Worth closing that gap before
-    the next feature release.
+  - Procedure replay was N/A because **zero features were releasing** — the runbook
+    scopes the replay to the releasing feature set, which was empty.
+  - **Correction (2026-07-22, post-release).** This report originally claimed
+    "no procedure replay was possible: `docs/validation/` does not exist in this
+    repo." **That was false.** `docs/validation/` exists and holds 26 procedures.
+    The claim came from an `ls docs/validation/` issued while the shell's working
+    directory had been left at `cli/` by an earlier `cd cli && cargo test` — a
+    false negative from a relative path, not a finding about the repo. The runbook's
+    ready-check clause is correct and not stale; no gap needs closing. The release
+    itself is unaffected: the replay was legitimately N/A on the grounds above.
   - The known cli unit-test flake surfaced once more on the cold first run
     (`worktree::tests::process_missing_branch_arg_exits_1`, this time a temp-fixture
     `git init` template-hooks copy collision rather than v0.5.0's `index.lock`
