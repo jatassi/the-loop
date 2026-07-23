@@ -705,7 +705,7 @@
     {
       "id": "fix-test-fixture-tempdir-collision",
       "title": "concurrent worktree tests collide on one temp fixture directory, so git init races itself",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [],
       "acceptance": [
         "given the worktree test fixture helper, when N>=8 threads each call tempfile_dir many times, then every returned path is distinct — a unit test asserting this fails against the current timestamp-derived name and passes after the fix",

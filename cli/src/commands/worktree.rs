@@ -378,9 +378,10 @@ fn cwd_inside_target(dir: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
     use std::process::Command as ProcCommand;
     use std::sync::OnceLock;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     use serde_json::json;
 
@@ -421,13 +422,142 @@ mod tests {
     }
 
     fn tempfile_dir(label: &str) -> PathBuf {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos());
+        // Process-wide monotonic counter (shared across all labels) so concurrent
+        // fixture setup never collapses to the same path. Keep pid for distinctness
+        // across concurrent cargo-test processes; do not use the clock — macOS
+        // SystemTime resolution is only microseconds under contention.
+        static SEQ: AtomicU64 = AtomicU64::new(0);
+        let seq = SEQ.fetch_add(1, Ordering::Relaxed);
         let dir =
-            std::env::temp_dir().join(format!("the-loop-{label}-{}-{nanos}", std::process::id()));
-        fs::create_dir_all(&dir).expect("create temp dir");
+            std::env::temp_dir().join(format!("the-loop-{label}-{}-{seq}", std::process::id()));
+        // Parent (OS temp dir) legitimately already exists; the leaf must not.
+        if let Some(parent) = dir.parent() {
+            fs::create_dir_all(parent).expect("create temp parent");
+        }
+        fs::create_dir(&dir).expect("create temp dir");
         dir
+    }
+
+    /// Parse the trailing discriminator from a `tempfile_dir` path name.
+    fn tempfile_dir_seq(path: &Path) -> u64 {
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .expect("temp dir name");
+        name.rsplit('-')
+            .next()
+            .expect("discriminator")
+            .parse()
+            .expect("discriminator is integer")
+    }
+
+    #[test]
+    fn tempfile_dir_paths_are_unique_under_contention() {
+        const THREADS: usize = 8;
+        const PER_THREAD: usize = 250;
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let mut handles = Vec::with_capacity(THREADS);
+        for _ in 0..THREADS {
+            let tx = tx.clone();
+            handles.push(thread::spawn(move || {
+                let mut paths = Vec::with_capacity(PER_THREAD);
+                for _ in 0..PER_THREAD {
+                    paths.push(tempfile_dir("wt-uniq"));
+                }
+                tx.send(paths).expect("send paths");
+            }));
+        }
+        drop(tx);
+
+        let mut all = Vec::with_capacity(THREADS * PER_THREAD);
+        for paths in rx {
+            all.extend(paths);
+        }
+        for h in handles {
+            h.join().expect("thread join");
+        }
+
+        assert_eq!(all.len(), THREADS * PER_THREAD);
+        let unique: HashSet<_> = all.iter().cloned().collect();
+        assert_eq!(
+            unique.len(),
+            all.len(),
+            "tempfile_dir returned duplicate paths under contention"
+        );
+
+        for p in &all {
+            let _ = fs::remove_dir_all(p);
+        }
+    }
+
+    #[test]
+    fn tempfile_dir_panics_when_target_already_exists() {
+        // Pre-create a wide window of upcoming discriminator paths so concurrent
+        // tests consuming counter values still leave us with an AlreadyExists hit.
+        // Against the clock-based helper these paths are never used, so no panic.
+        const WINDOW: u64 = 10_000;
+
+        let first = tempfile_dir("wt-exists");
+        let seq = tempfile_dir_seq(&first);
+        let pid = std::process::id();
+        let temp = std::env::temp_dir();
+
+        for offset in 1..=WINDOW {
+            let p = temp.join(format!("the-loop-wt-exists-{pid}-{}", seq + offset));
+            let _ = fs::create_dir(&p);
+        }
+
+        let result = std::panic::catch_unwind(|| tempfile_dir("wt-exists"));
+
+        let _ = fs::remove_dir_all(&first);
+        for offset in 1..=WINDOW {
+            let p = temp.join(format!("the-loop-wt-exists-{pid}-{}", seq + offset));
+            let _ = fs::remove_dir(&p);
+        }
+
+        assert!(
+            result.is_err(),
+            "tempfile_dir must panic when the target directory already exists"
+        );
+    }
+
+    #[test]
+    fn tempfile_dir_uses_single_process_wide_counter_across_labels() {
+        let labels = [
+            "wt-fixture",
+            "wt-home",
+            "wt-home-in",
+            "wt-resolve-only",
+            "wt-resolve-home",
+        ];
+        let mut paths = Vec::new();
+        for i in 0..labels.len() * 10 {
+            paths.push(tempfile_dir(labels[i % labels.len()]));
+        }
+
+        let seqs: Vec<u64> = paths.iter().map(|p| tempfile_dir_seq(p)).collect();
+
+        // Discriminator must be a monotonic counter, not wall-clock nanos (~1e18).
+        for &seq in &seqs {
+            assert!(
+                seq < 1_000_000_000,
+                "discriminator {seq} looks like a timestamp, not a process-wide counter"
+            );
+        }
+
+        // A single process-wide counter never reuses a seq across labels.
+        // Per-label counters would re-emit 0,1,2… for each label.
+        let unique: HashSet<_> = seqs.iter().copied().collect();
+        assert_eq!(
+            unique.len(),
+            seqs.len(),
+            "all labels must share one process-wide counter; seqs={seqs:?}"
+        );
+
+        for p in &paths {
+            let _ = fs::remove_dir_all(p);
+        }
     }
 
     fn git_in(cwd: &Path, args: &[&str]) {
