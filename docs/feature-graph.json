@@ -1,5 +1,5 @@
 {
-  "design_version": 33,
+  "design_version": 34,
   "features": [
     {
       "id": "document-foundation",
@@ -750,6 +750,20 @@
       "notes": [
         "diagnosed 2026-07-25; RCA at docs/bugs/fix-execution-pipeline-name-entrypoint.md is this fix's design doc via the designs-then-bugs lookup fallback",
         "the fail-fast guard proposed in the RCA was rejected 2026-07-25 (human's call): once the door is closed the guard defends an entry point that no longer exists; accepted cost is that installs pinned at <= v0.5.1 keep the opaque parse error until they update"
+      ]
+    },
+    {
+      "id": "fix-landing-into-checked-out-target",
+      "title": "The prescribed publish recipes cannot work, and record's improvised fallback leaves the primary worktree staged to revert its own commit",
+      "status": "designed",
+      "depends_on": [],
+      "acceptance": [
+        "Given a repository whose target branch is checked out in the primary worktree and a linked worktree holding a commit to publish, When the record leg publishes, Then the target advances and the primary worktree's `git status --porcelain` is empty and the run artifact exists on disk.",
+        "Given a publish that cannot fast-forward for any reason — target moved, target checked out, non-fast-forward — When the record leg runs, Then it returns {\"result\":\"blocked\"} naming the failure and does not move the target ref by `update-ref`, `branch -f`, `push --force`, or any other ref-only means.",
+        "Given the record leg has published a run, When `git reflog` is inspected in the primary worktree, Then a HEAD entry exists for the calibration commit — the landing was a real merge, not a bare ref move.",
+        "Given a validated feature's integration branch and a target branch checked out in the primary worktree, When the validate leg publishes its squash commit, Then it uses the same worktree-safe landing command as record — succeeding without improvisation — and leaves the primary worktree's `git status --porcelain` empty.",
+        "Given record.md's publish section and validate.md's publish step, When both are read, Then they name the same worktree-safe landing command run from the repository root, and neither prescribes `git fetch . <src>:<target>` against a checked-out target.",
+        "Given the record leg completes, When it returns `recorded`, Then it has verified the landing — asserting the primary worktree is clean and the artifact path exists — and returns `blocked` with the porcelain output otherwise."
       ]
     }
   ]
