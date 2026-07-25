@@ -228,9 +228,15 @@ fixtures, and eval; the zero-runtime-dependency constraint is about the user's m
 Cross-feature shapes, in prose (per-feature detail lives in the feature docs):
 
 - **Feature record** — `{ id, title, status: proposed|designed|validated|shipped,
-  depends_on, acceptance: [criterion], notes? }`. Ids are lowercase slugs; they
-  become refs (`loop/<id>`) and paths. `acceptance` is optional only at `proposed`
-  (recorded intent, pre-design) — required from `designed` onward.
+  execution?: autonomous|interactive, depends_on, acceptance: [criterion], notes? }`.
+  Ids are lowercase slugs; they become refs (`loop/<id>`) and paths. `acceptance` is
+  optional only at `proposed` (recorded intent, pre-design) — required from `designed`
+  onward. `execution` is orthogonal to `status` and absent means `autonomous`;
+  `interactive` marks a feature that wants a human's eyes — taste, rulings-as-deliverable,
+  acceptance only a person can witness, an open fork, or a hard-to-reverse change — so it
+  is excluded from the eligible set and refused by the execution-context gate, while
+  still taking the ordinary validate leg. Answered by the human on a required question
+  Design and Diagnose pose with a recommendation, never inferred (ADR-0054).
 - **Task contract** — `{ id, title, covers: [criterion-index], acceptance, footprint,
   size: xs|s|m, judgment_level: rote|standard|complex, depends_on, wiring? }` in the
   plan's `## Tasks` yaml block with `feature:` and `design_version:`. No status, no

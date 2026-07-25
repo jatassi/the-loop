@@ -1,5 +1,5 @@
 {
-  "design_version": 34,
+  "design_version": 35,
   "features": [
     {
       "id": "document-foundation",
@@ -773,7 +773,8 @@
       "depends_on": [],
       "acceptance": [
         "Given the in-scope inventory (5 agent definitions, 16 skill files, CLAUDE.md, and execution-pipeline.js's assembled prompt strings), when the adjudication session ends, then every file has been read against the five shifts and every surfaced candidate carries an explicit keep, rewrite, relocate, or delete ruling — no file skipped, no candidate undecided",
-        "Given the landed trim, when any instruction is searched for across the in-scope surfaces, then it has exactly one authoritative home — and the code-quality pack is reachable by its consumers: all five agent definitions carry the Skill tool and a spawned build-shaped agent was observed invoking the pack from a target-project worktree before inline duplicates were removed",
+        "Given the landed trim, when any instruction is searched for within a single surface, then it appears once — and where the same instruction survives on two shipped surfaces, the ruling records that both readers need it and neither can reach the other, rather than cutting it; and the code-quality pack is reachable by its consumers: all five agent definitions carry the Skill tool and a spawned build-shaped agent was observed invoking the pack from a target-project worktree before inline duplicates were removed",
+        "Given the landed trim, when `grep -rE \"ADR-[0-9]{4}\" plugin/agents/ plugin/skills/` runs, then it returns nothing — each of the seven pre-seeded citations (drive.md ×3, record.md, validate.md, design/SKILL.md, release/SKILL.md) was ruled on and its claim either kept without the citation or removed — while `docs/…` paths naming the consuming project's own artifacts remain intact and were not swept",
         "Given the landed trim, when write-skills is read, then its description triggers on agent-definition authoring, its body carries an agent-definition deltas section and the vendored Negation failure mode, and the session's generalized judgment calls appear in its Pruning/Failure-modes doctrine — and a write-skills pass ran over every touched surface before landing",
         "Given the trimmed surfaces on main, when one already-designed backlog feature is run through the pipeline end-to-end, then plan, build, and validate all complete with parseable reports and no block attributable to the trim"
       ]
@@ -781,7 +782,36 @@
     {
       "id": "interactive-feature-type",
       "title": "Execution-mode marker on feature records — human-attended features as first-class, excluded from autonomous runs",
-      "status": "proposed"
+      "status": "designed",
+      "depends_on": [
+        "execute-skill"
+      ],
+      "acceptance": [
+        "Given a feature record carrying \"execution\": \"interactive\", when the graph is parsed and re-emitted, then the key round-trips in canonical order immediately after \"status\"; a record without the key re-emits byte-identically to today with no key and no null; and a non-string value (for example true) is a named malformed-JSON parse error rather than a silently dropped marker",
+        "Given a graph whose value is outside autonomous|interactive, when `the-loop check` runs, then it exits nonzero naming the offending feature and the two legal values",
+        "Given a fixture graph holding one dependency-ready designed interactive feature and one dependency-ready designed autonomous feature, when `the-loop status --json` runs, then eligibleSet names only the autonomous one and interactiveReady names only the interactive one",
+        "Given a fixture graph whose only dependency-ready designed work is interactive, when `the-loop status --json` runs, then the proposal kind is advance-interactive naming those ids — never blocked, and never the claim that the graph needs repair",
+        "Given an interactive feature id, when `the-loop prepare-execution-context --features <id> --target-branch <ref> --script-out <path>` runs without --interactive, then it exits 1, writes nothing to stdout and no file at --script-out, and stderr names the feature and the interactive-execution skill as the other door; with --interactive the same id is accepted and an autonomous id is refused symmetrically",
+        "Given a graph containing an interactive feature, when `the-loop status` renders its human summary, then interactive rows are distinguishable from autonomous ones and dependency-ready attended work is listed under its own heading, distinct from the Next line",
+        "Given the landed design and diagnose skill bodies, when each is read cold, then it requires the author to pose the execution-mode question to the human — never to infer the answer — carrying inline both values, the autonomous default, the recommendation criteria (taste, the-work-is-the-decision, adjudication-shaped acceptance, only-a-person-can-see-it, an open fork, hard-to-reverse), and the one-line test; design poses it once per promotion batch listing each flagged feature with the criterion that flagged it, diagnose poses it for its one fix record, and both pose it even when nothing is flagged",
+        "plugin/skills/interactive-execution/SKILL.md exists with frontmatter name interactive-execution and allowed-tools covering the CLI, git, Read, Write, Edit and Agent; its body carries the whole attended recipe — scope resolution from interactiveReady, context assembly via prepare-execution-context --interactive, worktree-create on loop/<id>, and the hand-off spawning the ordinary validate agent — and /begin routes the advance-interactive proposal kind to it by name",
+        "Given the landed tree, when the diff is inspected, then no feature record in docs/feature-graph.json carries an execution key (the marker waits for the upgraded binary), and no surface added under plugin/ by this diff cites a bare ADR number or any path into this repo's own design docs"
+      ],
+      "notes": [
+        "designed 2026-07-25; no separate brief — the intent is carried by agent-surface-trim's brief plus this record's title, and the design was written straight from them",
+        "landing hazard: an older binary silently strips an unknown execution key, because set-status re-emits the graph without validating and emit drops unknown keys — and set-status is the validator's final act. Hence the no-marker-in-this-commit criterion; marking agent-surface-trim is a human act after the upgraded binary is installed",
+        "depends_on execute-skill sequences both features' edits to plugin/skills/begin/SKILL.md so they do not collide at the merge, and lets interactive-execution mirror the real execute surface rather than an imagined one"
+      ]
+    },
+    {
+      "id": "graph-schema-forward-compat",
+      "title": "A binary older than the graph schema silently discards fields it does not know",
+      "status": "proposed",
+      "notes": [
+        "surfaced 2026-07-25 by interactive-feature-type's coherence sweep. set-status parses, mutates status, and re-emits the whole graph without validating; emit deliberately drops unknown keys (asserted by a test). So an older binary strips any newer field, with no error — and it runs as the validator's last act",
+        "forward compatibility must ship before the field it protects, so this could not help interactive-feature-type's own landing; it protects the next schema addition",
+        "candidate remedies to weigh at design: make emit preserve unknown keys, or make set-status validate before writing — the second fails loudly instead of silently, the first keeps older binaries usable on newer graphs"
+      ]
     }
   ]
 }

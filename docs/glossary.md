@@ -122,7 +122,24 @@ never enters the loop — a human or session just commits). *See:* ADR-0038.
 ### eligible set
 **aliases:** frontier (historical) · **status:** active
 The dependency-ready set: features still `designed` whose dependencies are all
-`validated|shipped` — what the next-action proposal offers to run.
+`validated|shipped` **and whose [[execution mode]] is autonomous** — what the
+next-action proposal offers to run. Dependency-ready *interactive* features are a
+separate set (`interactiveReady`) with its own proposal kind, so an attended feature
+can never ride an autonomous launch. *See:* ADR-0054.
+
+### execution mode
+**aliases:** — · **status:** active
+A feature record's `execution` field — `autonomous | interactive`, absent meaning
+autonomous — recording *who does the work*. **Interactive** means the feature wants a
+human's eyes: taste (design, copy, naming, ergonomics), work whose deliverable *is* a
+set of rulings, acceptance only a person can witness, an open fork, or a change that is
+hard to reverse. Such a feature is excluded from the [[eligible set]] and refused by the
+execution-context gate; the human owns Plan and Build, and the ordinary validate leg
+still runs. **Answered by the human**, on a required question Design and Diagnose pose
+with a recommendation — never inferred by the authoring agent, and never at run time.
+*Not to be confused with:* feature status — status is the lifecycle position
+(`proposed → designed → validated → shipped`), which an interactive feature travels
+identically. Execution mode is orthogonal to it. *See:* ADR-0054.
 
 ### runbook
 **aliases:** — · **status:** active

@@ -16,8 +16,58 @@ This feature is **not built by the execution pipeline**. It runs as a live
 adjudication session: surfaces are read together, candidates surfaced one at a
 time, and the human rules on each — decision and edit in one step, in a
 worktree, merged to main at the human's gate. Do not scope this feature into an
-autonomous run. (A `proposed` backlog record, `interactive-feature-type`, exists
-to make this execution mode first-class in the schema later.)
+autonomous run.
+
+`interactive-feature-type` makes this mode first-class: once it lands and the new
+binary is installed, this record carries `execution: "interactive"` and the tooling
+enforces the exclusion instead of the human remembering. **Order matters** — an
+older binary silently strips an `execution` key it does not know, and it does so
+inside `set-status`, the validator's last act. Mark this record only after the
+upgraded binary is installed. Until then the exclusion rests on this section.
+
+## The shipped surface stands alone
+
+A consuming project installs `plugin/` and the `the-loop` binary. It does not have
+this repo — no `docs/adr/`, no this-repo `docs/architecture.md`. Anything under
+`plugin/` that needs this repo to make sense is broken, and this audit is where that
+gets cleaned up.
+
+**Read which world a reference points at.** Most `docs/…` paths in shipped surfaces
+are *correct*: they name the consuming project's own artifacts — `docs/architecture.md`,
+`docs/feature-graph.json`, `docs/designs/`, `docs/glossary.md` — which the loop creates
+there. Cutting those would break the surfaces. The defects are references to *this*
+repo. Pre-seeded candidates, mechanically found (`grep -rE "ADR-[0-9]{4}" plugin/`):
+
+| file | refs |
+|---|---|
+| `plugin/agents/drive.md` | ADR-0040, ADR-0047 ×2 |
+| `plugin/agents/record.md` | ADR-0007 |
+| `plugin/agents/validate.md` | ADR-0035 |
+| `plugin/skills/design/SKILL.md` | ADR-0037 |
+| `plugin/skills/release/SKILL.md` | ADR-0039 |
+
+Each is a provenance note that reads as authority to a stateless agent who cannot
+open it. Rule on each: delete the citation and keep the claim, or keep nothing.
+The pipeline engine's ADR-numbered comments are a separate ruling — they ship, but
+no agent is asked to follow them.
+
+### The tension with shift 4 — resolve it before the structural pass
+
+"Repetition → single authoritative source" and self-containment pull in opposite
+directions, and the boundary between them is `plugin/`.
+
+- **Across the boundary**, self-containment wins. Two shipped surfaces stating the
+  same rule is *not* redundancy to cut when each surface's reader needs it to act and
+  cannot reach the other. The only external truth a shipped surface may lean on is the
+  `the-loop` binary's behavior — never another document.
+- **Within a single surface**, shift 4 applies at full force: the same instruction
+  three times in one file is exactly the scar tissue this pass exists to remove.
+- **Inside `docs/`**, cross-reference freely. It is not the shipped definition.
+
+Get this backwards and the audit cuts the sentences that make the surfaces work, and
+the damage shows up only in a consuming project. Every duplication ruling in the
+structural pass carries a boundary check: *do both readers need this, and can either
+reach the other?*
 
 ## Inventory (every file gets adjudicated)
 
@@ -92,8 +142,8 @@ coaching); pure noise is dismissed without record.
 
 - Worktree isolation; merge to main only at the human's gate, no PR.
 - No behavior changes beyond the Skill-tool amendment recorded above.
-- Surfaces stay self-contained: no references to ADRs or internal design docs
-  from shipped skills/agents.
+- Surfaces stay self-contained per *The shipped surface stands alone* above —
+  including its boundary check on every duplication ruling.
 - A write-skills pass runs over every touched surface before landing.
 
 ## Validation
