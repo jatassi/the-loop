@@ -765,6 +765,23 @@
         "Given record.md's publish section and validate.md's publish step, When both are read, Then they name the same worktree-safe landing command run from the repository root, and neither prescribes `git fetch . <src>:<target>` against a checked-out target.",
         "Given the record leg completes, When it returns `recorded`, Then it has verified the landing — asserting the primary worktree is clean and the artifact path exists — and returns `blocked` with the porcelain output otherwise."
       ]
+    },
+    {
+      "id": "agent-surface-trim",
+      "title": "Audit and targeted trim of agent-facing surfaces against the five context-engineering shifts (human-attended session)",
+      "status": "designed",
+      "depends_on": [],
+      "acceptance": [
+        "Given the in-scope inventory (5 agent definitions, 16 skill files, CLAUDE.md, and execution-pipeline.js's assembled prompt strings), when the adjudication session ends, then every file has been read against the five shifts and every surfaced candidate carries an explicit keep, rewrite, relocate, or delete ruling — no file skipped, no candidate undecided",
+        "Given the landed trim, when any instruction is searched for across the in-scope surfaces, then it has exactly one authoritative home — and the code-quality pack is reachable by its consumers: all five agent definitions carry the Skill tool and a spawned build-shaped agent was observed invoking the pack from a target-project worktree before inline duplicates were removed",
+        "Given the landed trim, when write-skills is read, then its description triggers on agent-definition authoring, its body carries an agent-definition deltas section and the vendored Negation failure mode, and the session's generalized judgment calls appear in its Pruning/Failure-modes doctrine — and a write-skills pass ran over every touched surface before landing",
+        "Given the trimmed surfaces on main, when one already-designed backlog feature is run through the pipeline end-to-end, then plan, build, and validate all complete with parseable reports and no block attributable to the trim"
+      ]
+    },
+    {
+      "id": "interactive-feature-type",
+      "title": "Execution-mode marker on feature records — human-attended features as first-class, excluded from autonomous runs",
+      "status": "proposed"
     }
   ]
 }
