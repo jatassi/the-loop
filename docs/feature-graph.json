@@ -1,5 +1,5 @@
 {
-  "design_version": 32,
+  "design_version": 33,
   "features": [
     {
       "id": "document-foundation",
@@ -703,6 +703,27 @@
       ]
     },
     {
+      "id": "execute-skill",
+      "section": "post-replatform amendments",
+      "title": "execute skill — the loop's launch surface, extracted from /begin",
+      "status": "designed",
+      "depends_on": [
+        "fix-execution-pipeline-name-entrypoint"
+      ],
+      "acceptance": [
+        "plugin/skills/execute/SKILL.md exists with frontmatter name execute, a scope argument-hint, and allowed-tools covering the CLI, git, Read, and Workflow; its body carries the whole launch recipe — prepare-execution-context with --features, --target-branch, and --script-out; Workflow({scriptPath}) with no args and the stated reason why; and the four-outcome run-summary relay (completed, blocked, stalled, halted)",
+        "the launch leg is gone from /begin's body — the advance-eligible-set proposal and the build jump both route to the execute skill by name — and the --script-out launch recipe appears on exactly one living skill surface",
+        "the diagnose skill's hand-off step names the execute skill and the fix-<slug> id rather than a bare CLI fragment",
+        "invoked with a human-typed scope it launches without re-proposing a route; invoked with no scope it resolves the dependency-ready eligible set from the-loop status --json and stops, saying so, when that set is empty; a model-initiated invocation presents the resolved scope and target branch and waits for a human confirm before launching",
+        "with a nondefault artifactStores.features binding the launch path materializes an ephemeral snapshot, passes --graph-path, and tears it down, and a bound-but-unreachable surface reports a can't-run naming the surface; with the default binding the behavior is byte-identical to today's leg",
+        "the body is consumer-safe and self-contained — no ADR numbers, no internal-doc references, no path under plugin/workflows/, and no step that defers to another skill's body — with a write-skills pass done before landing"
+      ],
+      "notes": [
+        "designed 2026-07-25 from cause 0 of docs/bugs/fix-execution-pipeline-name-entrypoint.md — no separate brief; the missing launch surface is what sent a consuming session into the broken by-name entry point",
+        "extraction, not addition: the recipe already lives at plugin/skills/begin/SKILL.md, and the depends_on edge sequences the fix's path churn ahead of the extraction so both features' edits to begin/SKILL.md do not collide at the merge"
+      ]
+    },
+    {
       "id": "fix-test-fixture-tempdir-collision",
       "title": "concurrent worktree tests collide on one temp fixture directory, so git init races itself",
       "status": "validated",
@@ -712,6 +733,23 @@
         "given the 13 worktree unit tests, when `cargo test --manifest-path cli/Cargo.toml --lib commands::worktree -- --test-threads=13` runs 25 consecutive times, then all 25 runs are green (baseline: 3/25)",
         "given a fixture directory path that somehow already exists, when tempfile_dir is called for it, then it panics on AlreadyExists rather than returning a shared directory",
         "given all fixture labels (wt-fixture, wt-home, wt-home-in, wt-resolve-only, wt-resolve-home), when names are generated, then they draw from one process-wide counter so no two labels can re-collide, and tempfile_dir keeps its current signature and call sites"
+      ]
+    },
+    {
+      "id": "fix-execution-pipeline-name-entrypoint",
+      "title": "execution-pipeline is model-reachable by name through an entry point that cannot work by construction",
+      "status": "designed",
+      "depends_on": [],
+      "acceptance": [
+        "given the landed tree, when the repo is inspected, then no .js file exists under any auto-registered plugin workflows directory (plugin/workflows/ is gone) and the engine lives at cli/assets/execution-pipeline.js — the live check that a consuming session's skill listing no longer offers the-loop:execution-pipeline rides the release gate's health check, not validate",
+        "given the moved engine, when the-loop prepare-execution-context --features <id> --target-branch <ref> --script-out <path> runs, then it writes the launch-ready spliced script exactly as before, and both shape gates still exit 1 with nothing written when the meta line or the EMBEDDED_CONTEXT line does not match",
+        "meta.whenToUse names prepare-execution-context --script-out and contains neither the phrase \"as args\" nor \"never invoked bare\", and splice.rs's pinned meta constant matches the new line byte-for-byte",
+        "the string plugin/workflows greps to zero across living surfaces (cli/, plugin/, test/, eslint.config.js, docs/architecture.md), with remaining hits only in historical records (docs/adr/, docs/briefs/, docs/releases/, docs/bugs/, docs/calibration/, docs/validation/, and shipped features' docs/designs/)",
+        "npm test, npm run check, and cargo test pass green on the landed tree, with every test and lint target that read plugin/workflows/execution-pipeline.js reading the new path"
+      ],
+      "notes": [
+        "diagnosed 2026-07-25; RCA at docs/bugs/fix-execution-pipeline-name-entrypoint.md is this fix's design doc via the designs-then-bugs lookup fallback",
+        "the fail-fast guard proposed in the RCA was rejected 2026-07-25 (human's call): once the door is closed the guard defends an entry point that no longer exists; accepted cost is that installs pinned at <= v0.5.1 keep the opaque parse error until they update"
       ]
     }
   ]
