@@ -14,6 +14,11 @@ only (shapes below).
 
 ## 1 · Assemble
 
+Before creating the integration worktree, note the working directory you are
+already in as `<repo-root>` — the target repository's primary worktree, which
+already has the target branch checked out. §3's publish runs against
+`<repo-root>`, never against the integration worktree created below.
+
 Create the integration worktree your prompt names and work only there. Give that call a
 generous Bash-tool timeout (600000 ms) because it may run the project's provisioning
 command. A pre-existing `integrate--<feature>` branch is untrusted — a prior failed pass
@@ -57,9 +62,21 @@ it — plans never land on the target.
    the surface, surface-first.
 2. Collapse to one commit: `git reset --soft <target-tip-at-start>` then
    `git commit -m "<feature>: <title>"`.
-3. Publish fast-forward: `git fetch . <integration-branch>:<target>`. If the target
-   moved since you started, rebase onto its new tip — same test-gated merge policy
-   for any conflict — and retry once.
+3. Publish fast-forward, run from `<repo-root>` (the primary worktree noted in
+   §1), never from inside the integration worktree — the target branch is
+   checked out at `<repo-root>`, and a fetch or checkout run against it from the
+   integration worktree refuses:
+
+   ```
+   git -C <repo-root> merge --ff-only <integration-branch>
+   ```
+
+   If the target moved since you started, rebase onto its new tip — same test-gated merge policy for any conflict — and retry once. Never
+   move the target ref by any other means: `git update-ref`, `git branch -f`,
+   `git push --force`, or any other ref-only move updates the pointer without
+   touching `<repo-root>`'s index or working tree. After it succeeds, verify:
+   `git -C <repo-root> status --porcelain` must be empty; if not, that is a
+   defect — report blocked with the porcelain output.
 4. Delete the feature's `loop/<feature>*` branches and your integration branch;
    remove the worktree.
 

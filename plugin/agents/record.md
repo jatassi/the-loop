@@ -23,6 +23,11 @@ analyze.
 
 ## 1 · Filename and worktree
 
+Before creating the worktree, note the working directory you are already in as
+`<repo-root>` — the target repository's primary worktree, which already has the
+run's target branch checked out. §6's publish runs against `<repo-root>`, never
+against the linked worktree created below.
+
 Compute `<date>` as `prepared_at`'s UTC calendar date (`YYYY-MM-DD`). Create a
 worktree with `<cli> worktree-create` (the invocation from the prompt's `cli:`
 trailer, or bare `the-loop` when absent) the same way build/validate/drive do,
@@ -70,12 +75,31 @@ Commit everything as ONE commit with the exact subject
 
 ## 6 · Publish
 
-Fast-forward the commit onto the run's target branch. This runs after every
-validator in the run has already landed its own commit, so there is no lock
-contention — a plain fast-forward is correct. If it fails because the target
-moved, that is a defect: report it blocked; do not silently retry into a
-merge or rebase. Remove the worktree when finished
-(`<cli> worktree-remove <path-or-branch>`).
+The run's target branch is checked out in `<repo-root>` (the primary worktree
+noted in §1), not in the worktree you just committed in — a `git checkout` run
+there will refuse (git will not check out a branch another worktree already
+holds). Fast-forward the commit onto the target from `<repo-root>` instead,
+with the worktree-safe landing command, run after every validator in the run
+has already landed its own commit so there is no lock contention:
+
+```
+git -C <repo-root> merge --ff-only <commit-or-branch-just-committed>
+```
+
+If it fails for any reason — target moved, target checked out elsewhere,
+non-fast-forward — that is a defect: report it blocked; do not silently retry
+into a merge or rebase, and never move the target ref by any other means:
+`git update-ref`, `git branch -f`, `git push --force`, or any other ref-only
+move updates the pointer without touching `<repo-root>`'s index or working
+tree, silently staging a revert of the commit you just made.
+
+After it succeeds, verify the landing before returning `recorded`: `git -C
+<repo-root> status --porcelain` must be empty, and the artifact path
+(`<repo-root>/docs/calibration/runs/<date>-<seq>.json`) must exist on disk. If
+either check fails, return blocked with the porcelain output instead of
+`recorded`.
+
+Remove the worktree when finished (`<cli> worktree-remove <path-or-branch>`).
 
 ## Scope discipline
 
@@ -90,6 +114,6 @@ Recorded:
     { "result": "recorded", "path": "docs/calibration/runs/<date>-<seq>.json" }
 
 Blocked — anything preventing the write, commit, or publish (malformed payload,
-fast-forward failure, git error):
+fast-forward failure, unverified landing, git error):
 
     { "result": "blocked", "detail": "<what went wrong, precisely>" }

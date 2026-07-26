@@ -761,7 +761,7 @@
     {
       "id": "fix-landing-into-checked-out-target",
       "title": "The prescribed publish recipes cannot work, and record's improvised fallback leaves the primary worktree staged to revert its own commit",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [],
       "acceptance": [
         "Given a repository whose target branch is checked out in the primary worktree and a linked worktree holding a commit to publish, When the record leg publishes, Then the target advances and the primary worktree's `git status --porcelain` is empty and the run artifact exists on disk.",
