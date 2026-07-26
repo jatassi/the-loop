@@ -11,6 +11,13 @@ categories = ["command-line-utilities", "development-tools"]
 # without inventing a public license decision for the monorepo.
 license = "LicenseRef-Proprietary"
 
+# `upgrade` compiles in the self-replacing `the-loop upgrade` body (network +
+# installer exec). Off by default so ordinary `cargo build`/`cargo test` produce a
+# binary that refuses with the manual-install remedy; release builds turn it on
+# through `features` under `[dist]` in `dist-workspace.toml`.
+[features]
+upgrade = []
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

@@ -675,7 +675,7 @@
       "id": "cli-upgrade",
       "section": "post-replatform amendments",
       "title": "the-loop upgrade — replace the installed binary with the latest release by re-running its installer",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [
         "binary-distribution"
       ],

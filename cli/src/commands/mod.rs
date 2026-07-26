@@ -10,4 +10,5 @@ pub mod hooks_set;
 pub mod models_list;
 pub mod plan;
 pub mod prepare_execution_context;
+pub mod upgrade;
 pub mod worktree;

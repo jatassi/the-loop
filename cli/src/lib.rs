@@ -11,7 +11,12 @@
 //! the pure byte-surgical settings writer (`settings_write`) back the
 //! config-surface command bodies under [`commands`] (`executors-list`,
 //! `models-list`, `hooks-list`, `hooks-set`), and the calibration index
-//! renderer (`calibration`) behind `calibration-summarize`.
+//! renderer (`calibration`) behind `calibration-summarize`. The install-receipt
+//! reader (`receipt`: platform path resolution + version/binaries load) backs
+//! the `upgrade` command's precondition step; `upgrade` itself re-runs the
+//! release's own generated installer and is compiled in only under the
+//! default-off `upgrade` cargo feature (release builds enable it), so an ordinary
+//! build parses the subcommand and refuses with the manual-install one-liner.
 
 mod calibration;
 mod commands;
@@ -25,6 +30,7 @@ mod validate;
 
 pub mod executors;
 pub mod io;
+pub mod receipt;
 pub mod recorded_bindings;
 pub mod settings;
 pub mod settings_write;
@@ -184,6 +190,8 @@ pub enum Command {
         /// Worktree directory path or branch name.
         path_or_branch: String,
     },
+    /// Replace this binary with the latest GitHub release (re-runs the installer).
+    Upgrade,
     /// Assemble the one execution context the workflow consumes (ADR-0036/0038).
     #[command(name = "prepare-execution-context")]
     PrepareExecutionContext {
@@ -300,6 +308,10 @@ impl Cli {
             }
             Some(Command::WorktreeRemove { path_or_branch }) => {
                 commands::worktree::remove(&path_or_branch);
+                ExitCode::SUCCESS
+            }
+            Some(Command::Upgrade) => {
+                commands::upgrade::run();
                 ExitCode::SUCCESS
             }
             Some(Command::PrepareExecutionContext {
@@ -612,6 +624,28 @@ mod tests {
                 || rendered.contains("branch"),
             "missing-arg error should mention usage or branch; got {rendered:?}"
         );
+    }
+
+    /// `upgrade` is a unit variant: no positionals, no flags. Compiled both with
+    /// and without the `upgrade` feature — the clap surface is identical either
+    /// way; only the command body differs.
+    #[test]
+    fn upgrade_subcommand_parses_as_unit_variant_taking_no_args() {
+        let cli = Cli::try_parse_from(["the-loop", "upgrade"]).expect("upgrade must parse");
+        match cli.command {
+            Some(Command::Upgrade) => {}
+            other => panic!("expected Upgrade, got {other:?}"),
+        }
+
+        let extra_positional = Cli::try_parse_from(["the-loop", "upgrade", "0.6.0"])
+            .expect_err("upgrade must take no positional argument");
+        assert_ne!(extra_positional.kind(), ErrorKind::DisplayHelp);
+        assert_ne!(extra_positional.kind(), ErrorKind::DisplayVersion);
+
+        let extra_flag = Cli::try_parse_from(["the-loop", "upgrade", "--force"])
+            .expect_err("upgrade must take no flags");
+        assert_ne!(extra_flag.kind(), ErrorKind::DisplayHelp);
+        assert_ne!(extra_flag.kind(), ErrorKind::DisplayVersion);
     }
 
     #[test]

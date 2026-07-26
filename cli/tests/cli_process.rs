@@ -167,3 +167,299 @@ fn process_check_list_set_status_against_temp_graph() {
     let _ = fs::remove_dir_all(&dir);
     let _ = fs::remove_dir_all(&empty);
 }
+
+/// The manual-install remedy every `upgrade` refusal names, verbatim (unix).
+#[cfg(all(not(feature = "upgrade"), not(windows)))]
+const INSTALL_ONE_LINER: &str = "curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.sh | sh";
+/// The manual-install remedy every `upgrade` refusal names, verbatim (Windows).
+#[cfg(all(not(feature = "upgrade"), windows))]
+const INSTALL_ONE_LINER: &str = r#"powershell -c "irm https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.ps1 | iex""#;
+
+/// Criterion 3: a build without the `upgrade` feature still parses the
+/// subcommand, then refuses — nonzero, stdout empty, remedy named on stderr.
+#[cfg(not(feature = "upgrade"))]
+#[test]
+fn upgrade_without_the_feature_refuses_naming_the_install_one_liner() {
+    let output = bin()
+        .arg("upgrade")
+        .output()
+        .expect("spawn the-loop upgrade");
+    assert!(
+        !output.status.success(),
+        "a feature-less build must exit nonzero"
+    );
+    assert!(
+        output.stdout.is_empty(),
+        "stdout must stay empty; got {:?}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(INSTALL_ONE_LINER),
+        "stderr must name the platform install one-liner; got {stderr:?}"
+    );
+}
+
+/// The feature-on command body, exercised against a `file://` "release": an
+/// isolated copy of the built binary plus a hand-written installer script served
+/// through the one real seam, `THE_LOOP_DOWNLOAD_URL`.
+#[cfg(all(feature = "upgrade", unix))]
+mod upgrade_with_feature {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+
+    use super::temp_dir;
+
+    /// The manual-install remedy every `upgrade` refusal names, verbatim.
+    const INSTALL_ONE_LINER: &str = "curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.sh | sh";
+
+    /// An isolated install root: `opt/` holds the running binary, `dl/` is the
+    /// download directory reached over `file://`, `config/` holds the receipt.
+    struct Fixture {
+        root: PathBuf,
+        exe: PathBuf,
+    }
+
+    fn write_executable(path: &Path, body: &str) {
+        fs::write(path, body).expect("write script");
+        fs::set_permissions(path, fs::Permissions::from_mode(0o755)).expect("chmod");
+    }
+
+    impl Fixture {
+        /// Copy the built binary into an isolated `opt/` so the installer under
+        /// test may replace it without touching `target/`.
+        fn new() -> Self {
+            let root = temp_dir();
+            for sub in ["opt", "dl", "config", "home"] {
+                fs::create_dir_all(root.join(sub)).expect("fixture subdir");
+            }
+            let exe = root.join("opt").join("the-loop");
+            fs::copy(env!("CARGO_BIN_EXE_the-loop"), &exe).expect("copy built binary");
+            Self { root, exe }
+        }
+
+        fn write_receipt(&self, body: &str) {
+            let dir = self.root.join("config").join("the-loop");
+            fs::create_dir_all(&dir).expect("receipt dir");
+            fs::write(dir.join("the-loop-receipt.json"), body).expect("write receipt");
+        }
+
+        /// Place the installer the command will fetch over `file://`.
+        fn write_installer(&self, body: &str) {
+            write_executable(&self.root.join("dl").join("the-loop-installer.sh"), body);
+        }
+
+        /// `<exe> upgrade` with HOME, the receipt dir, and the download base all
+        /// redirected under the fixture root.
+        fn upgrade(&self) -> Command {
+            let mut cmd = Command::new(&self.exe);
+            cmd.arg("upgrade")
+                .env("HOME", self.root.join("home"))
+                .env("XDG_CONFIG_HOME", self.root.join("config"))
+                .env_remove("LOCALAPPDATA")
+                .env("THE_LOOP_INSTALL_DIR", self.root.join("opt"))
+                .env(
+                    "THE_LOOP_DOWNLOAD_URL",
+                    format!("file://{}", self.root.join("dl").display()),
+                );
+            cmd
+        }
+
+        /// The path the Windows leg would rename aside; must never be orphaned.
+        fn aside(&self) -> PathBuf {
+            self.root.join("opt").join("the-loop.old")
+        }
+
+        /// True when a working binary is present at the captured path.
+        fn exe_runs(&self) -> bool {
+            Command::new(&self.exe)
+                .arg("--version")
+                .output()
+                .is_ok_and(|out| out.status.success())
+        }
+
+        fn cleanup(self) {
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
+
+    /// Criterion 4: no receipt, and an unusable receipt, both refuse with the
+    /// manual-install remedy — and the download is never attempted (a `curl`
+    /// shim earlier on PATH would leave a marker if it ran).
+    #[test]
+    fn missing_or_unparseable_receipt_refuses_before_any_download() {
+        let fixture = Fixture::new();
+        fixture.write_installer("#!/bin/sh\necho should-never-run\n");
+
+        let shim_dir = fixture.root.join("shim");
+        fs::create_dir_all(&shim_dir).expect("shim dir");
+        let marker = fixture.root.join("curl-was-called");
+        write_executable(
+            &shim_dir.join("curl"),
+            &format!("#!/bin/sh\n: > '{}'\nexit 1\n", marker.display()),
+        );
+        let shimmed_path = format!(
+            "{}:{}",
+            shim_dir.display(),
+            std::env::var("PATH").unwrap_or_default()
+        );
+
+        for receipt in [None, Some("{ not json")] {
+            if let Some(body) = receipt {
+                fixture.write_receipt(body);
+            }
+            let output = fixture
+                .upgrade()
+                .env("PATH", &shimmed_path)
+                .output()
+                .expect("spawn upgrade");
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(
+                !output.status.success(),
+                "receipt {receipt:?} must refuse; stderr {stderr:?}"
+            );
+            assert!(
+                output.stdout.is_empty(),
+                "stdout must stay empty; got {:?}",
+                String::from_utf8_lossy(&output.stdout)
+            );
+            assert!(
+                stderr.contains(INSTALL_ONE_LINER),
+                "receipt {receipt:?}: stderr must name the install one-liner; got {stderr:?}"
+            );
+            assert!(
+                !marker.exists(),
+                "receipt {receipt:?}: no download may be attempted before the receipt check"
+            );
+            assert!(
+                !fixture.aside().exists(),
+                "receipt {receipt:?}: nothing may be renamed aside"
+            );
+            assert!(
+                fixture.exe_runs(),
+                "receipt {receipt:?}: the installed binary must be left untouched"
+            );
+        }
+
+        fixture.cleanup();
+    }
+
+    /// Criterion 5: the happy path fetches the installer from the download base,
+    /// runs it, post-checks the binary at the captured path, and prints exactly
+    /// `{from, to, updated}` — with the installer's own stdout on stderr.
+    #[test]
+    fn happy_path_swaps_the_binary_and_prints_from_to_updated() {
+        let fixture = Fixture::new();
+        fixture.write_receipt(r#"{"version":"0.0.1","binaries":["the-loop"]}"#);
+        // Stands in for the release installer: unlink-then-write is how a real
+        // installer replaces a running binary on unix.
+        fixture.write_installer(concat!(
+            "#!/bin/sh\n",
+            "echo \"fixture-installer: installing to $THE_LOOP_INSTALL_DIR\"\n",
+            "dest=\"$THE_LOOP_INSTALL_DIR/the-loop\"\n",
+            "rm -f \"$dest\"\n",
+            "printf '#!/bin/sh\\necho \"the-loop 9.9.9\"\\n' > \"$dest\"\n",
+            "chmod +x \"$dest\"\n",
+        ));
+
+        let output = fixture.upgrade().output().expect("spawn upgrade");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "upgrade must succeed; stderr {stderr:?}"
+        );
+
+        let payload: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("stdout must be JSON only");
+        let object = payload.as_object().expect("payload must be an object");
+        let mut keys: Vec<&str> = object.keys().map(String::as_str).collect();
+        keys.sort_unstable();
+        assert_eq!(
+            keys,
+            ["from", "to", "updated"],
+            "payload keys must be exact"
+        );
+        assert_eq!(payload["from"], "0.0.1", "from is the pre-install receipt");
+        assert_eq!(payload["to"], "9.9.9", "to is the post-check version token");
+        assert_eq!(payload["updated"], true);
+
+        assert!(
+            stderr.contains("fixture-installer: installing to"),
+            "the installer's stdout must be forwarded to stderr; got {stderr:?}"
+        );
+        assert!(
+            !fixture.aside().exists() || fixture.exe.exists(),
+            "a renamed-aside exe must never be left without a binary at the captured path"
+        );
+
+        fixture.cleanup();
+    }
+
+    /// Criterion 6: a failing installer exits nonzero naming the step and the
+    /// tail of the installer's output, leaves the installed binary runnable, and
+    /// keeps stdout empty.
+    #[test]
+    fn failing_installer_names_the_step_and_leaves_the_binary_runnable() {
+        let fixture = Fixture::new();
+        fixture.write_receipt(r#"{"version":"0.0.1","binaries":["the-loop"]}"#);
+        fixture.write_installer(concat!(
+            "#!/bin/sh\n",
+            "echo 'fixture-installer: checksum mismatch for the-loop archive'\n",
+            "exit 1\n",
+        ));
+
+        let output = fixture.upgrade().output().expect("spawn upgrade");
+        assert!(
+            !output.status.success(),
+            "a failing installer must exit nonzero"
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "stdout must stay empty; got {:?}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("run-installer"),
+            "stderr must name the failing step; got {stderr:?}"
+        );
+        assert!(
+            stderr.contains("checksum mismatch for the-loop archive"),
+            "stderr must carry the installer's own output tail; got {stderr:?}"
+        );
+        assert!(
+            !fixture.aside().exists(),
+            "the rename-aside must be restored, never orphaned"
+        );
+        assert!(
+            fixture.exe_runs(),
+            "the previously installed binary must still run"
+        );
+
+        fixture.cleanup();
+    }
+
+    /// Criterion 6: an unreachable download base fails at the download step with
+    /// no swap and no orphaned aside.
+    #[test]
+    fn unreachable_download_base_fails_at_the_download_step() {
+        let fixture = Fixture::new();
+        fixture.write_receipt(r#"{"version":"0.0.1","binaries":["the-loop"]}"#);
+        // No installer written: the `file://` fetch has nothing to fetch.
+
+        let output = fixture.upgrade().output().expect("spawn upgrade");
+        assert!(!output.status.success(), "a failed fetch must exit nonzero");
+        assert!(output.stdout.is_empty(), "stdout must stay empty");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("download-installer"),
+            "stderr must name the failing step; got {stderr:?}"
+        );
+        assert!(!fixture.aside().exists(), "nothing may be renamed aside");
+        assert!(fixture.exe_runs(), "the installed binary must still run");
+
+        fixture.cleanup();
+    }
+}

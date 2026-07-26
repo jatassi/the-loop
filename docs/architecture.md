@@ -298,7 +298,22 @@ from the outside, as a user would — never in-process imports.
 ## Release runbook
 
 Ready checks: `npm test` and `npm run check` green at the pinned tip; replay every
-`docs/validation/*/procedure.md` for the releasing features.
+`docs/validation/*/procedure.md` for the releasing features. Two more checks gate
+the `cli-upgrade` feature specifically, since the fixture exercise never runs the
+real Windows rename-aside swap on a dev machine:
+
+- **Local fixture exercise** (macOS/Linux dev machine): `cargo test --features upgrade`
+  green (full invocation: `cargo test --package the-loop --features upgrade --test
+  upgrade_fixture`) — covers the happy swap, corrupt-archive, and missing-receipt
+  cases against a real fixture release.
+- **Windows job**: the committed `.github/workflows/upgrade-windows.yml` workflow
+  runs job `upgrade-fixture-windows` on `windows-latest`, exercising the same
+  invocation for real on Windows (the only place the rename-aside swap actually
+  runs). Read its state with `gh run list --workflow=upgrade-windows.yml --branch main`,
+  then `gh run watch <id> --exit-status` on the run at the tip being released. The
+  workflow triggers on `workflow_dispatch` and on push to `main` only, so this is a
+  **release-gate check**, read at cut time — **not a validate-time assertion** — there
+  is no PR-time or feature-branch run to point at.
 
 Deploy (marketplace-on-main; each command idempotent, run from the repo root):
 
