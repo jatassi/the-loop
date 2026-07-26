@@ -1,0 +1,165 @@
+{
+  "run": {
+    "prepared_at": "2026-07-26T02:49:38.399Z",
+    "target": "main",
+    "scope": [
+      "cli-upgrade",
+      "fix-execution-pipeline-name-entrypoint",
+      "fix-landing-into-checked-out-target",
+      "write-skills-doctrine"
+    ],
+    "tokens": {
+      "spent": 490955,
+      "by_role": {
+        "plan": 200361,
+        "build": 924241,
+        "drive": 0,
+        "validate": 303624
+      },
+      "attribution": "overlapped"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "cli-upgrade",
+      "workflow_path": "standard",
+      "outcome": "blocked",
+      "reason": "Flaky test reddens the feature's own release gate — /Users/jatassi/Git/the-loop/cli/tests/fixture_release.rs lines 112-133, `stops_serving_and_frees_the_port_when_handle_is_dropped` (branch loop/cli-upgrade--t3). My first run of `cargo test --workspace --features upgrade` on the merged tree FAILED: `port 59473 should be free once the handle is dropped, leaving no bound port behind`. I reproduced it independently: 18 concurrent runs of the compiled fixture_release test binary at `--test-threads 16` produced one more failure (`port 60206 should be free ...`). 30 subsequent serial runs were green, so `Handle::drop` (store stop flag, join the thread, listener dropped inside the closure) is correct — the assertion is what is unsound. `TcpListener::bind((\"127.0.0.1\", port))` fired immediately after `drop(handle)` competes for the just-freed ephemeral port with every other socket on the box: each sibling test starts its own `http_server::serve` (bind to port 0) and spawns `curl` clients that take ephemeral local ports, so EADDRINUSE is a legitimate outcome that says nothing about whether the handle leaked. This is not environmental and cannot be made sound as written.; Consequence, not a separate defect: docs/architecture.md's new Release-runbook ready check names `cargo test --features upgrade` green as a release gate for this very feature, so the flake will randomly block release cuts and train a re-run-and-ignore habit.; Criterion 1 MET — verified by hand outside cargo test, with my own fixture (python loopback server; the committed cargo-dist installer patched to version 99.0.0 with the real sha256 injected into the aarch64-apple-darwin case arm; real `.sha256` sidecar; the dist-built feature-on binary installed with a receipt at version 1.0.0-hand-older): exit 0, stdout exactly {\"from\":\"1.0.0-hand-older\",\"to\":\"99.0.0\",\"updated\":true}, `--version` of the binary at the same path then printed `the-loop 99.0.0`, and all installer chatter went to stderr.; Criterion 2 MET — same fixture with 32 bytes flipped mid-archive: exit 1, stderr `spine: upgrade failed at run-installer: exit code 1` plus the installer's own `ERROR: checksum mismatch` with want/got hashes; the previously installed binary was still at its path and its `--version` exited 0.; Criterion 3 MET — receipt omitted: exit 1, stdout empty, stderr named the resolved receipt path and `curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.sh | sh`; my fixture server logged 0 GET requests, so nothing was fetched.; Criterion 4 MET — `target/release/the-loop upgrade` (built without the feature) exits 1 with `upgrade is not compiled into this build — install the latest release manually: curl -LsSf ...`. `dist plan` accepts the committed `features = [\"upgrade\"]` under `[dist]`, and `dist build --artifacts=local --target=aarch64-apple-darwin` produced an archive whose extracted binary reached the receipt precondition rather than the not-compiled refusal — proving the feature really lands in dist release builds.; Criterion 5 MET — .github/workflows/upgrade-windows.yml defines job `upgrade-fixture-windows` on `windows-latest` running `cargo test --package the-loop --features upgrade --test upgrade_fixture` (workflow_dispatch + push to main only, actions/checkout@v6 matching release.yml); docs/architecture.md's Release runbook names that job, gives the `gh run list`/`gh run watch` recipe, and states it is a release-gate check and not a validate-time assertion.; Tests bite (mutation-checked, all reverted, tree left clean): forcing `updated = false` failed only happy_swap_...; short-circuiting the receipt error to a fallback version failed only missing_receipt_...; dropping the `abort` on installer failure failed only corrupt_archive_.... The committed installer templates under cli/tests/fixtures/installers/ are byte-identical to freshly `dist build --artifacts=global` generated output, so the corrupt-archive case exercises the real verification path.; Not this feature (pre-existing on main, do not charge to cli-upgrade): `cargo clippy --workspace --all-targets` fails on main at 39095a0 too — `clippy::too_long_first_doc_paragraph` (denied via workspace `clippy::nursery`) on the EXECUTION_PIPELINE_SCRIPT doc comment in cli/src/lib.rs. With that single lint allowed, the merged tree is clippy-clean both with and without `--features upgrade`. Worth its own action.; Setup note, not a defect: `npm test`'s oracle corpus spawns `target/release/the-loop`, which a fresh worktree does not have — all 50 oracle cases fail with ENOENT until `cargo build --release` runs. After building: 218/218 green and `npm run check` green (52 features, 0 errors).; Judged acceptable, reported for transparency: `#![allow(dead_code, reason = \"...\")]` in cli/tests/support/mod.rs. It is reasoned, scoped to the shared test-support module (two test binaries each use a subset), and no lint configuration was edited — Cargo.toml's deny-all/pedantic/nursery/cargo regime is untouched.",
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 6,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [
+        {
+          "id": "t1",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/src/receipt.rs",
+            "cli/src/lib.rs"
+          ]
+        },
+        {
+          "id": "t2",
+          "size": "m",
+          "judgment_level": "complex",
+          "footprint": [
+            "cli/src/commands/upgrade.rs",
+            "cli/src/commands/mod.rs",
+            "cli/src/lib.rs",
+            "cli/Cargo.toml",
+            "dist-workspace.toml",
+            "cli/tests/cli_process.rs"
+          ]
+        },
+        {
+          "id": "t3",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/tests/support/mod.rs",
+            "cli/tests/support/http_server.rs",
+            "cli/tests/fixture_release.rs"
+          ]
+        },
+        {
+          "id": "t4",
+          "size": "m",
+          "judgment_level": "complex",
+          "footprint": [
+            "cli/tests/support/mod.rs",
+            "cli/tests/support/fixture_release.rs",
+            "cli/tests/fixtures/installers/the-loop-installer.sh",
+            "cli/tests/fixtures/installers/the-loop-installer.ps1",
+            "cli/tests/fixture_release.rs"
+          ]
+        },
+        {
+          "id": "t5",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/tests/upgrade_fixture.rs"
+          ]
+        },
+        {
+          "id": "t6",
+          "size": "xs",
+          "judgment_level": "standard",
+          "footprint": [
+            ".github/workflows/upgrade-windows.yml",
+            "docs/architecture.md"
+          ]
+        }
+      ],
+      "actual": null
+    },
+    {
+      "id": "fix-execution-pipeline-name-entrypoint",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 20,
+        "insertions": 203,
+        "deletions": 29,
+        "commits": 8,
+        "duration_minutes": 572
+      }
+    },
+    {
+      "id": "fix-landing-into-checked-out-target",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 5,
+        "insertions": 381,
+        "deletions": 11,
+        "commits": 6,
+        "duration_minutes": 547
+      }
+    },
+    {
+      "id": "write-skills-doctrine",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 4,
+        "insertions": 374,
+        "deletions": 2,
+        "commits": 2,
+        "duration_minutes": 19
+      }
+    }
+  ]
+}
