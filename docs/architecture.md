@@ -359,14 +359,21 @@ directory and shadows `~/.cargo/bin` with a stale binary on every future shell. 
 leaked three releases running (v0.7.0, v0.8.0, and again on 2026-07-26, when a dead
 session's 0.5.1 was still winning `which the-loop`); the first two cleanups swept only
 `~/.zshrc` and `~/.profile` and left the bash and fish copies behind. The env var is
-the fix — `test/binary-distribution.test.js` already uses it. Verification install:
+the fix — `test/binary-distribution.test.js` already uses it. **Confirmed working at
+v0.8.1**: the first release in four where all three profile checksums were byte-identical
+before and after the verification install.
+
+`THE_LOOP_INSTALL_DIR` names the install *root*; the installer appends `bin` itself, so
+pass the root and not `<root>/bin` (observed at v0.8.1: passing `<throwaway>/bin`
+installed to `<throwaway>/bin/bin/the-loop`). Verification install:
 
 ```sh
-THE_LOOP_NO_MODIFY_PATH=1 THE_LOOP_INSTALL_DIR=<throwaway>/bin sh the-loop-installer.sh
+THE_LOOP_NO_MODIFY_PATH=1 THE_LOOP_INSTALL_DIR=<throwaway> sh the-loop-installer.sh
 <throwaway>/bin/the-loop --version   # must print <N>
 ```
 
-Then install the release into the durable `$HOME/.cargo` and confirm exactly one
+Then install the release into the durable `$HOME/.cargo` (same form —
+`THE_LOOP_INSTALL_DIR=$HOME/.cargo` lands in `$HOME/.cargo/bin`) and confirm exactly one
 resolution at the new version, in **interactive** shells (`zsh -l -c` is the wrong
 probe — it skips `.zshrc` and reports a false `command not found`):
 
