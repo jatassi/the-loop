@@ -1,0 +1,59 @@
+{
+  "run": {
+    "prepared_at": "2026-07-26T04:42:37.652Z",
+    "target": "main",
+    "scope": [
+      "fix-windows-fixture-psmodulepath",
+      "fix-windows-upgrade-unverified-archive"
+    ],
+    "tokens": {
+      "spent": 184403,
+      "by_role": {
+        "plan": 11278,
+        "build": 82506,
+        "drive": 0,
+        "validate": 22465
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "fix-windows-fixture-psmodulepath",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 4,
+        "insertions": 225,
+        "deletions": 1,
+        "commits": 2,
+        "duration_minutes": 7.916666666666667
+      }
+    },
+    {
+      "id": "fix-windows-upgrade-unverified-archive",
+      "workflow_path": "small",
+      "outcome": "stalled",
+      "reason": "agent stalled on all 6 attempts (no progress for 180000ms each)",
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 0,
+        "validate": 0
+      },
+      "tasks": [],
+      "actual": null
+    }
+  ]
+}
