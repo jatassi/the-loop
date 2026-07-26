@@ -750,6 +750,7 @@
       "id": "agent-surface-trim",
       "title": "Audit and targeted trim of agent-facing surfaces against the five context-engineering shifts (human-attended session)",
       "status": "designed",
+      "execution": "interactive",
       "depends_on": [
         "interactive-feature-type"
       ],
