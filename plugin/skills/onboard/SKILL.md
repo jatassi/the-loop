@@ -50,10 +50,6 @@ exist once a stack is chosen (test harness, lint, pre-commit) are captured by De
 it decides the stack — including the lint-policy elicitation, recommending stricter per
 stack and landing it in the project's real lint config.
 
-The through-line: on a fresh empty repo, onboarding runs the configure leg before Define,
-every configure question carrying a recommended answer, and the project comes out the far
-side fully hooked.
-
 ## 3 · Brownfield route — configure leg, then assess-and-fill
 
 A brownfield repo already carries evidence of how it is built, tested, and shipped.
@@ -115,6 +111,3 @@ Design** — grounded in the code that's there. Define turns the existing system
 intended direction into a brief; Design writes the system narrative and the feature graph
 over the real code, quoting real interfaces rather than imagined shapes and completing any
 architecture.md skeleton this route staged.
-
-Onboarding does **no graph surgery**: it produces settings and `docs/architecture.md`
-sections only. The feature graph stays Design's output.
