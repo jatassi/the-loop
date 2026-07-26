@@ -1,6 +1,6 @@
 ---
 name: write-skills
-description: Create or revise agent skills — invocation choice, trigger descriptions, information hierarchy, leading words, and the failure modes to diagnose. Use when adding a new skill, editing or pruning an existing one, sharpening a description that isn't triggering, deciding what belongs in a skill versus references or scripts, or diagnosing a skill that misbehaves.
+description: Create or revise agent skills and agent definitions — invocation choice, trigger descriptions, information hierarchy, leading words, and the failure modes to diagnose. Use when adding a new skill, editing or pruning an existing one, writing or editing an agent definition under `agents/`, sharpening a description that isn't triggering, deciding what belongs in a skill versus references or scripts, or diagnosing a skill or agent that misbehaves.
 ---
 
 # Write skills
@@ -74,6 +74,24 @@ load**, so a description earns even harder pruning than the body:
 - **Ship self-contained.** A skill travels — it may run in a repo where your
   project-internal docs, decision records, and personal skills don't exist.
   Never point at material the skill's runtime can't reach.
+
+## Agent definitions
+
+An agent definition — a file under `agents/` — has a description and a body, so
+everything above governs it. Three deltas:
+
+- **The description is a delegation trigger.** It decides whether this worker is
+  spawned at all, not whether a body gets read inside a session already under
+  way. Word it as the job a caller wants done, so the caller reaches it by
+  naming the work.
+- **The `tools:` list is part of the interface.** A capability the body assumes
+  and the frontmatter withholds is a defect the reader cannot diagnose — the
+  worker hits a refusal with no way to see that the definition, not the task,
+  was wrong. Grant what the body's steps demand, and nothing they never touch.
+- **The body is a system prompt read cold.** The worker is stateless: no
+  conversation history, no earlier turns, and no way to ask a follow-up
+  question. Name the inputs it will be handed, and keep every **completion
+  criterion** checkable from what it can see alone.
 
 ## Information hierarchy
 
@@ -214,6 +232,11 @@ Use these to diagnose issues with a skill:
   say nothing. The test: does it change behaviour versus the default? A weak
   leading word (_be thorough_ when the agent is already thorough-ish) is a
   no-op; the fix is a stronger word (_relentless_), not a different technique.
+- **Negation** — steering by prohibition, which names the elephant: "do not
+  write placeholder tests" puts _placeholder tests_ in front of the agent.
+  Prompt the positive — state the move you want. Keep a prohibition only as a
+  hard guardrail that cannot be phrased positively, and pair it with what to do
+  instead.
 
 ## Edit pass
 

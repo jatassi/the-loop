@@ -775,7 +775,7 @@
     {
       "id": "write-skills-doctrine",
       "title": "write-skills covers agent definitions — trigger description, an agent-definition deltas section, and the vendored Negation failure mode",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [],
       "acceptance": [
         "Given plugin/skills/write-skills/SKILL.md, when its frontmatter description is read, then it names agent-definition authoring alongside skill authoring, so a session creating or editing a file under plugin/agents/ triggers it",
