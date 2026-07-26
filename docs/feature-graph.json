@@ -770,7 +770,7 @@
     {
       "id": "interactive-feature-type",
       "title": "Execution-mode marker on feature records — human-attended features as first-class, excluded from autonomous runs",
-      "status": "validated",
+      "status": "shipped",
       "depends_on": [
         "execute-skill"
       ],
