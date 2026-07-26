@@ -2,16 +2,16 @@
 
 ## Digest
 
-_21 run(s), 30 feature(s) recorded._
+_22 run(s), 31 feature(s) recorded._
 
 ### Workflow paths
 | path | runs | median agents | median duration |
 | --- | --- | --- | --- |
-| small | 16 | 3 | 31.5 |
+| small | 17 | 3 | 29 |
 | standard | 14 | 4.5 | 312 |
 
 ### Re-slices
-0 of 30 feature(s) re-sliced (0%).
+0 of 31 feature(s) re-sliced (0%).
 
 ### Footprint accuracy by size class
 | size | features | median planned files | median actual files |
@@ -28,8 +28,8 @@ _21 run(s), 30 feature(s) recorded._
 
 ### Token split (overhead vs build)
 Lifetime: 62% overhead / 38% build.
-Last-10 median: 100% overhead / 0% build.
-Attribution: 9 of 21 run(s) overlapped — the overhead/build split is approximate.
+Last-10 median: 91% overhead / 9% build.
+Attribution: 9 of 22 run(s) overlapped — the overhead/build split is approximate.
 
 ## Runs
 
@@ -54,3 +54,4 @@ Attribution: 9 of 21 run(s) overlapped — the overhead/build split is approxima
 - 2026-07-26T03:58:02.345Z · target main · [cli-upgrade] · 1 validated · 568313 tokens · serial
 - 2026-07-26T04:42:37.652Z · target main · [fix-windows-fixture-psmodulepath, fix-windows-upgrade-unverified-archive] · 1 validated, 1 stalled · 184403 tokens · serial
 - 2026-07-26T13:47:29.309Z · target main · [fix-windows-upgrade-unverified-archive] · 1 validated · 304578 tokens · serial
+- 2026-07-26T15:19:43.685Z · target main · [execute-skill] · 1 validated · 84502 tokens · serial

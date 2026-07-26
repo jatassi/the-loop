@@ -1,0 +1,43 @@
+{
+  "run": {
+    "prepared_at": "2026-07-26T15:19:43.685Z",
+    "target": "main",
+    "scope": [
+      "execute-skill"
+    ],
+    "tokens": {
+      "spent": 84502,
+      "by_role": {
+        "plan": 4152,
+        "build": 46326,
+        "drive": 0,
+        "validate": 31413
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "execute-skill",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 7,
+        "insertions": 567,
+        "deletions": 67,
+        "commits": 1,
+        "duration_minutes": 28.333333333333332
+      }
+    }
+  ]
+}
