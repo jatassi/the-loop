@@ -1,5 +1,5 @@
 {
-  "design_version": 35,
+  "design_version": 36,
   "features": [
     {
       "id": "document-foundation",
@@ -693,13 +693,17 @@
       "title": "/begin plugin-CLI version handshake — auto-heal the breaking skew direction at the front door",
       "status": "designed",
       "depends_on": [
-        "cli-upgrade"
+        "cli-upgrade",
+        "agent-surface-trim"
       ],
       "acceptance": [
         "the begin skill's context preamble captures both the installed binary version (the-loop --version) and the plugin manifest version, and the skill states that a failed capture skips the handshake without blocking orientation",
         "the skill body directs: binary older than plugin runs the-loop upgrade before any route action and reports one line on success; on upgrade failure it reports one line naming the manual install one-liner and continues on the old binary",
         "the skill body directs: binary newer than plugin proceeds with a one-line marketplace plugin-update nudge, and equal versions produce no handshake output",
         "the missing-binary posture no longer claims there is no version handshake, and its install one-liner remains the stated remedy for a missing binary and a failed upgrade"
+      ],
+      "notes": [
+        "depends_on agent-surface-trim 2026-07-25 for two reasons: it is the last of the four features editing plugin/skills/begin/SKILL.md, so the edge linearizes that file; and it is deliberately held back as the already-designed backlog feature the trim's empirical criterion runs through the pipeline end-to-end after the trim lands"
       ]
     },
     {
@@ -708,7 +712,8 @@
       "title": "execute skill — the loop's launch surface, extracted from /begin",
       "status": "designed",
       "depends_on": [
-        "fix-execution-pipeline-name-entrypoint"
+        "fix-execution-pipeline-name-entrypoint",
+        "write-skills-doctrine"
       ],
       "acceptance": [
         "plugin/skills/execute/SKILL.md exists with frontmatter name execute, a scope argument-hint, and allowed-tools covering the CLI, git, Read, and Workflow; its body carries the whole launch recipe — prepare-execution-context with --features, --target-branch, and --script-out; Workflow({scriptPath}) with no args and the stated reason why; and the four-outcome run-summary relay (completed, blocked, stalled, halted)",
@@ -720,7 +725,8 @@
       ],
       "notes": [
         "designed 2026-07-25 from cause 0 of docs/bugs/fix-execution-pipeline-name-entrypoint.md — no separate brief; the missing launch surface is what sent a consuming session into the broken by-name entry point",
-        "extraction, not addition: the recipe already lives at plugin/skills/begin/SKILL.md, and the depends_on edge sequences the fix's path churn ahead of the extraction so both features' edits to begin/SKILL.md do not collide at the merge"
+        "extraction, not addition: the recipe already lives at plugin/skills/begin/SKILL.md, and the depends_on edge sequences the fix's path churn ahead of the extraction so both features' edits to begin/SKILL.md do not collide at the merge — the fix edits begin/SKILL.md's launch leg (it names workflows/execution-pipeline.js there) and this feature deletes that same region",
+        "depends_on write-skills-doctrine added 2026-07-25 so this new skill surface is authored against the upgraded authoring doctrine rather than the version agent-surface-trim is about to replace"
       ]
     },
     {
@@ -767,16 +773,43 @@
       ]
     },
     {
-      "id": "agent-surface-trim",
-      "title": "Audit and targeted trim of agent-facing surfaces against the five context-engineering shifts (human-attended session)",
+      "id": "write-skills-doctrine",
+      "title": "write-skills covers agent definitions — trigger description, an agent-definition deltas section, and the vendored Negation failure mode",
       "status": "designed",
       "depends_on": [],
       "acceptance": [
-        "Given the in-scope inventory (5 agent definitions, 16 skill files, CLAUDE.md, and execution-pipeline.js's assembled prompt strings), when the adjudication session ends, then every file has been read against the five shifts and every surfaced candidate carries an explicit keep, rewrite, relocate, or delete ruling — no file skipped, no candidate undecided",
+        "Given plugin/skills/write-skills/SKILL.md, when its frontmatter description is read, then it names agent-definition authoring alongside skill authoring, so a session creating or editing a file under plugin/agents/ triggers it",
+        "Given the skill body, when it is read, then it carries a compact agent-definitions section stating the three deltas — the description is a delegation trigger, the tools: list is part of the interface, and the body is a system prompt read cold by a stateless worker — placed within the existing information-hierarchy structure rather than appended at the end",
+        "Given the Failure modes section, when it is read, then it carries Negation: steering by prohibition names the elephant, so prompt the positive; keep a prohibition only as a hard guardrail that cannot be phrased positively, and pair it with what to do instead",
+        "Given the landed diff, when plugin/skills/write-skills/ is inspected, then no ADR number and no path into this repo's own docs appears, its GLOSSARY.md companion still resolves, and the skill remains self-contained for a consuming project that has only the plugin and the binary",
+        "Given the landed skill, when the Pruning and Failure modes sections are located, then both remain in place and unrenamed, so the later agent-surface-trim session can fold its generalized judgment calls into them without restructuring"
+      ],
+      "notes": [
+        "split from agent-surface-trim 2026-07-25: these three edits were already resolved in that feature's design and do not depend on the adjudication session, so they land ahead of execute-skill and interactive-execution and give both new skill surfaces the upgraded doctrine to be authored against. agent-surface-trim keeps the session-derived half",
+        "no separate brief — the intent is carried by docs/briefs/agent-surface-trim.md, following the execute-skill precedent",
+        "the Negation failure mode is vendored from upstream writing-great-skills (2026-07-06)"
+      ]
+    },
+    {
+      "id": "agent-surface-trim",
+      "title": "Audit and targeted trim of agent-facing surfaces against the five context-engineering shifts (human-attended session)",
+      "status": "designed",
+      "depends_on": [
+        "interactive-feature-type",
+        "fix-landing-into-checked-out-target"
+      ],
+      "acceptance": [
+        "Given the in-scope inventory (5 agent definitions, 18 skill files — including the execute and interactive-execution surfaces added by this feature's dependencies — CLAUDE.md, and cli/assets/execution-pipeline.js's assembled prompt strings), when the adjudication session ends, then every file has been read against the five shifts and every surfaced candidate carries an explicit keep, rewrite, relocate, or delete ruling — no file skipped, no candidate undecided",
         "Given the landed trim, when any instruction is searched for within a single surface, then it appears once — and where the same instruction survives on two shipped surfaces, the ruling records that both readers need it and neither can reach the other, rather than cutting it; and the code-quality pack is reachable by its consumers: all five agent definitions carry the Skill tool and a spawned build-shaped agent was observed invoking the pack from a target-project worktree before inline duplicates were removed",
         "Given the landed trim, when `grep -rE \"ADR-[0-9]{4}\" plugin/agents/ plugin/skills/` runs, then it returns nothing — each of the seven pre-seeded citations (drive.md ×3, record.md, validate.md, design/SKILL.md, release/SKILL.md) was ruled on and its claim either kept without the citation or removed — while `docs/…` paths naming the consuming project's own artifacts remain intact and were not swept",
-        "Given the landed trim, when write-skills is read, then its description triggers on agent-definition authoring, its body carries an agent-definition deltas section and the vendored Negation failure mode, and the session's generalized judgment calls appear in its Pruning/Failure-modes doctrine — and a write-skills pass ran over every touched surface before landing",
-        "Given the trimmed surfaces on main, when one already-designed backlog feature is run through the pipeline end-to-end, then plan, build, and validate all complete with parseable reports and no block attributable to the trim"
+        "Given the landed trim, when write-skills is read, then the session's generalized judgment calls appear in its Pruning and Failure modes sections as principles rather than a per-file changelog — and a write-skills pass ran over every touched surface before landing",
+        "Given the trimmed surfaces on main, when begin-version-handshake is run through the pipeline end-to-end, then plan, build, and validate all complete with parseable reports and no block attributable to the trim",
+        "Given this feature ran as an attended session, when the run is reviewed, then it was reached through the interactive door end to end — the record carried \"execution\": \"interactive\", the-loop status placed it in interactiveReady rather than eligibleSet, and the session was launched by the interactive-execution skill via prepare-execution-context --interactive"
+      ],
+      "notes": [
+        "depends_on interactive-feature-type 2026-07-25 (human's call): this feature is the dogfood for the execution-mode marker, so the marker ships first and the attended session is reached through the interactive door rather than by the human remembering. The edge also covers the plugin/workflows/execution-pipeline.js delete-modify collision transitively, via execute-skill's edge on fix-execution-pipeline-name-entrypoint",
+        "depends_on fix-landing-into-checked-out-target sequences that fix's rewrite of record.md's and validate.md's publish prose ahead of this audit, so the session does not spend rulings on prose about to be replaced",
+        "the three pre-decided write-skills edits were split out as write-skills-doctrine so they land before execute-skill and interactive-execution are authored; what remains here is the session-derived fold-in"
       ]
     },
     {
@@ -807,10 +840,14 @@
       "id": "graph-schema-forward-compat",
       "title": "A binary older than the graph schema silently discards fields it does not know",
       "status": "proposed",
+      "depends_on": [
+        "interactive-feature-type"
+      ],
       "notes": [
         "surfaced 2026-07-25 by interactive-feature-type's coherence sweep. set-status parses, mutates status, and re-emits the whole graph without validating; emit deliberately drops unknown keys (asserted by a test). So an older binary strips any newer field, with no error — and it runs as the validator's last act",
         "forward compatibility must ship before the field it protects, so this could not help interactive-feature-type's own landing; it protects the next schema addition",
-        "candidate remedies to weigh at design: make emit preserve unknown keys, or make set-status validate before writing — the second fails loudly instead of silently, the first keeps older binaries usable on newer graphs"
+        "candidate remedies to weigh at design: make emit preserve unknown keys, or make set-status validate before writing — the second fails loudly instead of silently, the first keeps older binaries usable on newer graphs",
+        "depends_on interactive-feature-type 2026-07-25: both rewrite cli/src/graph.rs's parse and emit paths, so the edge sequences them rather than letting the graph schedule them concurrently"
       ]
     }
   ]

@@ -18,12 +18,25 @@ time, and the human rules on each — decision and edit in one step, in a
 worktree, merged to main at the human's gate. Do not scope this feature into an
 autonomous run.
 
-`interactive-feature-type` makes this mode first-class: once it lands and the new
-binary is installed, this record carries `execution: "interactive"` and the tooling
-enforces the exclusion instead of the human remembering. **Order matters** — an
-older binary silently strips an `execution` key it does not know, and it does so
-inside `set-status`, the validator's last act. Mark this record only after the
-upgraded binary is installed. Until then the exclusion rests on this section.
+`interactive-feature-type` makes this mode first-class, and this feature now
+**depends on** it — so the tooling enforces the exclusion rather than the human
+remembering, and this session is the marker's first real use. Sequence:
+
+1. `interactive-feature-type` ships; install the upgraded binary before anything
+   else touches the graph.
+2. Hand-add `"execution": "interactive"` to this record — with the new binary.
+   **Order matters**: an older binary silently strips an `execution` key it does
+   not know, and it does so inside `set-status`, the validator's last act.
+3. Confirm `the-loop status --json` puts this id in `interactiveReady` and not in
+   `eligibleSet`, with proposal kind `advance-interactive`.
+4. Launch through `interactive-execution`, not by hand.
+
+Because this session is the first-ever caller of `interactive-execution`, prove
+the door before committing to the session: run step 3, then
+`prepare-execution-context --interactive` on this id, plus the two refusals (an
+autonomous id with `--interactive`, this id without it). That exercises scope
+resolution and context assembly for free; a broken door then surfaces before the
+adjudication starts rather than in the middle of it.
 
 ## The shipped surface stands alone
 
@@ -74,9 +87,9 @@ reach the other?*
 | surface | extent |
 |---|---|
 | `plugin/agents/*.md` | 5 files — build, drive, plan, record, validate |
-| `plugin/skills/**/*.md` | 16 files — all skills including reference files |
+| `plugin/skills/**/*.md` | 18 files — all skills including reference files, and including `execute` and `interactive-execution`, the two surfaces this feature's dependencies add |
 | `CLAUDE.md` | project root |
-| `plugin/workflows/execution-pipeline.js` | the assembled prompt strings only (`resourceGuide`, `planPrompt`, `buildPrompt`, `smallBuildPrompt`, `validatePrompt`) — prose edits, no logic changes |
+| `cli/assets/execution-pipeline.js` | the assembled prompt strings only (`resourceGuide`, `planPrompt`, `buildPrompt`, `smallBuildPrompt`, `validatePrompt`) — prose edits, no logic changes |
 
 Out of scope: `eval/kernels/` (drifted copies, eval not gating this), the Rust
 CLI, the workflow scheduler, artifact schemas.
@@ -98,17 +111,17 @@ skill.
 
 **Authoring doctrine extends `write-skills` in place** — the-loop's
 writing-for-agents surface (same generalization Matt Pocock announced for
-`writing-great-skills` on 2026-07-23, unshipped upstream). Three edits: the
-description gains agent-definition triggers; the body gains a compact "Agent
-definitions" deltas section (description = delegation trigger; `tools:` list is
-part of the interface; the body is a system prompt read cold by a stateless
-worker); and the **Negation** failure mode is vendored from upstream
-(2026-07-06): steering by prohibition names the elephant — prompt the positive;
-keep a prohibition only as a hard guardrail you can't phrase positively, and
-pair it with what to do instead. The session's generalized judgment calls fold
-into the existing Pruning / Failure-modes sections. This write-up is the
-durable record of the pass — it carries reasoning, not just conclusions, but as
-principles, never a per-file changelog.
+`writing-great-skills` on 2026-07-23, unshipped upstream). The three
+**pre-decided** edits — description triggers on agent-definition authoring, an
+"Agent definitions" deltas section, and the vendored **Negation** failure mode —
+were split out as `write-skills-doctrine` and land ahead of this session, so
+that `execute` and `interactive-execution` are authored against the upgraded
+doctrine rather than audited against it afterward.
+
+What remains here is the half that needs the session to have happened: the
+session's generalized judgment calls fold into the existing Pruning and Failure
+modes sections. This write-up is the durable record of the pass — it carries
+reasoning, not just conclusions, but as principles, never a per-file changelog.
 
 **Review order: structural pass first, then per-file in traffic order.**
 
@@ -149,11 +162,16 @@ coaching); pure noise is dismissed without record.
 ## Validation
 
 Human-judged against the acceptance criteria in the feature graph. The
-empirical leg: after the trim lands on main, run one already-designed backlog
-feature (`cli-upgrade`, `begin-version-handshake`, or `execute-skill`) through
-the pipeline end-to-end on the trimmed surfaces — real work shipped and the
-gross-breakage check in one act. A block attributable to the trim reopens the
-relevant ruling; then `set-status validated` → `shipped` by hand.
+empirical leg: after the trim lands on main, run `begin-version-handshake`
+through the pipeline end-to-end on the trimmed surfaces — real work shipped and
+the gross-breakage check in one act. A block attributable to the trim reopens
+the relevant ruling; then `set-status validated` → `shipped` by hand.
+
+That feature is **held back for this purpose** — it depends on this one, so it
+cannot be spent early. Its predecessors on the backlog (`cli-upgrade`,
+`fix-execution-pipeline-name-entrypoint`, `fix-landing-into-checked-out-target`,
+`write-skills-doctrine`, `execute-skill`, `interactive-feature-type`) will all
+have shipped by the time this session runs.
 
 ## Risks accepted in the brief
 

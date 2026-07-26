@@ -167,5 +167,13 @@ green.
 
 `fix-execution-pipeline-name-entrypoint` — build-order edge. The fix moves the
 engine and rewrites the paths this skill's prose would otherwise name, and both
-features edit `plugin/skills/begin/SKILL.md`'s launch region. Sequencing them puts
-the path churn ahead of the extraction instead of colliding with it at the merge.
+features edit `plugin/skills/begin/SKILL.md`'s launch region — the fix edits it
+because the launch leg names `workflows/execution-pipeline.js` at lines 106 and
+117, and this feature deletes that whole region. Sequencing them puts the path
+churn ahead of the extraction instead of colliding with it at the merge.
+
+`write-skills-doctrine` — content edge. This is a new skill surface and its
+constraints already require a `write-skills` pass before landing. That pass
+should read the upgraded doctrine (agent-definition deltas, the Negation failure
+mode), not the version `agent-surface-trim` is about to fold its session
+judgments into.
