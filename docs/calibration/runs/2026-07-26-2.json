@@ -1,0 +1,105 @@
+{
+  "run": {
+    "prepared_at": "2026-07-26T03:58:02.345Z",
+    "target": "main",
+    "scope": [
+      "cli-upgrade"
+    ],
+    "tokens": {
+      "spent": 568313,
+      "by_role": {
+        "plan": 0,
+        "build": 0,
+        "drive": 0,
+        "validate": 35894
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "cli-upgrade",
+      "workflow_path": "standard",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 0,
+        "build": 0,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [
+        {
+          "id": "t1",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/src/receipt.rs",
+            "cli/src/lib.rs"
+          ]
+        },
+        {
+          "id": "t2",
+          "size": "m",
+          "judgment_level": "complex",
+          "footprint": [
+            "cli/src/commands/upgrade.rs",
+            "cli/src/commands/mod.rs",
+            "cli/src/lib.rs",
+            "cli/Cargo.toml",
+            "dist-workspace.toml",
+            "cli/tests/cli_process.rs"
+          ]
+        },
+        {
+          "id": "t3",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/tests/support/mod.rs",
+            "cli/tests/support/http_server.rs",
+            "cli/tests/fixture_release.rs"
+          ]
+        },
+        {
+          "id": "t4",
+          "size": "m",
+          "judgment_level": "complex",
+          "footprint": [
+            "cli/tests/support/mod.rs",
+            "cli/tests/support/fixture_release.rs",
+            "cli/tests/fixtures/installers/the-loop-installer.sh",
+            "cli/tests/fixtures/installers/the-loop-installer.ps1",
+            "cli/tests/fixture_release.rs"
+          ]
+        },
+        {
+          "id": "t5",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/tests/upgrade_fixture.rs"
+          ]
+        },
+        {
+          "id": "t6",
+          "size": "xs",
+          "judgment_level": "standard",
+          "footprint": [
+            ".github/workflows/upgrade-windows.yml",
+            "docs/architecture.md"
+          ]
+        }
+      ],
+      "actual": {
+        "files_touched": 18,
+        "insertions": 5363,
+        "deletions": 3,
+        "commits": 22,
+        "duration_minutes": 20359
+      }
+    }
+  ]
+}
