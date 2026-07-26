@@ -853,7 +853,7 @@
     {
       "id": "fix-windows-fixture-psmodulepath",
       "title": "the upgrade fixture cannot resolve any Windows PowerShell cmdlet when the test process was launched under pwsh 7",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [],
       "acceptance": [
         "given a windows-latest runner where the test process inherited pwsh 7's PSModulePath, when the upgrade fixture spawns Windows PowerShell to compute the sidecar hash or to run the generated .ps1 installer, then the child resolves Get-FileHash and the installer's cmdlets, and no upgrade_fixture test panics inside fixture bring-up at fixture_release.rs",

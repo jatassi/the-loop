@@ -438,6 +438,15 @@ impl FixtureRelease {
                 "LOCALAPPDATA".to_string(),
                 path_string(&self.root.join("localappdata")),
             );
+            // Pin the module path here too, so the installer's own
+            // PowerShell process (spawned in `install`, below) can't have
+            // its cmdlet lookups shadowed the same way `sha256_sidecar_line`
+            // could — see `windows_powershell_module_path`.
+            let system_root = std::env::var("SystemRoot").ok();
+            env.insert(
+                "PSModulePath".to_string(),
+                windows_powershell_module_path(system_root.as_deref()),
+            );
         }
         env
     }
@@ -606,6 +615,26 @@ fn insert_shell_checksum(installer: &str, archive_name: &str, archive_sha256: &s
     patched
 }
 
+/// The directory Windows PowerShell 5.1 autoloads its built-in modules from
+/// (including `Microsoft.PowerShell.Utility`, home of `Get-FileHash`), rooted
+/// at `system_root` (normally `%SystemRoot%`, falling back to `C:\Windows`).
+///
+/// Every `powershell` spawn below pins `PSModulePath` to exactly this
+/// directory rather than trusting whatever the child inherits. Left
+/// inherited, a GitHub Windows runner's `run:` step defaults to pwsh 7, whose
+/// `PSModulePath` lists PowerShell 7's own module directory *first*; a
+/// Windows PowerShell 5.1 child launched from that environment then
+/// autoloads PowerShell 7's Core-only `Microsoft.PowerShell.Utility`
+/// manifest, which exports nothing usable to 5.1, so cmdlets like
+/// `Get-FileHash` silently fail to resolve. Pinning the path here means the
+/// lookup can't be shadowed by whatever shell spawned this test process.
+fn windows_powershell_module_path(system_root: Option<&str>) -> String {
+    let root = system_root
+        .filter(|value| !value.is_empty())
+        .unwrap_or("C:\\Windows");
+    format!("{root}\\system32\\WindowsPowerShell\\v1.0\\Modules")
+}
+
 /// A `<hash> *<archive name>` sidecar line for `archive_name` under `dir`,
 /// produced by the same tool the installer verifies with.
 fn sha256_sidecar_line(dir: &Path, archive_name: &str) -> String {
@@ -613,8 +642,13 @@ fn sha256_sidecar_line(dir: &Path, archive_name: &str) -> String {
         let script = format!(
             "(Get-FileHash -Algorithm SHA256 -LiteralPath '{archive_name}').Hash.ToLower()"
         );
+        let system_root = std::env::var("SystemRoot").ok();
         let output = Command::new("powershell")
             .args(["-NoProfile", "-Command", &script])
+            .env(
+                "PSModulePath",
+                windows_powershell_module_path(system_root.as_deref()),
+            )
             .current_dir(dir)
             .output()
             .unwrap_or_else(|err| {
@@ -699,4 +733,33 @@ fn unique_temp_root(label: &str) -> PathBuf {
     fs::create_dir_all(&root)
         .unwrap_or_else(|err| panic!("create fixture root {}: {err}", root.display()));
     root
+}
+
+#[cfg(test)]
+mod tests {
+    use super::windows_powershell_module_path;
+
+    /// The value every fixture `powershell` spawn pins `PSModulePath` to
+    /// must be Windows PowerShell 5.1's own built-in module directory —
+    /// never left to whatever the test process inherited (on CI, pwsh 7's
+    /// `PSModulePath`, which shadows `Get-FileHash`; see
+    /// `windows_powershell_module_path`'s doc comment).
+    #[test]
+    fn pins_to_windows_powershells_own_module_directory_under_system_root() {
+        assert_eq!(
+            windows_powershell_module_path(Some("C:\\Windows")),
+            "C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules",
+        );
+        // No SystemRoot in the environment (or an empty one) still resolves
+        // to a usable path rather than a shell spawn with an empty
+        // PSModulePath.
+        assert_eq!(
+            windows_powershell_module_path(None),
+            "C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules",
+        );
+        assert_eq!(
+            windows_powershell_module_path(Some("")),
+            "C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules",
+        );
+    }
 }

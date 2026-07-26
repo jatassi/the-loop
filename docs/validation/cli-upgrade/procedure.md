@@ -162,6 +162,19 @@ that `features = ["upgrade"]` under `[dist]` reaches the release build.
 --branch main`, then `gh run watch <id> --exit-status` on the run at the tip
 being released. Windows is the only place the rename-aside swap actually runs.
 
+That job's greenness is also the only thing that proves the *fixture's* Windows
+branch works at all: `sha256_sidecar_line` and `install` spawn Windows
+PowerShell, and a green local `cargo test --features upgrade` on macOS takes the
+`sha256sum` branch instead and proves nothing about them. The job's first-ever
+execution (run 30187625535, the `v0.6.0` bump) died 0/3 in fixture bring-up on a
+`PSModulePath` inherited from the runner's pwsh 7 shell; `PSModulePath` is now
+pinned at both spawn sites (`fix-windows-fixture-psmodulepath`, whose procedure
+carries the full read). So when reading this gate, distinguish the two failure
+shapes: a panic at `cli\tests\support\fixture_release.rs` is fixture bring-up
+and blocks nothing about the product, while a panic inside
+`cli\tests\upgrade_fixture.rs` is a test reaching its own assertion — read it as
+a real product signal.
+
 ## Expected observations on replay
 
 - `npm test`, `npm run check`, `cargo test`, `cargo test --features upgrade`,
