@@ -131,7 +131,9 @@ passes — nothing lands ahead of it.
 ## 6 · Commit and hand off
 
 One commit: the RCA doc plus the graph amendment (the fix, `design_version`
-bumped). Then offer the prepare-execution-context leg: `the-loop prepare-execution-context --features fix-<slug>`.
+bumped). Then offer to launch the fix now: the `execute` skill, scoped to
+`fix-<slug>` — it presents the scope and target branch and waits for the human's
+confirm before the run starts.
 
 ## The fallback discipline (no diagnosis skill bound)
 

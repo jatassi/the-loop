@@ -710,7 +710,7 @@
       "id": "execute-skill",
       "section": "post-replatform amendments",
       "title": "execute skill — the loop's launch surface, extracted from /begin",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [
         "write-skills-doctrine"
       ],

@@ -29,27 +29,32 @@ test('frame, ship, and craft skill directories are renamed with matching frontma
   }
 });
 
-// ── criterion 2: plugin/skills/begin/SKILL.md routes on the new CLI subcommand, flags,
-// project-state values, and eligible-set proposal kind, and names the renamed
-// workflow script path ──
-test('plugin/skills/begin/SKILL.md routes on the collapsed status subcommand, prepare-execution-context flags, and the new project states', () => {
+// ── criterion 2: the orientation surface (begin) and the launch surface (execute) route
+// on the new CLI subcommand, flags, project-state values, and eligible-set proposal
+// kind, and name the renamed workflow script path. The launch recipe moved to the
+// execute skill when it became the loop's named launch surface, so the recipe half of
+// this criterion is asserted where the recipe now lives. ──
+test('the begin and execute skills route on the collapsed status subcommand, prepare-execution-context flags, and the new project states', () => {
   const cmd = read('plugin/skills/begin/SKILL.md');
+  const execute = read('plugin/skills/execute/SKILL.md');
 
   assert.match(cmd, /!`the-loop status --json/, 'the context call should read `status --json` on the bare binary');
-  assert.match(cmd, /`the-loop status`/, 'the closing call should read bare `status`');
-  assert.ok(!/\borient\b/.test(cmd), 'the retired `orient` subcommand should not be named');
-  assert.ok(!/\bledger\b/.test(cmd), 'the retired `ledger` subcommand should not be named');
+  assert.match(execute, /`the-loop status`/, 'the closing call should read bare `status`');
+  for (const [label, text] of [['begin', cmd], ['execute', execute]]) {
+    assert.ok(!/\borient\b/.test(text), `${label}: the retired \`orient\` subcommand should not be named`);
+    assert.ok(!/\bledger\b/.test(text), `${label}: the retired \`ledger\` subcommand should not be named`);
+    assert.ok(!text.includes('--scope'), `${label}: the retired --scope flag should not be named`);
+    assert.ok(!/--target\b(?!-branch)/.test(text), `${label}: the retired --target flag should not be named bare`);
+    assert.ok(!text.includes('advance-frontier'), `${label}: the retired advance-frontier kind should not be named`);
+    assert.ok(!text.includes('inner-loop.js'), `${label}: the retired workflow script path should not be named`);
+  }
 
-  assert.match(cmd, /prepare-execution-context --features <id,id,…> --target-branch <ref>/);
-  assert.ok(!cmd.includes('--scope'), 'the retired --scope flag should not be named');
-  assert.ok(!/--target\b(?!-branch)/.test(cmd), 'the retired --target flag should not be named bare');
+  assert.match(execute, /prepare-execution-context --features <id,id,…> --target-branch <ref>/);
 
   assert.match(cmd, /`unconfigured`\s*\/\s*`partial`\s*\/\s*`configured`/);
   assert.match(cmd, /`advance-eligible-set`/);
-  assert.ok(!cmd.includes('advance-frontier'), 'the retired advance-frontier kind should not be named');
 
-  assert.match(cmd, /canonical execution-pipeline engine script/);
-  assert.ok(!cmd.includes('inner-loop.js'), 'the retired workflow script path should not be named');
+  assert.match(execute, /canonical execution-pipeline engine script/);
 });
 
 // ── regression guard: Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` (braced) in
@@ -80,17 +85,17 @@ test('every CLAUDE_PLUGIN_ROOT reference in skills/ is brace-wrapped', () => {
   }
 });
 
-// ── run-presentation criterion 4: the launch leg passes --script-out, and the
+// ── run-presentation criterion 4: the launch surface passes --script-out, and the
 // Workflow call's scriptPath is that spliced per-run script — never the canonical
-// workflows/ file launched directly ──
-test('plugin/skills/begin/SKILL.md passes --script-out on the prepare-execution-context call, and scriptPath is bound to that path rather than the canonical workflow file', () => {
-  const cmd = read('plugin/skills/begin/SKILL.md');
+// engine file launched directly ──
+test('the execute skill passes --script-out on the prepare-execution-context call, and scriptPath is bound to that path rather than the canonical engine file', () => {
+  const cmd = read('plugin/skills/execute/SKILL.md');
 
   assert.match(cmd, /prepare-execution-context --features <id,id,…> --target-branch <ref>.*--script-out/);
   assert.match(cmd, /scriptPath.*--script-out/);
   assert.ok(
-    !/scriptPath[^\n]*CLAUDE_PLUGIN_ROOT\/workflows\/execution-pipeline\.js/.test(cmd),
-    'scriptPath should never bind directly to the canonical workflows/ file',
+    !/scriptPath[^\n]*assets\/execution-pipeline\.js/.test(cmd),
+    'scriptPath should never bind directly to the canonical engine file',
   );
 });
 
