@@ -10,6 +10,12 @@
       "command": "npm ci && cargo fetch"
     },
     "modelBindings": {
+      "build.rote": {
+        "model": "sonnet"
+      },
+      "build.standard": {
+        "model": "sonnet"
+      },
       "validate": {
         "model": "opus"
       }
