@@ -864,7 +864,7 @@
     {
       "id": "fix-windows-upgrade-unverified-archive",
       "title": "on Windows, the-loop upgrade replaces a working binary with an unverified archive and destroys the install when that archive is corrupt",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [
         "fix-windows-fixture-psmodulepath"
       ],

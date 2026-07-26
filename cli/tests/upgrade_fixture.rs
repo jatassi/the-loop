@@ -15,7 +15,7 @@
 
 mod support;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use support::fixture_release::{FixtureRelease, InstallRun};
@@ -59,6 +59,14 @@ fn run_upgrade(
         .envs(env)
         .output()
         .unwrap_or_else(|err| panic!("run {} upgrade: {err}", binary.display()))
+}
+
+/// `<binary>.old` — where the Windows leg renames the running binary aside.
+/// Nothing may ever be left there once `upgrade` has exited.
+fn aside_path(binary: &Path) -> PathBuf {
+    let mut path = binary.as_os_str().to_os_string();
+    path.push(".old");
+    PathBuf::from(path)
 }
 
 /// `--version` output of `binary`, trimmed.
@@ -152,17 +160,21 @@ fn corrupt_archive_leaves_the_older_binary_in_place_and_names_the_failure_on_std
         "the previously installed binary should still run and still report the older version"
     );
 
+    let aside = aside_path(&installed_path);
+    assert!(
+        !aside.exists(),
+        "a refused upgrade should leave no renamed-aside orphan at {}",
+        aside.display()
+    );
+
+    // One contract on both platforms: `upgrade` verifies the archive against
+    // its published sidecar itself, so the refusal reads the same whether or
+    // not the platform's generated installer also verifies (the PowerShell one
+    // does not).
     let stderr = String::from_utf8_lossy(&output.stderr);
-    #[cfg(not(windows))]
     assert!(
         stderr.contains("checksum mismatch"),
-        "stderr should name the checksum-verification failure the shell installer performs; stderr was {stderr:?}"
-    );
-    #[cfg(windows)]
-    assert!(
-        stderr.contains("Expand-Archive")
-            || stderr.contains("error trying to perform the installation"),
-        "stderr should name the PowerShell installer's unpack failure — it verifies no checksum; stderr was {stderr:?}"
+        "stderr should name the checksum-verification failure; stderr was {stderr:?}"
     );
 }
 

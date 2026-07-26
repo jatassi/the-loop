@@ -5,10 +5,13 @@
 #
 # Pinned fact (design-time, cargo-dist 0.32.0): the PowerShell installer
 # performs no checksum verification at all (the-loop-installer.ps1) — only
-# the shell installer does. So this job proves the Windows rename-aside swap
-# works, not the sha256 checksum bar; the corrupt-archive case in
-# upgrade_fixture.rs asserts an unpack failure on Windows instead of a
-# checksum mismatch, for exactly that reason.
+# the shell installer does. `upgrade` therefore verifies the downloaded
+# archive against its published .sha256 sidecar itself, before the Windows
+# rename-aside displaces anything, so the corrupt-archive case in
+# upgrade_fixture.rs asserts the same checksum refusal on both platforms.
+# Until that landed, a corrupt archive unpacked over the install path here and
+# the installer still reported success — this job is the only place that
+# regression can be caught.
 #
 # This job's greenness is a release-gate ready check (see the Release
 # runbook in docs/architecture.md), not a validate-time assertion — it only

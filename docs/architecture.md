@@ -206,8 +206,11 @@ publishes checksummed per-target archives and generated installers to GitHub Rel
 installs once via the installer one-liner; every surface invokes bare `the-loop` on
 PATH; a missing binary fails loudly with the install one-liner as its stated remedy;
 no compiled artifact is ever committed. The binary updates itself via
-`the-loop upgrade` — a thin, feature-gated orchestration that re-runs the latest
-release's own installer (which carries the sha256 verification) — and `/begin` holds
+`the-loop upgrade` — a thin, feature-gated orchestration that verifies the release
+archive against its published `.sha256` sidecar and then re-runs that release's own
+installer (verification is `upgrade`'s, not the installer's: only the generated
+*shell* installer checks a hash, so on Windows a delegated check was no check at
+all — `fix-windows-upgrade-unverified-archive`) — and `/begin` holds
 the plugin↔CLI version handshake, auto-running `upgrade` when the binary is older
 than the plugin and nudging a marketplace update in the other direction
 (cli-upgrade + begin-version-handshake, designed 2026-07-11). The invocation seam is unchanged — CLI via
@@ -309,7 +312,8 @@ real Windows rename-aside swap on a dev machine:
 - **Windows job**: the committed `.github/workflows/upgrade-windows.yml` workflow
   runs job `upgrade-fixture-windows` on `windows-latest`, exercising the same
   invocation for real on Windows (the only place the rename-aside swap actually
-  runs). Read its state with `gh run list --workflow=upgrade-windows.yml --branch main`,
+  runs, and the only place the corrupt-archive refusal is proven without a shell
+  installer verifying underneath it). Read its state with `gh run list --workflow=upgrade-windows.yml --branch main`,
   then `gh run watch <id> --exit-status` on the run at the tip being released. The
   workflow triggers on `workflow_dispatch` and on push to `main` only, so this is a
   **release-gate check**, read at cut time — **not a validate-time assertion** — there

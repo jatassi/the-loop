@@ -215,6 +215,25 @@ mod upgrade_with_feature {
     /// The manual-install remedy every `upgrade` refusal names, verbatim.
     const INSTALL_ONE_LINER: &str = "curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.sh | sh";
 
+    /// The five archive names a real release publishes — one per target in
+    /// `dist-workspace.toml`. The fixture publishes all of them so it never has
+    /// to restate `upgrade`'s own platform→archive mapping: whichever one this
+    /// host asks for is there.
+    const EVERY_TARGET_ARCHIVE: [&str; 5] = [
+        "the-loop-aarch64-apple-darwin.tar.xz",
+        "the-loop-x86_64-apple-darwin.tar.xz",
+        "the-loop-aarch64-unknown-linux-musl.tar.xz",
+        "the-loop-x86_64-unknown-linux-musl.tar.xz",
+        "the-loop-x86_64-pc-windows-msvc.zip",
+    ];
+
+    /// Bytes every fixture archive carries, and their sha256 — the published
+    /// FIPS 180-4 vector for `"abc"`, so the sidecar's hash is independent of
+    /// anything this crate computes.
+    const ARCHIVE_BYTES: &[u8] = b"abc";
+    const ARCHIVE_SHA256: &str =
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
     /// An isolated install root: `opt/` holds the running binary, `dl/` is the
     /// download directory reached over `file://`, `config/` holds the receipt.
     struct Fixture {
@@ -249,6 +268,21 @@ mod upgrade_with_feature {
         /// Place the installer the command will fetch over `file://`.
         fn write_installer(&self, body: &str) {
             write_executable(&self.root.join("dl").join("the-loop-installer.sh"), body);
+        }
+
+        /// Publish `bytes` under every released archive name, each beside a
+        /// `<archive>.sha256` sidecar claiming `sidecar_hash` — a sound release
+        /// when the two agree, a corrupt one when they do not.
+        fn publish_archives(&self, bytes: &[u8], sidecar_hash: &str) {
+            let dl = self.root.join("dl");
+            for archive in EVERY_TARGET_ARCHIVE {
+                fs::write(dl.join(archive), bytes).expect("write fixture archive");
+                fs::write(
+                    dl.join(format!("{archive}.sha256")),
+                    format!("{sidecar_hash} *{archive}\n"),
+                )
+                .expect("write fixture sidecar");
+            }
         }
 
         /// `<exe> upgrade` with HOME, the receipt dir, and the download base all
@@ -353,6 +387,7 @@ mod upgrade_with_feature {
     fn happy_path_swaps_the_binary_and_prints_from_to_updated() {
         let fixture = Fixture::new();
         fixture.write_receipt(r#"{"version":"0.0.1","binaries":["the-loop"]}"#);
+        fixture.publish_archives(ARCHIVE_BYTES, ARCHIVE_SHA256);
         // Stands in for the release installer: unlink-then-write is how a real
         // installer replaces a running binary on unix.
         fixture.write_installer(concat!(
@@ -404,9 +439,10 @@ mod upgrade_with_feature {
     fn failing_installer_names_the_step_and_leaves_the_binary_runnable() {
         let fixture = Fixture::new();
         fixture.write_receipt(r#"{"version":"0.0.1","binaries":["the-loop"]}"#);
+        fixture.publish_archives(ARCHIVE_BYTES, ARCHIVE_SHA256);
         fixture.write_installer(concat!(
             "#!/bin/sh\n",
-            "echo 'fixture-installer: checksum mismatch for the-loop archive'\n",
+            "echo 'fixture-installer: the archive would not unpack'\n",
             "exit 1\n",
         ));
 
@@ -426,12 +462,60 @@ mod upgrade_with_feature {
             "stderr must name the failing step; got {stderr:?}"
         );
         assert!(
-            stderr.contains("checksum mismatch for the-loop archive"),
+            stderr.contains("the archive would not unpack"),
             "stderr must carry the installer's own output tail; got {stderr:?}"
         );
         assert!(
             !fixture.aside().exists(),
             "the rename-aside must be restored, never orphaned"
+        );
+        assert!(
+            fixture.exe_runs(),
+            "the previously installed binary must still run"
+        );
+
+        fixture.cleanup();
+    }
+
+    /// The archive is verified against its published sidecar *before* any step
+    /// that could displace the installed binary: the installer — the step that
+    /// would unpack over it, and on Windows the step the rename-aside clears the
+    /// way for — never runs at all when the two disagree.
+    #[test]
+    fn corrupt_archive_is_refused_before_the_installer_is_ever_run() {
+        let fixture = Fixture::new();
+        fixture.write_receipt(r#"{"version":"0.0.1","binaries":["the-loop"]}"#);
+        // Sidecar keeps the good hash; the archive bytes do not match it.
+        fixture.publish_archives(b"corrupted archive bytes", ARCHIVE_SHA256);
+
+        let ran = fixture.root.join("installer-was-run");
+        fixture.write_installer(&format!(
+            "#!/bin/sh\n: > '{}'\necho 'fixture-installer: unpacked'\n",
+            ran.display()
+        ));
+
+        let output = fixture.upgrade().output().expect("spawn upgrade");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            !output.status.success(),
+            "a corrupt archive must exit nonzero; stderr {stderr:?}"
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "stdout must stay empty; got {:?}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(
+            stderr.contains("checksum mismatch"),
+            "stderr must name the checksum failure; got {stderr:?}"
+        );
+        assert!(
+            !ran.exists(),
+            "the installer must never run against an archive that failed verification"
+        );
+        assert!(
+            !fixture.aside().exists(),
+            "nothing may be renamed aside before verification has passed"
         );
         assert!(
             fixture.exe_runs(),

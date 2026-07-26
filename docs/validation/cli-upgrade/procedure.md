@@ -112,6 +112,29 @@ Observed:
   The binary was still at `<root>/opt/bin/the-loop` and still ran
   (`the-loop 0.5.1`). No `.old` orphan.
 
+  **Both platforms, since `fix-windows-upgrade-unverified-archive`.** This
+  observation on macOS alone never established the criterion: it records the
+  *shell* installer refusing, and the generated PowerShell installer verifies
+  nothing, so the Windows leg spent that whole time unpacking corrupt archives
+  over the install path and reporting success (run 30187991910 caught a
+  145,985-byte unloadable `the-loop.exe` beside a 3,664,384-byte
+  `the-loop.exe.old` orphan). `upgrade` now verifies the downloaded archive
+  against its published `.sha256` sidecar itself, ahead of the Windows
+  rename-aside, so a corrupt archive is refused rather than half-installed.
+  Replaying this criterion therefore takes two runs:
+
+  1. **macOS / any unix** — `cargo test --package the-loop --features upgrade
+     --test upgrade_fixture` (`corrupt_archive_…`) plus
+     `--test cli_process` (`corrupt_archive_is_refused_before_the_installer_is_ever_run`,
+     which asserts the installer binary never even executes). The shell
+     installer keeps its own verification, checked independently by
+     `fixture_release.rs:installing_a_corrupt_archive_fails_and_names_the_checksum_mismatch_on_unix`,
+     so a corrupt archive is now refused twice on unix.
+  2. **Windows** — the `upgrade-windows` job on the tip being released, where
+     `corrupt_archive_…` asserts the same refusal, `--version` still exiting 0
+     on the previously installed binary, and no `.exe.old` orphan. A green
+     macOS run alone does not establish this criterion, and never did.
+
 - **Criterion 1 (happy swap)** — published a distinguishable newer build (a
   `rustc`-compiled stub printing `the-loop 42.0.0`) as version `42.0.0`:
   exit 0, stdout exactly
@@ -160,7 +183,10 @@ that `features = ["upgrade"]` under `[dist]` reaches the release build.
 
 **Release gate (not asserted here):** `gh run list --workflow=upgrade-windows.yml
 --branch main`, then `gh run watch <id> --exit-status` on the run at the tip
-being released. Windows is the only place the rename-aside swap actually runs.
+being released. Windows is the only place the rename-aside swap actually runs,
+and — per criterion 2 above — the only place the corrupt-archive refusal is
+proven against an installer that verifies nothing of its own. A green macOS
+`cargo test --features upgrade` does not stand in for it.
 
 That job's greenness is also the only thing that proves the *fixture's* Windows
 branch works at all: `sha256_sidecar_line` and `install` spawn Windows
@@ -178,7 +204,10 @@ a real product signal.
 ## Expected observations on replay
 
 - `npm test`, `npm run check`, `cargo test`, `cargo test --features upgrade`,
-  and both `cargo clippy` invocations green.
+  and both `cargo clippy` invocations green. (Counts move as the repo grows;
+  at `fix-windows-upgrade-unverified-archive` they read 218 node tests,
+  `OK 54 features` + clean eslint, 248 feature-off and 273 feature-on cargo
+  tests.)
 - `cargo test --package the-loop --features upgrade --test upgrade_fixture`:
   3 passed — happy swap, corrupt archive, missing receipt.
 - A feature-off `the-loop upgrade` exits 1 naming the platform install
