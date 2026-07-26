@@ -1,5 +1,5 @@
 {
-  "design_version": 36,
+  "design_version": 37,
   "features": [
     {
       "id": "document-foundation",
@@ -848,6 +848,31 @@
         "forward compatibility must ship before the field it protects, so this could not help interactive-feature-type's own landing; it protects the next schema addition",
         "candidate remedies to weigh at design: make emit preserve unknown keys, or make set-status validate before writing — the second fails loudly instead of silently, the first keeps older binaries usable on newer graphs",
         "depends_on interactive-feature-type 2026-07-25: both rewrite cli/src/graph.rs's parse and emit paths, so the edge sequences them rather than letting the graph schedule them concurrently"
+      ]
+    },
+    {
+      "id": "fix-windows-fixture-psmodulepath",
+      "title": "the upgrade fixture cannot resolve any Windows PowerShell cmdlet when the test process was launched under pwsh 7",
+      "status": "designed",
+      "depends_on": [],
+      "acceptance": [
+        "given a windows-latest runner where the test process inherited pwsh 7's PSModulePath, when the upgrade fixture spawns Windows PowerShell to compute the sidecar hash or to run the generated .ps1 installer, then the child resolves Get-FileHash and the installer's cmdlets, and no upgrade_fixture test panics inside fixture bring-up at fixture_release.rs",
+        "given the fix, when the upgrade-windows job runs cargo test --package the-loop --features upgrade --test upgrade_fixture, then every test reaches its own assertions rather than dying in setup, and the child's module lookup cannot be shadowed by whatever shell the CI harness uses",
+        "given a macOS or Linux dev machine, when the same suite runs, then behaviour is unchanged — the sha256sum branch is untouched and no new dependency is added"
+      ]
+    },
+    {
+      "id": "fix-windows-upgrade-unverified-archive",
+      "title": "on Windows, the-loop upgrade replaces a working binary with an unverified archive and destroys the install when that archive is corrupt",
+      "status": "designed",
+      "depends_on": [
+        "fix-windows-fixture-psmodulepath"
+      ],
+      "acceptance": [
+        "given a published release whose archive bytes are corrupt while its sidecar and the installer's embedded checksum carry the good hash, when the-loop upgrade runs on windows-latest, then it exits non-zero naming the checksum failure on stderr, the previously installed binary is still present and its --version exits 0, and no .exe.old orphan remains — corrupt_archive_leaves_the_older_binary_in_place_and_names_the_failure_on_stderr passes on Windows",
+        "given the fix, when upgrade runs on any platform, then it verifies the downloaded archive against its published .sha256 sidecar before any step that displaces the installed binary — verification precedes the Windows rename-aside, so a corrupt archive is refused rather than repaired",
+        "given the fix, when happy_swap and missing_receipt run on windows-latest, then both still pass, and the full cargo test --features upgrade suite still passes on macOS with the shell installer's own checksum verification still in the path",
+        "given the landed change, when cli/src/commands/upgrade.rs is read, then its module design note states that upgrade owns archive verification while layout remains the installer's, and the crate has gained no new [dependencies] entry"
       ]
     }
   ]
