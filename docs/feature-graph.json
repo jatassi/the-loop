@@ -675,7 +675,7 @@
       "id": "cli-upgrade",
       "section": "post-replatform amendments",
       "title": "the-loop upgrade — replace the installed binary with the latest release by re-running its installer",
-      "status": "validated",
+      "status": "shipped",
       "depends_on": [
         "binary-distribution"
       ],
@@ -712,7 +712,6 @@
       "title": "execute skill — the loop's launch surface, extracted from /begin",
       "status": "designed",
       "depends_on": [
-        "fix-execution-pipeline-name-entrypoint",
         "write-skills-doctrine"
       ],
       "acceptance": [
@@ -730,52 +729,9 @@
       ]
     },
     {
-      "id": "fix-test-fixture-tempdir-collision",
-      "title": "concurrent worktree tests collide on one temp fixture directory, so git init races itself",
-      "status": "validated",
-      "depends_on": [],
-      "acceptance": [
-        "given the worktree test fixture helper, when N>=8 threads each call tempfile_dir many times, then every returned path is distinct — a unit test asserting this fails against the current timestamp-derived name and passes after the fix",
-        "given the 13 worktree unit tests, when `cargo test --manifest-path cli/Cargo.toml --lib commands::worktree -- --test-threads=13` runs 25 consecutive times, then all 25 runs are green (baseline: 3/25)",
-        "given a fixture directory path that somehow already exists, when tempfile_dir is called for it, then it panics on AlreadyExists rather than returning a shared directory",
-        "given all fixture labels (wt-fixture, wt-home, wt-home-in, wt-resolve-only, wt-resolve-home), when names are generated, then they draw from one process-wide counter so no two labels can re-collide, and tempfile_dir keeps its current signature and call sites"
-      ]
-    },
-    {
-      "id": "fix-execution-pipeline-name-entrypoint",
-      "title": "execution-pipeline is model-reachable by name through an entry point that cannot work by construction",
-      "status": "validated",
-      "depends_on": [],
-      "acceptance": [
-        "given the landed tree, when the repo is inspected, then no .js file exists under any auto-registered plugin workflows directory (plugin/workflows/ is gone) and the engine lives at cli/assets/execution-pipeline.js — the live check that a consuming session's skill listing no longer offers the-loop:execution-pipeline rides the release gate's health check, not validate",
-        "given the moved engine, when the-loop prepare-execution-context --features <id> --target-branch <ref> --script-out <path> runs, then it writes the launch-ready spliced script exactly as before, and both shape gates still exit 1 with nothing written when the meta line or the EMBEDDED_CONTEXT line does not match",
-        "meta.whenToUse names prepare-execution-context --script-out and contains neither the phrase \"as args\" nor \"never invoked bare\", and splice.rs's pinned meta constant matches the new line byte-for-byte",
-        "the string plugin/workflows greps to zero across living surfaces (cli/, plugin/, test/, eslint.config.js, docs/architecture.md), with remaining hits only in historical records (docs/adr/, docs/briefs/, docs/releases/, docs/bugs/, docs/calibration/, docs/validation/, and shipped features' docs/designs/)",
-        "npm test, npm run check, and cargo test pass green on the landed tree, with every test and lint target that read plugin/workflows/execution-pipeline.js reading the new path"
-      ],
-      "notes": [
-        "diagnosed 2026-07-25; RCA at docs/bugs/fix-execution-pipeline-name-entrypoint.md is this fix's design doc via the designs-then-bugs lookup fallback",
-        "the fail-fast guard proposed in the RCA was rejected 2026-07-25 (human's call): once the door is closed the guard defends an entry point that no longer exists; accepted cost is that installs pinned at <= v0.5.1 keep the opaque parse error until they update"
-      ]
-    },
-    {
-      "id": "fix-landing-into-checked-out-target",
-      "title": "The prescribed publish recipes cannot work, and record's improvised fallback leaves the primary worktree staged to revert its own commit",
-      "status": "validated",
-      "depends_on": [],
-      "acceptance": [
-        "Given a repository whose target branch is checked out in the primary worktree and a linked worktree holding a commit to publish, When the record leg publishes, Then the target advances and the primary worktree's `git status --porcelain` is empty and the run artifact exists on disk.",
-        "Given a publish that cannot fast-forward for any reason — target moved, target checked out, non-fast-forward — When the record leg runs, Then it returns {\"result\":\"blocked\"} naming the failure and does not move the target ref by `update-ref`, `branch -f`, `push --force`, or any other ref-only means.",
-        "Given the record leg has published a run, When `git reflog` is inspected in the primary worktree, Then a HEAD entry exists for the calibration commit — the landing was a real merge, not a bare ref move.",
-        "Given a validated feature's integration branch and a target branch checked out in the primary worktree, When the validate leg publishes its squash commit, Then it uses the same worktree-safe landing command as record — succeeding without improvisation — and leaves the primary worktree's `git status --porcelain` empty.",
-        "Given record.md's publish section and validate.md's publish step, When both are read, Then they name the same worktree-safe landing command run from the repository root, and neither prescribes `git fetch . <src>:<target>` against a checked-out target.",
-        "Given the record leg completes, When it returns `recorded`, Then it has verified the landing — asserting the primary worktree is clean and the artifact path exists — and returns `blocked` with the porcelain output otherwise."
-      ]
-    },
-    {
       "id": "write-skills-doctrine",
       "title": "write-skills covers agent definitions — trigger description, an agent-definition deltas section, and the vendored Negation failure mode",
-      "status": "validated",
+      "status": "shipped",
       "depends_on": [],
       "acceptance": [
         "Given plugin/skills/write-skills/SKILL.md, when its frontmatter description is read, then it names agent-definition authoring alongside skill authoring, so a session creating or editing a file under plugin/agents/ triggers it",
@@ -795,8 +751,7 @@
       "title": "Audit and targeted trim of agent-facing surfaces against the five context-engineering shifts (human-attended session)",
       "status": "designed",
       "depends_on": [
-        "interactive-feature-type",
-        "fix-landing-into-checked-out-target"
+        "interactive-feature-type"
       ],
       "acceptance": [
         "Given the in-scope inventory (5 agent definitions, 18 skill files — including the execute and interactive-execution surfaces added by this feature's dependencies — CLAUDE.md, and cli/assets/execution-pipeline.js's assembled prompt strings), when the adjudication session ends, then every file has been read against the five shifts and every surfaced candidate carries an explicit keep, rewrite, relocate, or delete ruling — no file skipped, no candidate undecided",
@@ -848,31 +803,6 @@
         "forward compatibility must ship before the field it protects, so this could not help interactive-feature-type's own landing; it protects the next schema addition",
         "candidate remedies to weigh at design: make emit preserve unknown keys, or make set-status validate before writing — the second fails loudly instead of silently, the first keeps older binaries usable on newer graphs",
         "depends_on interactive-feature-type 2026-07-25: both rewrite cli/src/graph.rs's parse and emit paths, so the edge sequences them rather than letting the graph schedule them concurrently"
-      ]
-    },
-    {
-      "id": "fix-windows-fixture-psmodulepath",
-      "title": "the upgrade fixture cannot resolve any Windows PowerShell cmdlet when the test process was launched under pwsh 7",
-      "status": "validated",
-      "depends_on": [],
-      "acceptance": [
-        "given a windows-latest runner where the test process inherited pwsh 7's PSModulePath, when the upgrade fixture spawns Windows PowerShell to compute the sidecar hash or to run the generated .ps1 installer, then the child resolves Get-FileHash and the installer's cmdlets, and no upgrade_fixture test panics inside fixture bring-up at fixture_release.rs",
-        "given the fix, when the upgrade-windows job runs cargo test --package the-loop --features upgrade --test upgrade_fixture, then every test reaches its own assertions rather than dying in setup, and the child's module lookup cannot be shadowed by whatever shell the CI harness uses",
-        "given a macOS or Linux dev machine, when the same suite runs, then behaviour is unchanged — the sha256sum branch is untouched and no new dependency is added"
-      ]
-    },
-    {
-      "id": "fix-windows-upgrade-unverified-archive",
-      "title": "on Windows, the-loop upgrade replaces a working binary with an unverified archive and destroys the install when that archive is corrupt",
-      "status": "validated",
-      "depends_on": [
-        "fix-windows-fixture-psmodulepath"
-      ],
-      "acceptance": [
-        "given a published release whose archive bytes are corrupt while its sidecar and the installer's embedded checksum carry the good hash, when the-loop upgrade runs on windows-latest, then it exits non-zero naming the checksum failure on stderr, the previously installed binary is still present and its --version exits 0, and no .exe.old orphan remains — corrupt_archive_leaves_the_older_binary_in_place_and_names_the_failure_on_stderr passes on Windows",
-        "given the fix, when upgrade runs on any platform, then it verifies the downloaded archive against its published .sha256 sidecar before any step that displaces the installed binary — verification precedes the Windows rename-aside, so a corrupt archive is refused rather than repaired",
-        "given the fix, when happy_swap and missing_receipt run on windows-latest, then both still pass, and the full cargo test --features upgrade suite still passes on macOS with the shell installer's own checksum verification still in the path",
-        "given the landed change, when cli/src/commands/upgrade.rs is read, then its module design note states that upgrade owns archive verification while layout remains the installer's, and the crate has gained no new [dependencies] entry"
       ]
     }
   ]
