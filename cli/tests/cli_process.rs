@@ -231,8 +231,7 @@ mod upgrade_with_feature {
     /// FIPS 180-4 vector for `"abc"`, so the sidecar's hash is independent of
     /// anything this crate computes.
     const ARCHIVE_BYTES: &[u8] = b"abc";
-    const ARCHIVE_SHA256: &str =
-        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+    const ARCHIVE_SHA256: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
 
     /// An isolated install root: `opt/` holds the running binary, `dl/` is the
     /// download directory reached over `file://`, `config/` holds the receipt.
