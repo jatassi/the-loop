@@ -350,6 +350,32 @@ install via `gh release download v<N> -D <dir>` then run the downloaded
 that dir (`python3 -m http.server`), which keeps the installer's own checksum
 verification in the path.
 
+**Always set `THE_LOOP_NO_MODIFY_PATH=1` on a verification install.** cargo-dist's
+installer unconditionally appends a `. "<install-root>/env"` line to *every* shell
+profile it finds — `~/.zshrc`, `~/.profile`, `~/.bashrc`, and
+`~/.config/fish/conf.d/the-loop.env.fish` — and that `env` prepends the install root
+to `PATH`. Verification installs go to a throwaway root, so the line outlives its
+directory and shadows `~/.cargo/bin` with a stale binary on every future shell. This
+leaked three releases running (v0.7.0, v0.8.0, and again on 2026-07-26, when a dead
+session's 0.5.1 was still winning `which the-loop`); the first two cleanups swept only
+`~/.zshrc` and `~/.profile` and left the bash and fish copies behind. The env var is
+the fix — `test/binary-distribution.test.js` already uses it. Verification install:
+
+```sh
+THE_LOOP_NO_MODIFY_PATH=1 THE_LOOP_INSTALL_DIR=<throwaway>/bin sh the-loop-installer.sh
+<throwaway>/bin/the-loop --version   # must print <N>
+```
+
+Then install the release into the durable `$HOME/.cargo` and confirm exactly one
+resolution at the new version, in **interactive** shells (`zsh -l -c` is the wrong
+probe — it skips `.zshrc` and reports a false `command not found`):
+
+```sh
+env -i HOME=$HOME zsh  -i -c 'which -a the-loop; the-loop --version'
+env -i HOME=$HOME bash -i -c 'which -a the-loop; the-loop --version'
+grep -rl claude-501 ~/.zshrc ~/.profile ~/.bashrc ~/.config/fish/   # must be empty
+```
+
 Rollback: `claude plugin uninstall the-loop@the-loop --scope user` (removes the
 just-deployed version — the safe state; recovery from there is human-verified). The
 rollback pointer for code is the previous release tag. Note: the health check fails
