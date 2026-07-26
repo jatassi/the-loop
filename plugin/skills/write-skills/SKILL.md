@@ -180,6 +180,23 @@ retire — go find them.
 Keep each meaning in a **single source of truth**: one authoritative place, so
 changing the behaviour is a one-place edit.
 
+**Single source of truth is bounded by reachability.** Within one file it binds at
+full force — the same instruction stated three times is exactly the scar tissue
+pruning exists to remove. Across files it binds only where a shared home is one the
+reader will actually reach. So before cutting a repeat, ask two questions: *does each
+reader need this to act, and can either reach the other?* Where both readers need it
+and neither can reach the other — separate agent definitions read cold, surfaces that
+ship into worlds where the other file doesn't exist — the repetition is
+self-containment, and cutting it breaks the surface that lost the sentence. Note that
+one skill cannot include another: invoking a skill *executes* it. The only shared home
+two skills have is an **external reference**, a plain file both point at.
+
+**When a shared home does exist, split by branch, not by line count.** Inline what
+every run needs and disclose only what some branch reaches. Material needed at the
+moment things go wrong — a remedy, a refusal posture, a first-command failure — is
+needed precisely when the agent is least likely to go fetch a file, so it stays
+inline however often it repeats.
+
 Check every line for **relevance**: does it still bear on what the skill does?
 
 Then hunt **no-ops** sentence by sentence, not just line by line: run the no-op
@@ -232,6 +249,13 @@ Use these to diagnose issues with a skill:
   say nothing. The test: does it change behaviour versus the default? A weak
   leading word (_be thorough_ when the agent is already thorough-ish) is a
   no-op; the fix is a stronger word (_relentless_), not a different technique.
+- **Phantom authority** — citing a document, section, or record the reader cannot
+  open: a decision-record number, a sibling worker's definition, a file that exists
+  only in the authoring repo. It reads as rigour and resolves to nothing, and the
+  instruction that leaned on it silently degrades to a **no-op** — worse than absent,
+  because the citation implies the material was accounted for. The tell is a
+  reference whose target you can only resolve because you are the author. Either
+  state the claim on its own terms, or inline what the reader needs to act.
 - **Negation** — steering by prohibition, which names the elephant: "do not
   write placeholder tests" puts _placeholder tests_ in front of the agent.
   Prompt the positive — state the move you want. Keep a prohibition only as a

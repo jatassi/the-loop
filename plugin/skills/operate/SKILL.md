@@ -43,11 +43,16 @@ pointed at; the runbook is where the project's operational lore lives.
 
 ## 3 · The mutation preamble
 
-Before any mutating toolkit action, state in one line what is about to run and why.
-This one-line preamble precedes every mutation — it is the whole audit ceremony
-(the session transcript is the audit trail). Only entries tagged `mutate` may
-mutate; a `read` entry never mutates. The never-do list constrains everything,
-`read` and `mutate` alike.
+Mutate only through an entry tagged `mutate`, and only after stating in one line
+what is about to run and why. That one-line preamble precedes every mutation — it
+is the whole audit ceremony (the session transcript is the audit trail). Honor every
+recorded never-do entry, `read` and `mutate` alike; they bind read paths too.
+
+A source fix leaves this skill: file a diagnose intake naming this operate session.
+
+Consider mirroring the recorded never-do entries as `permissions.deny` rules or a
+PreToolUse hook — those are enforced by the harness, not the model. This skill never
+manages the permission rules; it only honors what the recorded section states.
 
 ## The action boundary — instance vs repo, four classes
 
@@ -72,13 +77,3 @@ feature, a behavior that violates its contract — is not operate's to fix. File
 diagnose intake, name this operate session in it as the backlink, and let the bug
 door take it from there.
 
-## Never do
-
-- never mutate through a `read` entry, or through no entry at all
-- never run a mutating action without its one-line preamble
-- never make a source/repo change here — file a diagnose intake instead
-- never cross a never-do entry from the recorded toolkit, `read` or `mutate`
-
-Consider mirroring the recorded never-do entries as `permissions.deny` rules or a
-PreToolUse hook — those are enforced by the harness, not the model. This skill never
-manages the permission rules; it only honors what the recorded section states.

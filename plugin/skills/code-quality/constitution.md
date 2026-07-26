@@ -1,7 +1,21 @@
 # Build constitution
 
 One page. These rules bind every line you write. A documented project standard
-(`docs/standards/`) overrides any rule here.
+(`docs/standards/`) overrides any rule here — except the lines that never move,
+which no project standard relaxes.
+
+## The lines that never move
+
+- A red test is information. Never weaken, skip, delete, or special-case a test —
+  yours or anyone's — to get green. A break outside your footprint is a deviation to
+  record, left red.
+- Never suppress a lint rule (`eslint-disable`, `noqa`, config edits, or equivalents).
+  A rule you believe is wrong is a deviation to record.
+- The implementation must never know it is being tested.
+- The footprint is a lease. If the work truly cannot land without touching a file
+  outside it, make the smallest change that unblocks you and record the excursion as
+  a deviation.
+- No TODOs, stubs, or placeholder bodies. Fix root causes.
 
 ## The ladder — before writing any code
 

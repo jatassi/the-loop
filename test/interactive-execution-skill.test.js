@@ -14,7 +14,6 @@ const SKILL = 'plugin/skills/interactive-execution/SKILL.md';
 const BEGIN = 'plugin/skills/begin/SKILL.md';
 const EXECUTE = 'plugin/skills/execute/SKILL.md';
 const USING = 'plugin/skills/using-the-loop/SKILL.md';
-const GRAPH = 'docs/feature-graph.json';
 
 /** Collapse line wrapping so assertions pin sentences, not the column they broke at. */
 const squish = (text) => text.replaceAll(/\s+/g, ' ').trim();
@@ -143,18 +142,11 @@ test('/begin routes advance-interactive to the skill by name, execute states its
   assert.match(using, /absent/i, 'it should state that an absent key means autonomous');
 });
 
-// ── criterion 5: hygiene — this repo's graph stays marker-free while the installed
-// binary would still drop the key, and the new surface cites nothing a consuming
-// project cannot reach ──
-test('no feature record carries an execution key yet, and the skill cites no ADR number or this-repo docs path', () => {
-  const graph = JSON.parse(read(GRAPH));
-  const marked = graph.features.filter((f) => Object.hasOwn(f, 'execution')).map((f) => f.id);
-  assert.deepEqual(
-    marked,
-    [],
-    'no feature record may carry an `execution` key yet — an older binary drops it silently on set-status',
-  );
-
+// ── criterion 5: hygiene — the surface cites nothing a consuming project cannot
+// reach. (The companion guard that this repo's graph stay marker-free was scoped to
+// the window before the upgraded binary shipped; that window has closed, and records
+// now carry `execution` deliberately.) ──
+test('the skill cites no ADR number or this-repo docs path', () => {
   const skill = read(SKILL);
   assert.ok(!/\bADR-\d/.test(skill), 'the skill must not cite an internal ADR (skills are self-contained)');
   for (const internal of ['docs/adr/', 'docs/designs/', 'docs/plans/']) {

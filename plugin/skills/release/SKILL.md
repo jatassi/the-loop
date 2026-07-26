@@ -5,7 +5,7 @@ description: Run the project's own release recipe behind one human gate — veri
 
 # Release — verify ready → human gate → deploy → verify working
 
-Release prescribes only this skeleton (ADR-0039). The particulars live in the project's
+Release prescribes only this skeleton. The particulars live in the project's
 own recipe: the `## Release runbook` section of `docs/architecture.md`, recorded at
 Design time — ready-check commands, deploy commands, health-check command, rollback
 path. No recipe recorded → say so and elicit one with the human before anything runs;

@@ -202,6 +202,12 @@ A skill that is simply too long — too many lines in SKILL.md — independent o
 
 _Avoid_: bloat, length, size, verbosity
 
+### Phantom Authority
+
+A citation to material the reader cannot open — a decision-record number, a sibling agent's definition, a path that exists only in the authoring repo. Distinct from **implementation index**, which points at real coordinates that rot: phantom authority points at coordinates the reader never had. Its cost is doubled: the instruction leaning on the citation degrades to a **no-op**, *and* the citation's presence implies the question was settled somewhere, so no reader re-opens it. The test is not whether the target exists but whether it exists *for the reader* — a check the author is worst placed to make, since their own copy always resolves. The fix is **single source of truth** bounded by reachability: state the claim on its own terms, or inline what the reader needs to act.
+
+_Avoid_: broken link, dangling reference, dead pointer
+
 ### No-Op
 
 An instruction that changes nothing because the model already does it by default — you pay load to tell the agent what it would do anyway. The test: does a line change behaviour versus the default? A line can be perfectly **relevant** and still be a no-op. The same priors that make a **leading word** free make a no-op worthless.

@@ -98,30 +98,14 @@ Report the outcome in plain prose, plus any `model-selection —` lines from the
 No status bookkeeping: the validators already updated the graph on the target branch,
 and `git log` is the run history. `the-loop status` prints the status story on demand.
 
-## Bound artifact stores — when the feature graph lives on an external surface
+## Bound artifact stores
 
 Resolve `artifactStores.features` (it rides the `hooks-list` inventory) before step 1.
-When it resolves `local` — the default — every step above runs unchanged against
-`docs/feature-graph.json` and passes no `--graph-path`. When it resolves to a
-**nondefault** binding, the feature graph is no longer an in-repo file: its records,
-dependency edges, acceptance prose, and statuses are sole truth on the bound surface,
-and the launch runs against an ephemeral snapshot instead of the local file:
-
-1. **Materialize the snapshot.** Follow `docs/adapters/features.md` — its Access
-   section names the surface's shape (MCP server, CLI, …), the auth/workspace context,
-   and the read calls — read the bound surface, and materialize the same JSON graph
-   model as an ephemeral snapshot file under session scratch. The snapshot is
-   gitignored, never committed, and torn down at run end (leave nothing behind, the way
-   the loop sweeps its own temp files). Materialize it before any graph read.
-2. **Point the subcommands at the snapshot.** Pass its path as `--graph-path` to every
-   graph-consuming subcommand — `status` in step 1, `prepare-execution-context` in
-   step 4 — so the pure core runs against the snapshot while the default
-   `docs/feature-graph.json` path stays untouched for local projects.
-3. **Tear the snapshot down** once the run finishes.
-
-**A bound-but-unreachable surface at use time is a can't-run, never a fallback.** If
-the surface can't be reached when the snapshot must be materialized, stop and report a
-can't-run naming the surface (e.g. `features is bound to Linear and Linear is
-unreachable`). Never fall back to local `docs/feature-graph.json` — a stale or absent
-local file would fork project truth. This is a surfaced can't-run, distinct from a run
-that started and failed.
+`local` — the default — means every step above runs unchanged against
+`docs/feature-graph.json` and passes no `--graph-path`. A **nondefault** binding means
+the feature graph is not an in-repo file at all. **Before any graph read, read
+`bound-stores.md` — it ships with this plugin at `../../shared/bound-stores.md`,
+relative to this skill's own directory — and follow it.** It carries the snapshot
+protocol, the `--graph-path` routing (here: `status` in step 1,
+`prepare-execution-context` in step 4), and the can't-run posture for an unreachable
+surface.
