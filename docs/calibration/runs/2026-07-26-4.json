@@ -1,0 +1,43 @@
+{
+  "run": {
+    "prepared_at": "2026-07-26T13:47:29.309Z",
+    "target": "main",
+    "scope": [
+      "fix-windows-upgrade-unverified-archive"
+    ],
+    "tokens": {
+      "spent": 304578,
+      "by_role": {
+        "plan": 5838,
+        "build": 51813,
+        "drive": 0,
+        "validate": 23793
+      },
+      "attribution": "serial"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "fix-windows-upgrade-unverified-archive",
+      "workflow_path": "small",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 1,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [],
+      "actual": {
+        "files_touched": 8,
+        "insertions": 652,
+        "deletions": 28,
+        "commits": 2,
+        "duration_minutes": 56.8166666666667
+      }
+    }
+  ]
+}
