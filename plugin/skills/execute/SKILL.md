@@ -27,7 +27,10 @@ curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop
 - **No scope came in.** Run `the-loop status --json` and take its `eligibleSet` — the
   dependency-ready features — as the scope. An empty `eligibleSet` is the whole
   answer: say so and stop here. This surface launches a scope; deciding what else the
-  project could do next belongs to whoever asked. (On a bound project — nondefault
+  project could do next belongs to whoever asked. The eligible set already excludes
+  human-attended features (those marked `"execution": "interactive"`), so a scope
+  resolved here is unattended by construction — and a hand-typed attended id is refused
+  by step 4's gate, naming the door it belongs to. (On a bound project — nondefault
   `artifactStores.features`, per the section below — this call takes `--graph-path`.)
 
 Done when the scope is a concrete list of feature ids.

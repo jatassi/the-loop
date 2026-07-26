@@ -25,6 +25,11 @@ The loop owns project state under `docs/`. Treat every path below as loop-owned:
 | `docs/runbooks/<topic>.md` | operational runbooks |
 | `docs/validation/` · `docs/releases/` · `docs/calibration/` · `docs/adapters/` | validation procedures, release reports, run calibration, bound-store adapters |
 
+Each feature record in that graph also carries an execution mode: `execution` is
+`autonomous` or `interactive`, and an absent key means `autonomous`. `interactive`
+marks work whose judgments are yours — it is built with you in an attended session
+instead of being run unattended, and the loop keeps it out of the unattended queue.
+
 `docs/feature-graph.json` is written only by the loop's own tooling and must never
 be hand-edited. The prose artifacts are amended only through their owning phases —
 don't casually rewrite, rename, or delete any of these paths, and don't "clean up"

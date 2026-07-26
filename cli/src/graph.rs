@@ -28,6 +28,10 @@ pub struct Feature {
     pub section: Option<String>,
     pub title: String,
     pub status: String,
+    /// Execution mode — `"autonomous" | "interactive"`. Absent means autonomous;
+    /// this field only carries what was present in the input (validated shape,
+    /// not the default). Emit omits the key when parse found it absent.
+    pub execution: Option<String>,
     /// Edge list. Absent in JSON becomes `[]` here; emit omits the key when the
     /// field was absent on parse (see [`Feature::depends_on_present`]).
     pub depends_on: Vec<String>,
@@ -132,6 +136,7 @@ fn parse_feature(value: Value) -> Result<Feature, ParseError> {
     let mut section = None;
     let mut title = String::new();
     let mut status = String::new();
+    let mut execution = None;
     let mut depends_on = Vec::new();
     let mut depends_on_present = false;
     let mut acceptance = None;
@@ -162,6 +167,9 @@ fn parse_feature(value: Value) -> Result<Feature, ParseError> {
                     s.clone_into(&mut status);
                 }
             }
+            "execution" => {
+                execution = Some(parse_execution(val)?);
+            }
             "depends_on" => {
                 depends_on_present = true;
                 depends_on = parse_string_array(val, "depends_on")?;
@@ -183,12 +191,25 @@ fn parse_feature(value: Value) -> Result<Feature, ParseError> {
         section,
         title,
         status,
+        execution,
         depends_on,
         depends_on_present,
         acceptance,
         notes,
         unknown,
     })
+}
+
+/// Parse the `execution` field. Fail closed: unlike `section`, any non-string
+/// value (including `null`) is a named [`ParseError::MalformedJson`] rather
+/// than a silent drop — an execution marker must never disappear unnoticed.
+fn parse_execution(value: Value) -> Result<String, ParseError> {
+    match value {
+        Value::String(s) => Ok(s),
+        other => Err(ParseError::MalformedJson {
+            message: format!("execution must be a string (got {other})"),
+        }),
+    }
 }
 
 fn parse_string_array(value: Value, field: &str) -> Result<Vec<String>, ParseError> {
@@ -271,7 +292,8 @@ fn write_feature(out: &mut String, feature: &Feature, base_indent: usize) {
     out.push_str(&pad);
     out.push_str("{\n");
 
-    // Design-doc order: id, section, title, status, depends_on, acceptance, notes.
+    // Design-doc order: id, section, title, status, execution, depends_on,
+    // acceptance, notes.
     let mut fields: Vec<(&str, String)> = Vec::new();
     fields.push(("id", string_json(&feature.id)));
     if let Some(section) = &feature.section {
@@ -279,6 +301,9 @@ fn write_feature(out: &mut String, feature: &Feature, base_indent: usize) {
     }
     fields.push(("title", string_json(&feature.title)));
     fields.push(("status", string_json(&feature.status)));
+    if let Some(execution) = &feature.execution {
+        fields.push(("execution", string_json(execution)));
+    }
     if feature.depends_on_present {
         fields.push((
             "depends_on",
@@ -458,6 +483,7 @@ mod tests {
         assert_eq!(graph.features.len(), 1);
         let f = &graph.features[0];
         assert_eq!(f.section, None);
+        assert_eq!(f.execution, None);
         assert_eq!(f.notes, None);
         assert!(
             !f.depends_on_present,
@@ -473,6 +499,10 @@ mod tests {
         assert!(
             !emitted.contains("\"section\""),
             "absent section must not appear on emit: {emitted}"
+        );
+        assert!(
+            !emitted.contains("\"execution\""),
+            "absent execution must not appear on emit — no key, no null: {emitted}"
         );
         assert!(
             !emitted.contains("\"notes\""),
@@ -492,6 +522,7 @@ mod tests {
         assert!(!again.features[0].depends_on_present);
         assert_eq!(again.features[0].depends_on, Vec::<String>::new());
         assert_eq!(again.features[0].section, None);
+        assert_eq!(again.features[0].execution, None);
         assert_eq!(again.features[0].notes, None);
     }
 
@@ -648,6 +679,85 @@ mod tests {
         );
         let emitted = emit(&graph);
         assert!(emitted.contains("\"acceptance\": ["), "{emitted}");
+    }
+
+    #[test]
+    fn execution_field_parses_emits_after_status_and_round_trips_byte_canonical() {
+        let input = r#"{
+  "design_version": 1,
+  "features": [
+    {
+      "id": "agent-surface-trim",
+      "title": "Audit and targeted trim of agent-facing surfaces",
+      "status": "designed",
+      "execution": "interactive",
+      "depends_on": [],
+      "acceptance": "every candidate carries a ruling"
+    }
+  ]
+}
+"#;
+        let graph = parse(input).expect("execution: string must parse");
+        assert_eq!(graph.features[0].execution, Some("interactive".to_owned()));
+
+        let emitted = emit(&graph);
+        let status = emitted.find("\"status\"").unwrap();
+        let execution = emitted.find("\"execution\"").unwrap();
+        let depends_on = emitted.find("\"depends_on\"").unwrap();
+        assert!(
+            status < execution && execution < depends_on,
+            "execution must emit immediately after status and before depends_on:\n{emitted}"
+        );
+
+        // parse -> emit -> parse round-trips content-equal and byte-canonical.
+        let reparsed = parse(&emitted).expect("canonical emit must re-parse");
+        assert_eq!(
+            reparsed, graph,
+            "re-parsing the emit must reproduce the same model"
+        );
+        let re_emitted = emit(&reparsed);
+        assert_eq!(
+            re_emitted, emitted,
+            "emitting the re-parsed graph must be byte-identical (byte-canonical)"
+        );
+
+        let parsed_value: Value = serde_json::from_str(&emitted).unwrap();
+        assert_eq!(
+            parsed_value["features"][0]["execution"],
+            Value::String("interactive".to_owned()),
+            "content must be JSON-equal on execution"
+        );
+    }
+
+    #[test]
+    fn execution_true_and_null_return_named_malformed_error_never_silently_dropped() {
+        for bad_value in ["true", "null", "42", "[]", "{}"] {
+            let input = format!(
+                r#"{{
+  "design_version": 1,
+  "features": [
+    {{
+      "id": "a",
+      "title": "A",
+      "status": "designed",
+      "execution": {bad_value}
+    }}
+  ]
+}}
+"#
+            );
+            let err = parse(&input).expect_err(&format!(
+                "execution: {bad_value} must be a parse error, not a silent drop"
+            ));
+            match &err {
+                ParseError::MalformedJson { message } => {
+                    assert!(
+                        message.contains("execution"),
+                        "error must name the execution field for value {bad_value}: {message}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

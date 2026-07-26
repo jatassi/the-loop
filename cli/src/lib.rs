@@ -207,6 +207,10 @@ pub enum Command {
         /// Path to `feature-graph.json` (default: `docs/feature-graph.json`).
         #[arg(long = "graph-path")]
         graph_path: Option<String>,
+        /// Select the interactive door on the scope gate: every id in scope must
+        /// be `execution: "interactive"` (default door requires the opposite).
+        #[arg(long)]
+        interactive: bool,
     },
 }
 
@@ -319,12 +323,14 @@ impl Cli {
                 target_branch,
                 script_out,
                 graph_path,
+                interactive,
             }) => {
                 commands::prepare_execution_context::run(
                     features.as_deref(),
                     target_branch.as_deref(),
                     script_out.as_deref(),
                     graph_path.as_deref(),
+                    interactive,
                 );
                 ExitCode::SUCCESS
             }

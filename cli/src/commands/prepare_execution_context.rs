@@ -48,6 +48,7 @@ pub fn run(
     target: Option<&str>,
     script_out: Option<&str>,
     graph_path: Option<&str>,
+    interactive: bool,
 ) {
     let (Some(features), Some(target)) = (features, target) else {
         fail(
@@ -80,7 +81,7 @@ pub fn run(
 
     // ── Gate 2: scope gate ──
     fail_on_issues(
-        &check_scope(&model, &scope).errors,
+        &check_scope(&model, &scope, interactive).errors,
         "scope gate failed — nothing prepared",
     );
 

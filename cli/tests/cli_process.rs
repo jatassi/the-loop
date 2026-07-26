@@ -168,6 +168,108 @@ fn process_check_list_set_status_against_temp_graph() {
     let _ = fs::remove_dir_all(&empty);
 }
 
+const INTERACTIVE_DOOR_GRAPH: &str = r#"{
+  "design_version": 1,
+  "features": [
+    {
+      "id": "attended-thing",
+      "title": "Attended thing",
+      "status": "designed",
+      "execution": "interactive",
+      "depends_on": [],
+      "acceptance": ["a human ruling lands"]
+    },
+    {
+      "id": "plain-thing",
+      "title": "Plain thing",
+      "status": "designed",
+      "depends_on": [],
+      "acceptance": ["plain-thing works"]
+    }
+  ]
+}
+"#;
+
+/// Criterion 3: without `--interactive`, an interactive-only id is refused —
+/// exit 1, empty stdout, no file at `--script-out`, stderr names the feature and
+/// the `interactive-execution` skill.
+#[test]
+fn prepare_execution_context_without_interactive_refuses_an_interactive_id() {
+    let dir = temp_dir();
+    let graph_dir = dir.join("docs");
+    fs::create_dir_all(&graph_dir).expect("docs");
+    fs::write(graph_dir.join("feature-graph.json"), INTERACTIVE_DOOR_GRAPH).expect("write graph");
+    let script_out = dir.join("script-out.js");
+
+    let output = bin()
+        .current_dir(&dir)
+        .args([
+            "prepare-execution-context",
+            "--features",
+            "attended-thing",
+            "--target-branch",
+            "main",
+            "--script-out",
+        ])
+        .arg(&script_out)
+        .output()
+        .expect("spawn prepare-execution-context");
+
+    assert_eq!(output.status.code(), Some(1), "must exit 1");
+    assert!(output.stdout.is_empty(), "stdout must stay empty");
+    assert!(
+        !script_out.exists(),
+        "no file must be written to --script-out"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("attended-thing"),
+        "stderr must name the feature; got {stderr:?}"
+    );
+    assert!(
+        stderr.contains("interactive-execution"),
+        "stderr must name the interactive-execution skill; got {stderr:?}"
+    );
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// Criterion 4: with `--interactive`, an autonomous id is refused symmetrically —
+/// exit 1, empty stdout, no file at `--script-out`.
+#[test]
+fn prepare_execution_context_with_interactive_refuses_an_autonomous_id() {
+    let dir = temp_dir();
+    let graph_dir = dir.join("docs");
+    fs::create_dir_all(&graph_dir).expect("docs");
+    fs::write(graph_dir.join("feature-graph.json"), INTERACTIVE_DOOR_GRAPH).expect("write graph");
+    let script_out = dir.join("script-out.js");
+
+    let output = bin()
+        .current_dir(&dir)
+        .args([
+            "prepare-execution-context",
+            "--features",
+            "plain-thing",
+            "--target-branch",
+            "main",
+            "--script-out",
+        ])
+        .arg(&script_out)
+        .arg("--interactive")
+        .output()
+        .expect("spawn prepare-execution-context");
+
+    assert_eq!(output.status.code(), Some(1), "must exit 1");
+    assert!(output.stdout.is_empty(), "stdout must stay empty");
+    assert!(
+        !script_out.exists(),
+        "no file must be written to --script-out"
+    );
+    assert!(!output.stderr.is_empty(), "stderr must carry the refusal");
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
 /// The manual-install remedy every `upgrade` refusal names, verbatim (unix).
 #[cfg(all(not(feature = "upgrade"), not(windows)))]
 const INSTALL_ONE_LINER: &str = "curl -LsSf https://github.com/jatassi/the-loop/releases/latest/download/the-loop-installer.sh | sh";

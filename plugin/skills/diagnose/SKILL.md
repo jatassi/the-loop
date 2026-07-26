@@ -112,12 +112,43 @@ build-order coupling with other in-flight work):
   "id": "fix-<slug>",
   "title": "one-line defect statement",
   "status": "designed",
+  "execution": "autonomous",
   "depends_on": [],
   "acceptance": [
     "regression-shaped Given/When/Then — the repro (or the inspected failure mode) as the first criterion; the builder derives the failing test from it"
   ]
 }
 ```
+
+`execution` is `autonomous | interactive` — who does the work. **Absent means
+`autonomous`**, and most fixes are: a regression test is exactly the artifact an agent
+can drive. It is the human's answer, never yours to infer. Ask anyway, every time, even
+when you flag nothing — one question, for this one `fix-<slug>` record:
+
+> **Execution mode** — should the pipeline build this fix on its own, or do we work it
+> through together in an attended session?
+> Recommended: **autonomous** (<why — usually: the regression test pins it).
+> Flip it if you'd rather sit with the remedy.
+
+Recommend `interactive` when any of these fire:
+
+- **Taste.** Visual design, copy, tone, naming, API ergonomics. There is no test for
+  "this reads well", and a model's confident default is precisely the templated result
+  the human is trying to avoid.
+- **The work *is* the decision.** The deliverable is a set of rulings and the
+  implementation is trivial once they are made — a naming sweep, a policy trade-off.
+- **Adjudication-shaped acceptance.** A criterion whose subject is a human act
+  ("every candidate carries a ruling", "the human approves the wording").
+- **Only a person can see it.** Correctness that shows up in a rendered page, on a
+  device, in how something feels — something the validator's environment cannot reach.
+- **An open fork, or an unwritten preference.** A real alternative is still live (two
+  defensible remedies, and the choice is a trade-off), or the human holds a preference
+  they have not managed to write down. What cannot be specified has to be attended.
+- **Hard to reverse and cheap to get subtly wrong.** Schema migrations, public API
+  breaks, destructive operations, auth and permissions.
+
+**The one-line test:** *would the human want to look at the result before it lands —
+and can the acceptance criteria make them look?* Yes and no means `interactive`.
 
 Run `the-loop check` after the edit — it validates schema, edges, and the
 canonical round-trip formatting.

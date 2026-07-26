@@ -120,6 +120,7 @@ export const cases = [
           byStatus: { proposed: 1, designed: 1, validated: 0, shipped: 0 },
         },
         eligibleSet: ['alpha'],
+        interactiveReady: [],
         proposal: {
           kind: 'advance-eligible-set',
           features: ['alpha'],

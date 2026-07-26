@@ -67,15 +67,42 @@ pub fn detect_state(root: &Path) -> State {
     }
 }
 
-/// The dependency-ready eligible set: features still `designed` whose every
-/// `depends_on` edge is satisfied.
+/// Is this feature's execution mode `"interactive"`? Absent (or any other
+/// value — validation is `validate.rs`'s job) behaves as autonomous.
+fn is_interactive(feature: &Feature) -> bool {
+    feature.execution.as_deref() == Some("interactive")
+}
+
+/// The dependency-ready eligible set: features still `designed`, autonomous.
+///
+/// Every `depends_on` edge must be satisfied. Interactive features are held
+/// out — they surface separately via [`interactive_ready_ids`].
 #[must_use]
 pub fn eligible_set_ids(features: &[Feature]) -> Vec<String> {
     let by_id: HashMap<&str, &Feature> = features.iter().map(|f| (f.id.as_str(), f)).collect();
     let satisfied = |id: &str| by_id.get(id).is_some_and(|dep| is_done(&dep.status));
     features
         .iter()
-        .filter(|f| f.status == "designed" && f.depends_on.iter().all(|d| satisfied(d)))
+        .filter(|f| {
+            f.status == "designed"
+                && !is_interactive(f)
+                && f.depends_on.iter().all(|d| satisfied(d))
+        })
+        .map(|f| f.id.clone())
+        .collect()
+}
+
+/// The dependency-ready attended set: features still `designed`, execution
+/// `"interactive"`, whose every `depends_on` edge is satisfied. In graph order.
+#[must_use]
+pub fn interactive_ready_ids(features: &[Feature]) -> Vec<String> {
+    let by_id: HashMap<&str, &Feature> = features.iter().map(|f| (f.id.as_str(), f)).collect();
+    let satisfied = |id: &str| by_id.get(id).is_some_and(|dep| is_done(&dep.status));
+    features
+        .iter()
+        .filter(|f| {
+            f.status == "designed" && is_interactive(f) && f.depends_on.iter().all(|d| satisfied(d))
+        })
         .map(|f| f.id.clone())
         .collect()
 }
@@ -133,17 +160,26 @@ pub fn blocking_proposed_ids(features: &[Feature], stuck: &[String]) -> Vec<Stri
 
 /// The next-action proposal `/begin` opens with.
 ///
-/// Precedence: the drainable eligible set; then, if designed work is stuck,
-/// `design` naming the proposed dependencies that explain the stall; then
-/// Release; then `design` again to drain a proposed-only backlog; then a fresh
-/// intake. `blocked` is the true safety net — on a validate-clean graph, seeing
-/// it means the graph needs repair.
+/// Precedence: the drainable eligible set; then dependency-ready interactive
+/// work (`advance-interactive`) when the eligible set is empty; then, if
+/// designed work is stuck, `design` naming the proposed dependencies that
+/// explain the stall; then Release; then `design` again to drain a
+/// proposed-only backlog; then a fresh intake. `blocked` is the true safety
+/// net — on a validate-clean graph, seeing it means the graph needs repair.
 #[must_use]
 pub fn propose(features: &[Feature]) -> Proposal {
     let ready = eligible_set_ids(features);
     if !ready.is_empty() {
         let summary = format!("{} feature(s) are dependency-ready to advance", ready.len());
         return Proposal::new("advance-eligible-set", ready, summary);
+    }
+    let interactive_ready = interactive_ready_ids(features);
+    if !interactive_ready.is_empty() {
+        let summary = format!(
+            "{} interactive feature(s) are dependency-ready — attend a session",
+            interactive_ready.len()
+        );
+        return Proposal::new("advance-interactive", interactive_ready, summary);
     }
     let stuck = ids_with_status(features, "designed");
     if !stuck.is_empty() {
@@ -282,6 +318,11 @@ pub struct Orientation {
     pub missing: Option<Vec<String>>,
     #[serde(rename = "eligibleSet", skip_serializing_if = "Option::is_none")]
     pub eligible_set: Option<Vec<String>>,
+    /// The dependency-ready attended set. Rides whenever `eligibleSet` does
+    /// (both set together in the configured-valid-graph branch, both `None`
+    /// everywhere else) — never null churn.
+    #[serde(rename = "interactiveReady", skip_serializing_if = "Option::is_none")]
+    pub interactive_ready: Option<Vec<String>>,
     #[serde(rename = "graphErrors", skip_serializing_if = "Option::is_none")]
     pub graph_errors: Option<Vec<IssueOut>>,
     pub proposal: Proposal,
@@ -297,6 +338,7 @@ impl Orientation {
             position: None,
             missing: None,
             eligible_set: None,
+            interactive_ready: None,
             graph_errors: None,
             proposal,
         }
@@ -360,6 +402,7 @@ fn configured_orientation(state: &State, root: &Path) -> Result<Orientation, Ref
         let mut orientation = Orientation::base(state, propose(&graph.features));
         orientation.position = Some(position);
         orientation.eligible_set = Some(eligible_set_ids(&graph.features));
+        orientation.interactive_ready = Some(interactive_ready_ids(&graph.features));
         Ok(orientation)
     } else {
         let summary = format!(
@@ -415,10 +458,25 @@ pub fn render_status_summary(graph: &FeatureGraph, graph_path: &str) -> String {
     };
     lines.push(format!("**Next:** {next}"));
     lines.push(String::new());
+    let interactive_ready = interactive_ready_ids(features);
+    if !interactive_ready.is_empty() {
+        let attended = interactive_ready
+            .iter()
+            .map(|id| format!("`{id}`"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        lines.push(format!("**Interactive ready:** {attended}"));
+        lines.push(String::new());
+    }
     lines.push("| feature | status | title |".to_owned());
     lines.push("|---|---|---|".to_owned());
     for f in features {
-        lines.push(format!("| {} | {} | {} |", f.id, f.status, f.title));
+        let status = if is_interactive(f) {
+            format!("{} (interactive)", f.status)
+        } else {
+            f.status.clone()
+        };
+        lines.push(format!("| {} | {} | {} |", f.id, status, f.title));
     }
     lines.push(String::new());
     lines.join("\n")
@@ -481,11 +539,16 @@ mod tests {
     use std::fs;
 
     fn feature(id: &str, status: &str, deps: &[&str]) -> Feature {
+        feature_exec(id, status, deps, None)
+    }
+
+    fn feature_exec(id: &str, status: &str, deps: &[&str], execution: Option<&str>) -> Feature {
         Feature {
             id: id.to_owned(),
             section: None,
             title: format!("{id} title"),
             status: status.to_owned(),
+            execution: execution.map(str::to_owned),
             depends_on: deps.iter().map(|d| (*d).to_owned()).collect(),
             depends_on_present: !deps.is_empty(),
             acceptance: Some(Acceptance::Text("criterion".to_owned())),
@@ -621,6 +684,59 @@ mod tests {
         assert_eq!(ids, vec!["pending".to_owned(), "ready".to_owned()]);
     }
 
+    #[test]
+    fn eligible_set_excludes_interactive_and_interactive_ready_names_exactly_those_in_graph_order()
+    {
+        let g = graph(vec![
+            feature_exec("auto", "designed", &[], None),
+            feature_exec("att1", "designed", &[], Some("interactive")),
+            feature_exec("att2", "designed", &[], Some("interactive")),
+        ]);
+        assert_eq!(eligible_set_ids(&g.features), vec!["auto".to_owned()]);
+        assert_eq!(
+            interactive_ready_ids(&g.features),
+            vec!["att1".to_owned(), "att2".to_owned()]
+        );
+    }
+
+    #[test]
+    fn absent_execution_behaves_as_autonomous_in_both_sets() {
+        // No `execution` key at all (as every pre-existing record has): counts
+        // as autonomous for both the eligible set and interactive-ready.
+        let g = graph(vec![feature("plain", "designed", &[])]);
+        assert_eq!(eligible_set_ids(&g.features), vec!["plain".to_owned()]);
+        assert!(interactive_ready_ids(&g.features).is_empty());
+    }
+
+    #[test]
+    fn propose_advance_interactive_when_the_only_ready_work_is_interactive() {
+        // Designed, dependency-ready, interactive: not eligible, but also must
+        // not fall through to `blocked` — that would falsely claim the graph
+        // needs repair when the only ready work is attended.
+        let g = graph(vec![feature_exec(
+            "att",
+            "designed",
+            &[],
+            Some("interactive"),
+        )]);
+        let p = propose(&g.features);
+        assert_eq!(p.kind, "advance-interactive");
+        assert_eq!(p.features, vec!["att".to_owned()]);
+        assert_ne!(p.kind, "blocked");
+        assert!(!p.summary.contains("needs repair"));
+    }
+
+    #[test]
+    fn propose_prefers_eligible_set_over_interactive_when_both_are_ready() {
+        let g = graph(vec![
+            feature_exec("auto", "designed", &[], None),
+            feature_exec("att", "designed", &[], Some("interactive")),
+        ]);
+        let p = propose(&g.features);
+        assert_eq!(p.kind, "advance-eligible-set");
+        assert_eq!(p.features, vec!["auto".to_owned()]);
+    }
+
     // ── machine_orientation modes and repair branches ───────────────────────
 
     fn write(root: &Path, rel: &str, text: &str) {
@@ -650,6 +766,7 @@ mod tests {
             "no design and no graph — nothing to resume; route to onboarding (Define → Design)"
         );
         assert!(o.position.is_none() && o.missing.is_none() && o.eligible_set.is_none());
+        assert!(o.interactive_ready.is_none());
     }
 
     #[test]
@@ -697,8 +814,34 @@ mod tests {
         assert_eq!(position.by_status.proposed, 1);
         assert_eq!(position.by_status.designed, 1);
         assert_eq!(o.eligible_set, Some(vec!["alpha".to_owned()]));
+        assert_eq!(o.interactive_ready, Some(Vec::new()));
         assert!(o.graph_errors.is_none());
         assert_eq!(o.proposal.kind, "advance-eligible-set");
+    }
+
+    #[test]
+    fn orientation_configured_splits_interactive_ready_from_eligible_set() {
+        // One dependency-ready designed autonomous feature, one dependency-ready
+        // designed interactive feature: eligibleSet names only the autonomous
+        // one, interactiveReady names only the interactive one — even though
+        // the eligible set wins the proposal (criterion: both kinds ready).
+        let dir = tempdir();
+        write(
+            dir.path(),
+            "docs/feature-graph.json",
+            r#"{
+  "design_version": 1,
+  "features": [
+    { "id": "auto", "title": "Auto feature", "status": "designed", "depends_on": [], "acceptance": "c" },
+    { "id": "att", "title": "Attended feature", "status": "designed", "execution": "interactive", "depends_on": [], "acceptance": "c" }
+  ]
+}"#,
+        );
+        let o = machine_orientation(dir.path()).unwrap();
+        assert_eq!(o.eligible_set, Some(vec!["auto".to_owned()]));
+        assert_eq!(o.interactive_ready, Some(vec!["att".to_owned()]));
+        assert_eq!(o.proposal.kind, "advance-eligible-set");
+        assert_eq!(o.proposal.features, vec!["auto".to_owned()]);
     }
 
     #[test]
@@ -715,6 +858,7 @@ mod tests {
         assert_eq!(o.proposal.kind, "repair");
         assert!(o.position.is_some());
         assert!(o.eligible_set.is_none());
+        assert!(o.interactive_ready.is_none());
         let errors = o.graph_errors.expect("invalid graph carries graphErrors");
         assert!(errors.iter().any(|e| e.code == "bad-status"));
         assert!(
@@ -766,6 +910,8 @@ mod tests {
             .keys()
             .map(String::as_str)
             .collect();
+        // eligibleSet and interactiveReady ride together in configured mode —
+        // named side by side so a future change can't drop one silently.
         let expected: HashSet<&str> = [
             "mode",
             "hasDesign",
@@ -773,6 +919,7 @@ mod tests {
             "hasBrief",
             "position",
             "eligibleSet",
+            "interactiveReady",
             "proposal",
         ]
         .into_iter()
@@ -809,6 +956,25 @@ mod tests {
             "| beta | proposed | Beta feature |\n",
         );
         assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn render_summary_distinguishes_interactive_row_and_lists_interactive_ready_under_its_own_heading()
+     {
+        let g = graph(vec![
+            feature_exec("auto", "designed", &[], None),
+            feature_exec("att", "designed", &[], Some("interactive")),
+        ]);
+        let out = render_status_summary(&g, "g.json");
+        // Interactive row is marked; autonomous row renders as it always has.
+        assert!(
+            out.contains("| att | designed (interactive) | att title |"),
+            "{out}"
+        );
+        assert!(out.contains("| auto | designed | auto title |"), "{out}");
+        // A dedicated heading names the attended ready set, distinct from Next:.
+        assert!(out.contains("**Interactive ready:** `att`"), "{out}");
+        assert!(out.contains("**Next:** `auto`"), "{out}");
     }
 
     #[test]

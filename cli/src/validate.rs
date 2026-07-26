@@ -14,6 +14,9 @@ use crate::graph::{Acceptance, Feature, FeatureGraph};
 /// Durable lifecycle statuses (ADR-0034/0045). In-flight states are git-derived.
 pub const STATUS: &[&str] = &["proposed", "designed", "validated", "shipped"];
 
+/// Legal `execution` markers. Absent is legal too (untyped); see `check_feature_fields`.
+pub const EXECUTION: &[&str] = &["autonomous", "interactive"];
+
 /// One validation issue. Mirrors the JS `{ code, message, where? }` shape.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Issue {
@@ -155,6 +158,20 @@ fn check_feature_fields(feature: &Feature, errors: &mut Vec<Issue>) {
         errors.push(issue(
             "bad-status",
             format!("status must be one of {} (got {got})", STATUS.join("|")),
+            where_.clone(),
+        ));
+    }
+    if let Some(execution) = &feature.execution
+        && !EXECUTION.contains(&execution.as_str())
+    {
+        let got = serde_json::to_string(&Value::String(execution.clone()))
+            .unwrap_or_else(|_| format!("{execution:?}"));
+        errors.push(issue(
+            "bad-execution",
+            format!(
+                "execution must be one of {} (got {got})",
+                EXECUTION.join("|")
+            ),
             where_.clone(),
         ));
     }
@@ -313,6 +330,7 @@ mod tests {
             section: None,
             title: title.to_owned(),
             status: status.to_owned(),
+            execution: None,
             depends_on: Vec::new(),
             depends_on_present: false,
             acceptance: None,
@@ -497,6 +515,48 @@ mod tests {
             "{}",
             err.message
         );
+    }
+
+    #[test]
+    fn bad_execution_rejects_values_outside_the_enum() {
+        let mut f = designed("a", "A");
+        f.execution = Some("sometimes".to_owned());
+        let result = validate(&graph(vec![f]));
+        assert!(!result.ok);
+        let err = result
+            .errors
+            .iter()
+            .find(|e| e.code == "bad-execution")
+            .expect("bad-execution");
+        assert!(
+            err.message.contains("autonomous|interactive") && err.message.contains("sometimes"),
+            "{}",
+            err.message
+        );
+        assert_eq!(err.r#where.as_deref(), Some("a"));
+    }
+
+    #[test]
+    fn execution_absent_or_legal_produces_no_issue_or_warning() {
+        for execution in [
+            None,
+            Some("autonomous".to_owned()),
+            Some("interactive".to_owned()),
+        ] {
+            let mut f = designed("a", "A");
+            f.execution = execution.clone();
+            let result = validate(&graph(vec![f]));
+            assert!(
+                !codes(&result).contains(&"bad-execution"),
+                "execution {execution:?} must not be flagged; errors: {:?}",
+                result.errors
+            );
+            assert!(
+                result.warnings.is_empty(),
+                "execution {execution:?} must not warn; warnings: {:?}",
+                result.warnings
+            );
+        }
     }
 
     #[test]

@@ -930,6 +930,7 @@ mod tests {
             section: None,
             title: id.to_owned(),
             status: "designed".to_owned(),
+            execution: None,
             depends_on: Vec::new(),
             depends_on_present: false,
             acceptance: Some(Acceptance::List(

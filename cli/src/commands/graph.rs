@@ -391,6 +391,68 @@ mod tests {
     "design_version": 1
 }"#;
 
+    /// Canonical valid graph carrying a legal `execution` marker on alpha.
+    const VALID_EXECUTION_MARKER: &str = r#"{
+  "design_version": 1,
+  "features": [
+    {
+      "id": "alpha",
+      "section": "fixture skeleton",
+      "title": "Alpha feature",
+      "status": "designed",
+      "execution": "interactive",
+      "depends_on": [],
+      "acceptance": [
+        "alpha criterion one",
+        "alpha criterion two"
+      ],
+      "notes": [
+        "alpha design note"
+      ]
+    },
+    {
+      "id": "beta",
+      "title": "Beta feature",
+      "status": "proposed",
+      "depends_on": [
+        "alpha"
+      ]
+    }
+  ]
+}
+"#;
+
+    /// Canonical graph carrying an illegal `execution` marker on alpha.
+    const INVALID_EXECUTION_MARKER: &str = r#"{
+  "design_version": 1,
+  "features": [
+    {
+      "id": "alpha",
+      "section": "fixture skeleton",
+      "title": "Alpha feature",
+      "status": "designed",
+      "execution": "sometimes",
+      "depends_on": [],
+      "acceptance": [
+        "alpha criterion one",
+        "alpha criterion two"
+      ],
+      "notes": [
+        "alpha design note"
+      ]
+    },
+    {
+      "id": "beta",
+      "title": "Beta feature",
+      "status": "proposed",
+      "depends_on": [
+        "alpha"
+      ]
+    }
+  ]
+}
+"#;
+
     const INVALID_DANGLING: &str = r#"{
   "design_version": 1,
   "features": [
@@ -456,6 +518,35 @@ mod tests {
             result.stdout.contains("FAIL") && result.stdout.contains("2 features"),
             "FAIL summary; got {}",
             result.stdout
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn check_bad_execution_exits_one_naming_id_and_enum_legal_marker_stays_ok() {
+        let dir = temp_dir();
+        let path = write_graph(&dir, "bad-execution.json", INVALID_EXECUTION_MARKER);
+        let result = check(&path);
+        assert_eq!(result.exit_code, 1);
+        assert!(
+            result.stdout.contains("ERROR bad-execution") && result.stdout.contains("(alpha)"),
+            "must name the offending feature id; got {}",
+            result.stdout
+        );
+        assert!(
+            result.stdout.contains("autonomous|interactive"),
+            "must name both legal values; got {}",
+            result.stdout
+        );
+        assert!(result.stdout.contains("FAIL"));
+
+        let legal_path = write_graph(&dir, "legal-execution.json", VALID_EXECUTION_MARKER);
+        let ok = check(&legal_path);
+        assert_eq!(ok.exit_code, 0, "legal marker must pass: {}", ok.stdout);
+        assert!(
+            ok.stdout.contains("OK  "),
+            "legal marker must print OK; got {}",
+            ok.stdout
         );
         let _ = fs::remove_dir_all(&dir);
     }

@@ -40,6 +40,12 @@ it; fetch feature bodies only once the chosen route needs them.
   eligible set, or the human's subset) and the target branch — it assembles the
   execution context, launches the pipeline, and relays the run summary. It presents
   the resolved scope and waits for the human's confirm before launching.
+- `advance-interactive` → the `interactive-execution` skill, handed the id (the
+  attended-ready feature, or the human's pick) and the target branch — a feature marked
+  `"execution": "interactive"` is built with the human in a session rather than
+  unattended, then validated the ordinary way. `interactiveReady` rides the orientation
+  JSON whatever the proposal is, so when another route wins and that set is non-empty,
+  say that attended work is also waiting.
 - `design` → the `design` skill, amending the design for the named ids (a proposed
   feature blocking stuck work, or the whole proposed backlog when nothing else is
   actionable) — write their design docs and acceptance, flipping them to designed.

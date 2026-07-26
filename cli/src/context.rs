@@ -53,10 +53,46 @@ pub struct ScopeCheck {
     pub errors: Vec<Issue>,
 }
 
-/// Gate a requested scope: every id known, still `designed`, and every dependency
-/// either already landed (`validated` | `shipped`) or in the same scope.
+/// Whether a feature's execution mode is `"interactive"` — absent (or any other
+/// value) means autonomous, per the record's documented default.
+fn is_interactive(node: &Feature) -> bool {
+    node.execution.as_deref() == Some("interactive")
+}
+
+/// The scope-gate refusal when the requested door does not match a feature's
+/// execution mode. Names the feature and the other door, symmetrically: the
+/// ordinary door names the `interactive-execution` skill (the one place this
+/// string must match the skill directory), the interactive door names the
+/// ordinary `execute` door.
+fn wrong_door_issue(id: &str, node_interactive: bool) -> Issue {
+    let message = if node_interactive {
+        format!(
+            "\"{id}\" is execution: \"interactive\" — run it through the interactive-execution skill, not the ordinary execute door"
+        )
+    } else {
+        format!(
+            "\"{id}\" is not execution: \"interactive\" — run it through the ordinary execute door, not --interactive"
+        )
+    };
+    Issue {
+        code: "wrong-execution-door".to_owned(),
+        message,
+        r#where: Some(id.to_owned()),
+    }
+}
+
+/// Gate a requested scope.
+///
+/// Every id known, still `designed`, requested through the door matching its
+/// execution mode, and every dependency either already landed (`validated` |
+/// `shipped`) or in the same scope.
+///
+/// `interactive` names which door the caller is using: `false` is the ordinary
+/// `execute` door (refuses an `execution: "interactive"` id), `true` is the
+/// `--interactive` door (refuses an autonomous or unmarked id) — symmetric checks
+/// naming the other door in the refusal.
 #[must_use]
-pub fn check_scope(model: &FeatureGraph, scope: &[String]) -> ScopeCheck {
+pub fn check_scope(model: &FeatureGraph, scope: &[String], interactive: bool) -> ScopeCheck {
     let mut errors = Vec::new();
     let by_id: HashMap<&str, &Feature> =
         model.features.iter().map(|f| (f.id.as_str(), f)).collect();
@@ -77,6 +113,10 @@ pub fn check_scope(model: &FeatureGraph, scope: &[String]) -> ScopeCheck {
                 message: not_designed_message(&node.status),
                 r#where: Some(id.clone()),
             });
+        }
+        let node_interactive = is_interactive(node);
+        if interactive != node_interactive {
+            errors.push(wrong_door_issue(id, node_interactive));
         }
         for dep in &node.depends_on {
             let dep_node = by_id.get(dep.as_str());
@@ -397,6 +437,7 @@ mod tests {
             section: None,
             title: id.to_owned(),
             status: status.to_owned(),
+            execution: None,
             depends_on: depends_on.iter().map(|s| (*s).to_owned()).collect(),
             depends_on_present: true,
             acceptance: Some(Acceptance::Text(acceptance.to_owned())),
@@ -445,14 +486,18 @@ mod tests {
 
     #[test]
     fn scope_of_designed_features_with_landed_deps_passes() {
-        let result = check_scope(&sample_model(), &scope(&["ready"]));
+        let result = check_scope(&sample_model(), &scope(&["ready"]), false);
         assert!(result.ok);
         assert!(result.errors.is_empty());
     }
 
     #[test]
     fn unknown_not_designed_and_unsatisfied_each_refuse_with_their_code() {
-        let result = check_scope(&sample_model(), &scope(&["ghost", "landed", "orphan"]));
+        let result = check_scope(
+            &sample_model(),
+            &scope(&["ghost", "landed", "orphan"]),
+            false,
+        );
         assert!(!result.ok);
         let codes: Vec<(&str, Option<&str>)> = result
             .errors
@@ -475,19 +520,19 @@ mod tests {
 
     #[test]
     fn dependency_satisfied_by_being_in_same_scope() {
-        assert!(check_scope(&sample_model(), &scope(&["ready", "chained"])).ok);
-        assert!(!check_scope(&sample_model(), &scope(&["chained"])).ok);
+        assert!(check_scope(&sample_model(), &scope(&["ready", "chained"]), false).ok);
+        assert!(!check_scope(&sample_model(), &scope(&["chained"]), false).ok);
     }
 
     #[test]
     fn dependency_satisfied_by_validated_and_shipped_alike() {
-        assert!(check_scope(&sample_model(), &scope(&["ready"])).ok);
+        assert!(check_scope(&sample_model(), &scope(&["ready"]), false).ok);
     }
 
     #[test]
     fn proposed_feature_refused_with_must_be_designed_first_wording() {
         let m = model(vec![feature("backlog-item", "proposed", &[], "x")]);
-        let result = check_scope(&m, &scope(&["backlog-item"]));
+        let result = check_scope(&m, &scope(&["backlog-item"]), false);
         assert!(!result.ok);
         assert_eq!(result.errors.len(), 1);
         assert_eq!(result.errors[0].code, "not-designed");
@@ -496,6 +541,65 @@ mod tests {
             "feature is proposed, not designed — it must be designed first"
         );
         assert_eq!(result.errors[0].r#where.as_deref(), Some("backlog-item"));
+    }
+
+    fn feature_with_execution(id: &str, execution: Option<&str>) -> Feature {
+        let mut f = feature(id, "designed", &[], "x works");
+        f.execution = execution.map(str::to_owned);
+        f
+    }
+
+    #[test]
+    fn ordinary_door_refuses_an_interactive_id_naming_the_feature_and_the_skill() {
+        let m = model(vec![feature_with_execution(
+            "attended-thing",
+            Some("interactive"),
+        )]);
+        let result = check_scope(&m, &scope(&["attended-thing"]), false);
+        assert!(!result.ok);
+        assert_eq!(result.errors.len(), 1);
+        assert_eq!(result.errors[0].code, "wrong-execution-door");
+        assert_eq!(result.errors[0].r#where.as_deref(), Some("attended-thing"));
+        let message = &result.errors[0].message;
+        assert!(
+            message.contains("attended-thing"),
+            "message must name the feature: {message}"
+        );
+        assert!(
+            message.contains("interactive-execution"),
+            "message must name the interactive-execution skill: {message}"
+        );
+    }
+
+    #[test]
+    fn interactive_door_refuses_an_autonomous_or_unmarked_id_naming_the_execute_door() {
+        for execution in [None, Some("autonomous")] {
+            let m = model(vec![feature_with_execution("plain-thing", execution)]);
+            let result = check_scope(&m, &scope(&["plain-thing"]), true);
+            assert!(!result.ok, "execution={execution:?}");
+            assert_eq!(result.errors.len(), 1);
+            assert_eq!(result.errors[0].code, "wrong-execution-door");
+            assert_eq!(result.errors[0].r#where.as_deref(), Some("plain-thing"));
+            let message = &result.errors[0].message;
+            assert!(
+                message.contains("plain-thing"),
+                "message must name the feature: {message}"
+            );
+            assert!(
+                message.contains("execute"),
+                "message must name the ordinary execute door: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn matching_door_passes_for_both_modes() {
+        let m = model(vec![
+            feature_with_execution("attended-thing", Some("interactive")),
+            feature_with_execution("plain-thing", None),
+        ]);
+        assert!(check_scope(&m, &scope(&["attended-thing"]), true).ok);
+        assert!(check_scope(&m, &scope(&["plain-thing"]), false).ok);
     }
 
     // ── built_task_ids ──
