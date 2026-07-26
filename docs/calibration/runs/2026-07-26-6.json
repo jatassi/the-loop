@@ -1,0 +1,107 @@
+{
+  "run": {
+    "prepared_at": "2026-07-26T17:51:16.303Z",
+    "target": "main",
+    "scope": [
+      "interactive-feature-type"
+    ],
+    "tokens": {
+      "spent": 179234,
+      "by_role": {
+        "plan": 33818,
+        "build": 419820,
+        "drive": 0,
+        "validate": 28189
+      },
+      "attribution": "overlapped"
+    },
+    "halted": null
+  },
+  "features": [
+    {
+      "id": "interactive-feature-type",
+      "workflow_path": "standard",
+      "outcome": "validated",
+      "reason": null,
+      "reslice": null,
+      "agents": {
+        "plan": 1,
+        "build": 6,
+        "drive": 0,
+        "validate": 1
+      },
+      "tasks": [
+        {
+          "id": "t1",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/src/graph.rs",
+            "cli/src/status.rs",
+            "cli/src/context.rs",
+            "cli/src/plan.rs",
+            "cli/src/validate.rs"
+          ]
+        },
+        {
+          "id": "t2",
+          "size": "xs",
+          "judgment_level": "rote",
+          "footprint": [
+            "cli/src/validate.rs",
+            "cli/src/commands/graph.rs"
+          ]
+        },
+        {
+          "id": "t3",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/src/status.rs",
+            "test/oracle/cases/read-commands.js"
+          ]
+        },
+        {
+          "id": "t4",
+          "size": "s",
+          "judgment_level": "standard",
+          "footprint": [
+            "cli/src/context.rs",
+            "cli/src/commands/prepare_execution_context.rs",
+            "cli/src/lib.rs",
+            "cli/tests/cli_process.rs"
+          ]
+        },
+        {
+          "id": "t5",
+          "size": "s",
+          "judgment_level": "complex",
+          "footprint": [
+            "plugin/skills/design/SKILL.md",
+            "plugin/skills/diagnose/SKILL.md",
+            "test/execution-mode-question.test.js"
+          ]
+        },
+        {
+          "id": "t6",
+          "size": "m",
+          "judgment_level": "complex",
+          "footprint": [
+            "plugin/skills/interactive-execution/SKILL.md",
+            "plugin/skills/begin/SKILL.md",
+            "plugin/skills/execute/SKILL.md",
+            "plugin/skills/using-the-loop/SKILL.md",
+            "test/interactive-execution-skill.test.js"
+          ]
+        }
+      ],
+      "actual": {
+        "files_touched": 20,
+        "insertions": 1381,
+        "deletions": 25,
+        "commits": 23,
+        "duration_minutes": 1405
+      }
+    }
+  ]
+}
