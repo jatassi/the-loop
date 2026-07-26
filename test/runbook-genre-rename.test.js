@@ -18,7 +18,7 @@ test('docs/runbooks/*/runbook.md re-lists empty — every validation-sense recor
 });
 
 // The living surfaces named by the rename's sweep bar (operate-tooling design, "The
-// rename"): plugin/skills/, plugin/agents/, plugin/src, plugin/workflows, living
+// rename"): plugin/skills/, plugin/agents/, plugin/src, cli/assets, living
 // docs/designs/*/design.md, docs/architecture.md, docs/feature-graph.md acceptance
 // strings, README.md — everything except the excluded historical records
 // (docs/adr/, docs/research/, docs/briefs/, docs/releases/, docs/bugs/) and the
@@ -67,9 +67,9 @@ function filesUnder(dir) {
 }
 
 test('every living surface greps clean of validation-sense "runbook"/"docs/runbooks" — only the operational genre remains', () => {
-  // plugin/skills/, plugin/agents/, plugin/workflows, cli/src: every .md, .js, and
+  // plugin/skills/, plugin/agents/, cli/assets, cli/src: every .md, .js, and
   // .rs file, read fresh from the live tree (plugin/src retired at json-cutover).
-  const surfaceFiles = ['plugin/skills', 'plugin/agents', 'plugin/workflows', 'cli/src'].flatMap((dir) => filesUnder(dir));
+  const surfaceFiles = ['plugin/skills', 'plugin/agents', 'cli/assets', 'cli/src'].flatMap((dir) => filesUnder(dir));
   for (const full of surfaceFiles) {
     assertSwept(read(full), full);
   }

@@ -1,7 +1,7 @@
 // The calibration-capture leg (ADR-0046): after the run summary is assembled the script
 // spawns the `record` agent to transcribe a byte-final JSON payload the script computed
 // as a pure function of what it observed. These tests drive the real
-// workflows/execution-pipeline.js through the harness and pin: the deterministic payload
+// cli/assets/execution-pipeline.js through the harness and pin: the deterministic payload
 // (same observations → byte-identical string), that a not-fully-green run still records,
 // that a budget-exhausted halt skips the spawn with one log line, that a record-spawn
 // failure leaves the run summary byte-identical, and that the plan prompt carries the
@@ -11,7 +11,7 @@ import { test } from 'node:test';
 
 import { byLabel, runWorkflowScript } from './execution-pipeline-harness.js';
 
-const SCRIPT = 'plugin/workflows/execution-pipeline.js';
+const SCRIPT = 'cli/assets/execution-pipeline.js';
 
 function feature(id, overrides = {}) {
   return {

@@ -99,7 +99,7 @@ test('bare `node --test` discovery of the shim module itself is a no-op pass', (
 });
 
 // ── execution-context transport: embedded literal preferred; args object/string fallback ──
-// Mirrors the resolution line in workflows/execution-pipeline.js so the harness keeps
+// Mirrors the resolution line in cli/assets/execution-pipeline.js so the harness keeps
 // proving the in-process args path (object and JSON-string) while the spliced-script
 // path can omit args entirely.
 test('EMBEDDED_CONTEXT is preferred over args; object and JSON-string args still work when EMBEDDED_CONTEXT is null', async () => {

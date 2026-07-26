@@ -55,7 +55,10 @@ disk), `plan parse|check|task`, `worktree-create|worktree-remove`, `models-list`
 ### The execution pipeline (ADR-0038)
 
 The execution pipeline (nicknamed "the engine") is a **Claude Code Workflow**
-(`plugin/workflows/execution-pipeline.js`): script = brain, agents = hands. The script has
+(`cli/assets/execution-pipeline.js`, compiled into the CLI binary and never shipped
+under `plugin/` — that would auto-register it as a model-invocable skill reachable
+by name, which cannot succeed under any input; it is only ever launched via
+`the-loop prepare-execution-context --script-out`): script = brain, agents = hands. The script has
 no filesystem — it consumes the execution context and spawns agents; every
 repo-touching action is an agent's. It runs a **concurrency policy** over the scoped
 subgraph: every feature whose dependencies are satisfied runs concurrently; as each

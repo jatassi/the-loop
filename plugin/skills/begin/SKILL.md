@@ -103,7 +103,7 @@ graph and print a visible fallback line noting the feature graph is served from 
    the session is working on, unless the design narrative names another. Never
    pass a target branch the checkout's artifacts didn't come from. `--script-out`
    names any writable session-scratch path; the command writes a launch-ready copy
-   of the canonical `workflows/execution-pipeline.js` there, its `meta` description
+   of the canonical execution-pipeline engine script there, its `meta` description
    spliced to name this run's scope and target (the harness persists each
    invocation's own script for resume, so the scratch copy needs no teardown). On a
    bound project (nondefault `artifactStores.features`, per the section above) add
@@ -114,7 +114,7 @@ graph and print a visible fallback line noting the feature graph is served from 
    broken model bindings, or a malformed canonical script). Don't work around a
    refusal; fix what it names or tell the human.
 3. Call the Workflow: `scriptPath` = the `--script-out` path from step 2 — never
-   the canonical `workflows/execution-pipeline.js` directly, since its description
+   the canonical engine script directly, since its description
    is spliced fresh per run. Pass **no `args`**: the spliced script embeds the
    execution context as a JS literal, and the Workflow `args` channel is lossy for
    large escaped JSON (it round-trips through the model's token stream and can

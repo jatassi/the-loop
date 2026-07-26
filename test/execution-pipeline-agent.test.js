@@ -7,7 +7,7 @@ import { test } from 'node:test';
 
 import { byLabel, runWorkflowScript } from './execution-pipeline-harness.js';
 
-const SCRIPT = 'plugin/workflows/execution-pipeline.js';
+const SCRIPT = 'cli/assets/execution-pipeline.js';
 
 function executionContextOf(models, { agentNamespace = '' } = {}) {
   return {

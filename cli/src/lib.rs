@@ -71,8 +71,10 @@ pub const DEFAULT_HOOK_DEFAULTS_JSON: &str = include_str!("../config/hook-defaul
 pub const DEFAULT_GROK_PLAYBOOK: &str = include_str!("../config/executors/grok.md");
 
 /// Canonical execution-pipeline workflow script, compiled in for `--script-out` splicing.
-pub const DEFAULT_WORKFLOW_SCRIPT: &str =
-    include_str!("../../plugin/workflows/execution-pipeline.js");
+/// Lives at `cli/assets/` (not under `plugin/`) so it is never auto-registered as a
+/// model-invocable skill by a consuming session's plugin loader — this `include_str!`
+/// is its only runtime consumer.
+pub const DEFAULT_WORKFLOW_SCRIPT: &str = include_str!("../assets/execution-pipeline.js");
 
 /// Path stamp used when parsing the compiled-in default playbook (stem = `grok`).
 const DEFAULT_GROK_PLAYBOOK_FILE: &str = "config/executors/grok.md";

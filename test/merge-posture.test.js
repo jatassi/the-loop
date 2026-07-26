@@ -4,7 +4,7 @@
 // otherwise it's a semantic conflict, blocked with the conflicting paths named. This
 // pins that no loop surface still reads as promising conflict-free merges, and that
 // the surfaces naming the posture (agents/build.md, agents/validate.md,
-// workflows/execution-pipeline.js) actually carry it — straight off their source
+// cli/assets/execution-pipeline.js) actually carry it — straight off their source
 // text, the same way execution-pipeline-meta.test.js pins the workflow's own meta
 // declaration.
 import assert from 'node:assert/strict';
@@ -22,7 +22,7 @@ const RETIRED_PROMISES = [
 ];
 
 test('no loop surface still promises a conflict-free merge', () => {
-  for (const rel of ['plugin/agents/build.md', 'plugin/agents/validate.md', 'plugin/workflows/execution-pipeline.js']) {
+  for (const rel of ['plugin/agents/build.md', 'plugin/agents/validate.md', 'cli/assets/execution-pipeline.js']) {
     const text = read(rel);
     for (const pattern of RETIRED_PROMISES) {
       assert.ok(!pattern.test(text), `${rel} still matches the retired promise ${pattern}`);
@@ -47,7 +47,7 @@ test('the validate agent carries the test-gated merge policy at both the integra
 });
 
 test('the scheduler stops promising the sibling merge is clean by construction', () => {
-  const text = read('plugin/workflows/execution-pipeline.js');
+  const text = read('cli/assets/execution-pipeline.js');
   assert.ok(text.includes('test-gated merge policy'));
   assert.ok(text.includes('disjointness is the plan\'s bias, not law'));
 });

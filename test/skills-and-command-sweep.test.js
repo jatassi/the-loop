@@ -48,7 +48,7 @@ test('plugin/skills/begin/SKILL.md routes on the collapsed status subcommand, pr
   assert.match(cmd, /`advance-eligible-set`/);
   assert.ok(!cmd.includes('advance-frontier'), 'the retired advance-frontier kind should not be named');
 
-  assert.match(cmd, /workflows\/execution-pipeline\.js/);
+  assert.match(cmd, /canonical execution-pipeline engine script/);
   assert.ok(!cmd.includes('inner-loop.js'), 'the retired workflow script path should not be named');
 });
 

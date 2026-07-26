@@ -744,7 +744,7 @@
     {
       "id": "fix-execution-pipeline-name-entrypoint",
       "title": "execution-pipeline is model-reachable by name through an entry point that cannot work by construction",
-      "status": "designed",
+      "status": "validated",
       "depends_on": [],
       "acceptance": [
         "given the landed tree, when the repo is inspected, then no .js file exists under any auto-registered plugin workflows directory (plugin/workflows/ is gone) and the engine lives at cli/assets/execution-pipeline.js — the live check that a consuming session's skill listing no longer offers the-loop:execution-pipeline rides the release gate's health check, not validate",

@@ -122,7 +122,7 @@ export default defineConfig([
     // mirrors it at parse time only, so every other rule below still runs against the
     // real code, just shifted one function deeper (postprocess below un-shifts line
     // numbers by the one line the wrapper adds).
-    files: ['plugin/workflows/**/*.js'],
+    files: ['cli/assets/**/*.js'],
     processor: {
       preprocess: (text) => [
         // `void meta` gives the neutralized binding a use, so the harness-mandated

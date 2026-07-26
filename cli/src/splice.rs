@@ -356,7 +356,7 @@ const executionContext = EMBEDDED_CONTEXT ?? args;\n\
     #[test]
     fn real_canonical_script_both_splices_match_direct_substitution() {
         let script = crate::DEFAULT_WORKFLOW_SCRIPT;
-        let original_meta = "export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a run summary', whenToUse: 'Launched by /begin with the `the-loop prepare-execution-context` execution context as args — never invoked bare', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }, { title: 'Record' }] };";
+        let original_meta = "export const meta = { name: 'execution-pipeline', description: 'One autonomous pass over the scoped feature graph: Plan → Build → Validate per feature, concurrent where dependencies allow, ending in a run summary', whenToUse: 'Launched by the execute skill via `the-loop prepare-execution-context --script-out`, which embeds the execution context as a literal; never resolvable by name', phases: [{ title: 'Plan' }, { title: 'Build' }, { title: 'Validate' }, { title: 'Record' }] };";
         let original_emb = "const EMBEDDED_CONTEXT = null; // spliced to a literal by prepare-execution-context --script-out";
         assert!(
             script.contains(original_meta),
